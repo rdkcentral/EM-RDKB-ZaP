@@ -1,0 +1,137 @@
+# If not stated otherwise in this file or this component LICENSE file the
+# following copyright and licenses apply:
+#
+# Copyright 2026 Zilogic Systems
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+controller:
+    ui_port: 8888
+    ui_home_page_title: 'EasyMesh R6 Pro Controller'
+    bridge_iface: 'brlan0'
+    bridge_ip: <ip_address>
+    backhaul_capture_iface : 'eth0_virt_peer'
+    filter_1905 : 'ether proto 0x893a'
+    wifi_device: 'radio'
+    wifi_iface: 'default_radio{}'
+    wifi_ifname: 'wifi'
+    wifi_phy_ifname: 'phy'
+    mld_ifname: 'mld'
+    mld_iface_index: 0
+    2g_bh_iface_index: 0.1
+    2g_fh_iface_index: 0.2
+    5g_bh_iface_index: 1.1
+    5g_fh_iface_index: 1.2
+    6g_bh_iface_index: 2.1
+    6g_fh_iface_index: 2.2
+    2g_radio_index: 1
+    5g_radio_index: 2
+    6g_radio_index: 3
+    2g_ssid_index: 1
+    5g_ssid_index: 4
+    6g_ssid_index: 7
+    2g_ap_index: 1
+    5g_ap_index: 3
+    6g_ap_index: 5
+    iperf_version: 3
+    bandwidth_auto : Auto
+    bandwidth_20 : 20MHz
+    bandwidth_40 : 40MHz
+    bandwidth_80 : 80MHz
+    bandwidth_160 : 160MHz
+    bandwidth_320 : 320MHz
+    bandwidth_20_val : 20
+    bandwidth_40_val : 40
+    bandwidth_80_val : 80
+    bandwidth_160_val : 160
+    bandwidth_320_val : 320
+    operating_standard_a : a
+    operating_standard_b : b
+    operating_standard_g : g
+    operating_standard_n : n
+    operating_standard_an : an
+    operating_standard_bg : bg
+    operating_standard_gn : gn
+    operating_standard_bgn : bgn
+    operating_standard_ac : ac
+    operating_standard_ax : ax
+    operating_standard_be : be
+    tx_power_6 : 6
+    tx_power_12 : 12
+    tx_power_25 : 25
+    tx_power_50 : 50
+    tx_power_100 : 100
+    tx_power_-1 : -1
+    reg_domain_us : US
+    reg_domain_de : DE
+    2g_channel_1 : 1
+    2g_channel_6 : 6
+    2g_channel_11 : 11
+    5g_channel_36: 36
+    5g_channel_40: 40
+    5g_channel_44: 44
+    5g_channel_48: 48
+    5g_channel_173: 173
+    5g_dfs_channel_52: 52
+    5g_dfs_channel_60: 60
+    5g_dfs_channel_100: 100
+    5g_dfs_channel_112: 112
+    5g_dfs_channel_124: 124
+    6g_channel_1: 1
+    6g_channel_33: 33
+    6g_channel_61: 61
+    2g_ssid_1: rdkb_2g_1
+    2g_ssid_2: rdkb_2g_2
+    5g_ssid_1: rdkb_5g_1
+    5g_ssid_2: rdkb_5g_2
+    6g_ssid_1: rdkb_6g_1
+    6g_ssid_2: rdkb_6g_2
+    mld_ssid_1: rdkb_mld_ssid_1
+    mld_ssid_2: rdkb_mld_ssid_2
+    mld_ssid_3: rdkb_mld_ssid_3
+    default_ssid: private_ssid
+    security_none: None
+    security_wpa2: WPA2
+    security_wpa_personal: WPA-Personal
+    security_wpa2_personal: WPA2-Personal
+    security_wpa3_personal: WPA3-Personal
+    passphrase_1: CHANGEME
+    passphrase_2: CHANGEME1
+
+extender1:
+    bridge_iface: 'brlan0'
+    bridge_ip: <ip_address>
+    wifi_ifname: 'wifi'
+    mld_ifname: 'mld'
+    mld_iface_index: 0
+    2g_bh_iface_index: 0.1
+    2g_fh_iface_index: 0.2
+    5g_bh_iface_index: 1.1
+    5g_fh_iface_index: 1.2
+    6g_bh_iface_index: 2.1
+    6g_fh_iface_index: 2.2
+    iperf_version: 3
+
+extender2:
+    bridge_iface: 'brlan0'
+    bridge_ip: <ip_address>
+    wifi_ifname: 'wifi'
+    mld_ifname: 'mld'
+    mld_iface_index: 0
+    2g_bh_iface_index: 0.1
+    2g_fh_iface_index: 0.2
+    5g_bh_iface_index: 1.1
+    5g_fh_iface_index: 1.2
+    6g_bh_iface_index: 2.1
+    6g_fh_iface_index: 2.2
+    iperf_version: 3
