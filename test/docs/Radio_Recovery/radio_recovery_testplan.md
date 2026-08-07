@@ -1,23 +1,3 @@
-# Radio Recovery Test Suite
-
-## Common Pre-Requisites
-
-The radio recovery test suite execution requires a test setup with a minimum of **1 Controller** and **4 Extenders** (including one Ethernet backhaul), and both the Controller and Extenders should have a client connected.
-
-Before executing any test case in this suite, verify the following:
-
-1. Verify mandatory processes are running on the Controller: `onewifi_em_ctrl`, `onewifi_em_agent`, `OneWifi`, `onewifi_em_cli`.
-2. Verify mandatory processes are running on each Extender: `OneWifi`, `onewifi_em_agent`.
-3. Verify the binary file size status of `OneWifi`, `onewifi_em_agent`, `onewifi_em_ctrl` and `onewifi_em_cli`:
-   - `onewifi_em_cli` size should be less than 7 MB.
-   - `OneWifi`, `onewifi_em_agent` and `onewifi_em_ctrl` size should each be less than 2 MB.
-4. Verify that all configured VAPs are UP and running on both the Controller and Extenders.
-5. Verify the backhaul formation from each of the Extenders: `iw dev wifi1.3 link`.
-6. Verify internet connectivity from the Controller, Extenders and all clients.
-7. Ensure there are no core dump files; if any are present, remove them.
-
----
-
 # Test Case 1: EasyMesh_Fronthaul_Disable_Enable
 
 ## Objective
@@ -35,16 +15,17 @@ Verify that disabling the fronthaul from the Controller removes all fronthaul BS
 | Component | Description |
 |-----------|-------------|
 | Controller | EasyMesh Controller |
-| Extender | EasyMesh Agent (all) |
-| Wi-Fi Client | Associated STAs (all) |
+| Extender | 3 EasyMesh Agent |
+| Wi-Fi Client | At least Each client per EM devices, make sure that there should be 2.4ghz and 5ghz clients |
+| Network Topology | Hybrid topology with 1 Controller and 3 Extenders |
 
 ---
 
 ## Pre-Requisites
 
-1. Follow common pre-requisites.
-
-
+1. Controller and Extenders are onboarded successfully.
+2. EasyMesh and IEEE 1905 services are running.
+3. RDKBCLI is available and accessible
 
 ---
 
@@ -53,8 +34,8 @@ Verify that disabling the fronthaul from the Controller removes all fronthaul BS
 | Parameter | Value |
 |-----------|-------|
 | BSS Verification | `iw dev`; client side `sudo nmcli device wifi rescan` + `nmcli device wifi list` |
-| Client Association Verification | `iw dev mld0 station dump` |
-| Backhaul Verification | `iw dev wifi1.3 link` or `Device.WiFi.DataElements.Network.Device.{i}.BackhaulMediaType` |
+| Client Association Verification | `iw dev <multi link interface> station dump` |
+| Backhaul Verification | `iw dev <backhaul interface> link` or `Device.WiFi.DataElements.Network.Device.{i}.BackhaulMediaType` |
 | Connectivity Verification | ping |
 
 ---
@@ -65,12 +46,12 @@ Verify that disabling the fronthaul from the Controller removes all fronthaul BS
 |-------------|------------|----------------|---------------|-----------------|
 | 1 | Disable fronthaul from `rdkbcli`. | N/A | N/A | Fronthaul is disabled from the Controller. |
 | 2 | Verify that no fronthaul BSS is listed: `iw dev`. | Verify that no fronthaul BSS is listed: `iw dev`. | Verify that no fronthaul BSS is listed: `sudo nmcli device wifi rescan` + `nmcli device wifi list`. | No fronthaul BSS available. |
-| 3 | N/A | Verify backhaul status: `iw dev wifi1.3 link` or `Device.WiFi.DataElements.Network.Device.{i}.BackhaulMediaType`. | N/A | Backhaul remains connected. |
+| 3 | N/A | Verify backhaul status: `iw dev <backhaul interface> link` or `Device.WiFi.DataElements.Network.Device.{i}.BackhaulMediaType`. | N/A | Backhaul remains connected. |
 | 4 | N/A | Verify internet connectivity using ping. | N/A | Internet connectivity is retained over the backhaul. |
 | 5 | Enable the fronthaul from `rdkbcli`. | N/A | N/A | Fronthaul is enabled from the Controller. |
 | 6 | Verify that fronthaul BSS is listed: `iw dev`. | Verify that fronthaul BSS is listed: `iw dev`. | N/A | Fronthaul BSS is available again on Controller and Agents. |
-| 7 | Verify that clients are reassociated using `iw dev mld0 station dump`. | Verify that clients are reassociated using `iw dev mld0 station dump`. | N/A | Clients are reassociated to the fronthaul BSS. |
-| 8 | N/A | Verify backhaul status: `iw dev wifi1.3 link` or `Device.WiFi.DataElements.Network.Device.{i}.BackhaulMediaType`. | N/A | Backhaul remains connected. |
+| 7 | Verify that clients are reassociated using `iw dev <multi link interface> station dump`. | Verify that clients are reassociated using `iw dev <multi link interface> station dump`. | N/A | Clients are reassociated to the fronthaul BSS. |
+| 8 | N/A | Verify backhaul status: `iw dev <backhaul interface> link` or `Device.WiFi.DataElements.Network.Device.{i}.BackhaulMediaType`. | N/A | Backhaul remains connected. |
 | 9 | N/A | Verify internet connectivity using ping. | N/A | Internet connectivity is retained. |
 
 ---
@@ -92,15 +73,17 @@ Verify that disabling a specific radio (2.4GHz, then repeated for 5GHz) from the
 | Component | Description |
 |-----------|-------------|
 | Controller | EasyMesh Controller |
-| Extender | EasyMesh Agent (all) |
-| Wi-Fi Client | Associated STAs (all) |
+| Extender | 3 EasyMesh Agent |
+| Wi-Fi Client | At least Each client per EM devices, make sure that there should be 2.4ghz and 5ghz clients |
+| Network Topology | Hybrid topology with 1 Controller and 3 Extenders |
 
 ---
 
 ## Pre-Requisites
 
-1. Follow common pre-requisites.
-
+1. Controller and Extenders are onboarded successfully.
+2. EasyMesh and IEEE 1905 services are running.
+3. RDKBCLI is available and accessible
 
 ---
 
@@ -110,8 +93,8 @@ Verify that disabling a specific radio (2.4GHz, then repeated for 5GHz) from the
 |-----------|-------|
 | Radios Exercised | 2.4GHz, then repeat for 5GHz |
 | BSS Verification | `iw dev` |
-| Client Association Verification | `iw dev mld0 station dump` |
-| Backhaul Verification | `iw dev wifi1.3 link` or `Device.WiFi.DataElements.Network.Device.{i}.BackhaulMediaType` |
+| Client Association Verification | `iw dev <multi link interface> station dump` |
+| Backhaul Verification | `iw dev <backhaul interface> link` or `Device.WiFi.DataElements.Network.Device.{i}.BackhaulMediaType` |
 | Connectivity Verification | ping (including ping to google from clients) |
 
 ---
@@ -122,20 +105,20 @@ Verify that disabling a specific radio (2.4GHz, then repeated for 5GHz) from the
 |-------------|------------|----------------|---------------|-----------------|
 | 1 | Disable 2.4GHz radio using `rdkbcli`. | N/A | N/A | 2.4GHz radio is disabled from the Controller. |
 | 2 | Verify that no BSS is available for the 2.4GHz radio: `iw dev`. | N/A | N/A | No BSS available for the 2.4GHz radio. |
-| 3 | Verify that clients using the 2.4GHz radio got disconnected and others remain connected: `iw dev mld0 station dump`. | N/A | N/A | Only 2.4GHz clients are disconnected; 5GHz and 6GHz clients remain connected. |
-| 4 | N/A | Verify backhaul status: `iw dev wifi1.3 link` or `Device.WiFi.DataElements.Network.Device.{i}.BackhaulMediaType`. | N/A | Backhaul remains connected. |
+| 3 | Verify that clients using the 2.4GHz radio got disconnected and others remain connected: `iw dev <multi link interface> station dump`. | N/A | N/A | Only 2.4GHz clients are disconnected; 5GHz and 6GHz clients remain connected. |
+| 4 | N/A | Verify backhaul status: `iw dev <backhaul interface> link` or `Device.WiFi.DataElements.Network.Device.{i}.BackhaulMediaType`. | N/A | Backhaul remains connected. |
 | 5 | N/A | Verify internet connectivity using ping. | N/A | Internet connectivity is retained. |
 | 6 | N/A | Verify that no BSS is available for the 2.4GHz radio: `iw dev`. | N/A | No BSS available for the 2.4GHz radio on the Agents. |
-| 7 | N/A | Verify that clients using the 2.4GHz radio got disconnected and others remain connected: `iw dev mld0 station dump`. | N/A | Only 2.4GHz clients are disconnected; 5GHz and 6GHz clients remain connected. |
+| 7 | N/A | Verify that clients using the 2.4GHz radio got disconnected and others remain connected: `iw dev <multi link interface> station dump`. | N/A | Only 2.4GHz clients are disconnected; 5GHz and 6GHz clients remain connected. |
 | 8 | N/A | N/A | Verify that clients connected to 5GHz and 6GHz BSS are able to ping google. | 5GHz and 6GHz clients retain internet connectivity. |
 | 9 | Enable 2.4GHz radio using `rdkbcli`. | N/A | N/A | 2.4GHz radio is enabled from the Controller. |
 | 10 | Verify that link is available for the 2.4GHz radio: `iw dev`. | N/A | N/A | BSS/link available for the 2.4GHz radio. |
 | 11 | Wait for client reconnect delay. | N/A | N/A | Reconnection delay elapses. |
-| 12 | Verify that clients using the 2.4GHz radio got reconnected and others remain connected: `iw dev mld0 station dump`. | N/A | N/A | 2.4GHz clients are reconnected and other clients remain connected. |
-| 13 | N/A | Verify backhaul status: `iw dev wifi1.3 link` or `Device.WiFi.DataElements.Network.Device.{i}.BackhaulMediaType`. | N/A | Backhaul remains connected. |
+| 12 | Verify that clients using the 2.4GHz radio got reconnected and others remain connected: `iw dev <multi link interface> station dump`. | N/A | N/A | 2.4GHz clients are reconnected and other clients remain connected. |
+| 13 | N/A | Verify backhaul status: `iw dev <backhaul interface> link` or `Device.WiFi.DataElements.Network.Device.{i}.BackhaulMediaType`. | N/A | Backhaul remains connected. |
 | 14 | N/A | Verify internet connectivity using ping. | N/A | Internet connectivity is retained. |
 | 15 | N/A | Verify that link is available for the 2.4GHz radio: `iw dev`. | N/A | BSS/link available for the 2.4GHz radio on the Agents. |
-| 16 | N/A | Verify that clients using the 2.4GHz radio got reconnected and others remain connected: `iw dev mld0 station dump`. | N/A | 2.4GHz clients are reconnected and other clients remain connected. |
+| 16 | N/A | Verify that clients using the 2.4GHz radio got reconnected and others remain connected: `iw dev <multi link interface> station dump`. | N/A | 2.4GHz clients are reconnected and other clients remain connected. |
 | 17 | N/A | N/A | Verify that clients connected to 2.4GHz, 5GHz and 6GHz BSS are able to ping google. | All clients retain internet connectivity. |
 | 18 | Repeat all the steps with 5GHz. | Repeat all the steps with 5GHz. | Repeat all the steps with 5GHz. | 5GHz radio disable/enable behaves the same, with only 5GHz clients affected. |
 
@@ -158,15 +141,17 @@ Verify that setting a radio's operating class and channel from the Controller is
 | Component | Description |
 |-----------|-------------|
 | Controller | EasyMesh Controller |
-| Extender | EasyMesh Agent (all) |
-| Wi-Fi Client | Associated STAs (all) |
+| Extender | 3 EasyMesh Agent |
+| Wi-Fi Client | At least Each client per EM devices, make sure that there should be 2.4ghz and 5ghz clients |
+| Network Topology | Hybrid topology with 1 Controller and 3 Extenders |
 
 ---
 
 ## Pre-Requisites
 
-1. Follow common pre-requisites.
-
+1. Controller and Extenders are onboarded successfully.
+2. EasyMesh and IEEE 1905 services are running.
+3. RDKBCLI is available and accessible
 
 ---
 
