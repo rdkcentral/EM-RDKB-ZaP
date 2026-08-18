@@ -57,29 +57,22 @@ class FeatureInterfaceDE(DatabaseModule,
         if error != '':
             raise RuntimeError(f"Command execution failed : {command}")
 
-    def get_ssid(self,
-                 device: str,
-                 index: str) -> str:
+    def get_ssid(self , device: str, index: str) -> str:
         """
-        To get SSID assigned to a specific interface.
+        Get the ssid.
         """
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
-        try:
-            index = self.db_obj.read_from_database(device, index)
-            #interface = self.db_obj.read_from_database(device, "wifi_iface").format(index)
-        except Exception as err: # pylint: disable=broad-except
-            zi_logger.log(f"ERROR: {err}")
-            raise RuntimeError(f"Could not find out the Radio of the device : {device}")
-        cutVal = '{print $3}'
-        command = f"dmcli eRT getv Device.WiFi.DataElements.Network.SSID.{index}.SSID | grep 'value:' | awk -F': ' '{cutVal}'"
-        output, error = connection_obj.execute_command(command,
-                                                   return_stderr=True)
-        if error != '':
-            raise RuntimeError(f"Command execution failed : {command}")
-        return str(output).strip()
+        index = self.db_obj.read_from_database(device, index)
+        cmd = f"rbuscli get Device.WiFi.DataElements.Network.SSID.{index}.SSID"
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+
+        if 'Value :' not in output:
+            raise RuntimeError(f"Command execution failed : {output}")
+
+        return output.partition('Value')[2].lstrip(' :').split()[0]
 
     def check_ssid(self,
                    device: str,

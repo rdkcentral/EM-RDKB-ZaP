@@ -28,6 +28,8 @@ controller:
     wifi_phy_ifname: 'phy'
     mld_ifname: 'mld'
     mld_iface_index: 0
+    controller_device_index: <controller_device_index>
+    extender1_device_index: <extender1_device_index>
     2g_bh_iface_index: 0.1
     2g_fh_iface_index: 0.2
     5g_bh_iface_index: 1.1
@@ -43,6 +45,10 @@ controller:
     2g_ap_index: 1
     5g_ap_index: 3
     6g_ap_index: 5
+    bss_index: <bss_index>
+    profile1_index: 1
+    sta_index: <sta_index>
+    ip_index: <ip_index>
     iperf_version: 3
     bandwidth_auto : Auto
     bandwidth_20 : 20MHz
