@@ -146,7 +146,8 @@ else:
 3. Extract the payload returned by the message verification API.
 4. Verify the required TLV using `check_tlv_presence()`.
 
-Notes
 
-- Ensure the AL MAC addresses in `conftest.py` match the Controller and Extender present in the capture.
+> **Note:** For a complete working example demonstrating packet reassembly, message verification, and TLV verification, refer to:
+>
+> `test/ref_test/test_ssid_config_packet_analyzer_usage.py`
 
