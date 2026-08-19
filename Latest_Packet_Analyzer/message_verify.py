@@ -6,7 +6,6 @@ import re
 import yaml
 import pytest
 import pytest_check as check
-from . import test_logic
 
 ETHERTYPE_1905 = 0x893A
 
@@ -20,8 +19,8 @@ M2_TYPE = conftest.M2_TYPE
 
 
 
-expected_message_types = [conftest.MSG_TYPE_AP_AUTOCONFIG_RENEW,
-conftest.MSG_TYPE_AP_AUTOCONFIG_WSC,
+expected_message_types = [conftest.MSG_TYPE_AP_AUTOCONFIGURATION_RENEW,
+conftest.MSG_TYPE_AP_AUTOCONFIGURATION_WSC,
 conftest.MSG_TYPE_AP_TOPOLOGY_QUERY,
 conftest.MSG_TYPE_AP_TOPOLOGY_RESPONSE,
 conftest.MSG_TYPE_AP_CAPABILITY_REPORT,
@@ -280,44 +279,6 @@ def get_tlv_type_name(tlv_type):
     }
     return tlv_names.get(tlv_type, f"Unknown TLV type: 0x{tlv_type:02X}")
 
-
-def verify_tlv_presence_with_type(requested_message_type, tlv_to_verify, payload):
-    """
-    Verify if a specific TLV type is present in a message
-    
-    Args:
-        requested_message_type: CMDU message type to search for
-        tlv_to_verify: TLV type to verify presence
-        payload: The payload of the message to search within
-    
-    Returns:
-        True if TLV is found, False otherwise
-    """
-
-    tlv_presence_flag = False
-    tlv_length_valid_flag = False
-    expected_tlv_length = ""
-
-    found_tlvs, tlv_length, tlv_values, _, _ = parse_tlvs(payload)
-    
-    for tlv_type, tlv_length, tlv_value in zip(found_tlvs, tlv_length, tlv_values):
-        if tlv_type == tlv_to_verify:
-            tlv_presence_flag = True
-            expected_tlv_length, tlv_length_valid_flag = validate_tlv_length(tlv_to_verify, tlv_length)
-            break
-
-    if tlv_presence_flag and tlv_length_valid_flag:
-        print_success(f"{get_tlv_type_name(tlv_to_verify)} is present in the {get_message_type_name(requested_message_type)} and the expected tlv length is {expected_tlv_length} and actual tlv length is {tlv_length}")
-        return True
-    
-    if tlv_presence_flag and not tlv_length_valid_flag:
-        print_success(f"{get_tlv_type_name(tlv_to_verify)} present in the {get_message_type_name(requested_message_type)}")
-        print_error(f"{get_tlv_type_name(tlv_to_verify)} length is invalid in the {get_message_type_name(requested_message_type)}, expected tlv length is {expected_tlv_length} and actual tlv length is {tlv_length}")
-        return False
-    
-    if not tlv_presence_flag:
-        print_error(f"{get_tlv_type_name(tlv_to_verify)} not found in {get_message_type_name(requested_message_type)}")
-        return False
 
 # ---------------------------------------------------------
 # TLV length validation
@@ -704,164 +665,7 @@ def validate_tlv_length(tlv_type, tlv_length):
     return ("unknown", True)
 
 
-def extract_profile_type_from_autoconfig_response(filename):
-    """
-    Extract profile type from autoconfiguration response message.
-    
-    Args:
-        filename: path to pcap file
-    
-    Returns:
-        Profile type value if found, None otherwise
-    """
-    message_presence = False
-    tlv_presence = False
-    packets = rdpcap(filename)
-    
-    flow_packets = [
-        pkt for pkt in packets
-        if pkt.haslayer(Ether) and
-           ((pkt[Ether].src == controller_mac.lower() and pkt[Ether].dst == agent_mac.lower()) or
-            (pkt[Ether].src == agent_mac.lower() and pkt[Ether].dst == controller_mac.lower()))
-    ]
-
-    if not flow_packets:
-        print_error(f"No messages between controller {controller_mac} and agent {agent_mac} found in the capture file.")
-        check.fail(f"No messages between controller {controller_mac} and agent {agent_mac} found in the capture file.")
-        return None
-        
-    for pkt in flow_packets:
-        eth = pkt[Ether]
-        
-        if eth.type != ETHERTYPE_1905:
-            continue
-        
-        payload = bytes(eth.payload)
-        message_type = (payload[2] << 8) | payload[3]
-        
-        if message_type == conftest.MSG_TYPE_AP_AUTOCONFIGURATION_RESPONSE:
-            message_presence = True
-            found_tlvs, _, tlv_values, _, _ = parse_tlvs(payload)
-            
-            for tlv_type, tlv_value in zip(found_tlvs, tlv_values):
-                if tlv_type == TLV_TYPE_MULTI_AP_PROFILE:
-                    tlv_presence = True
-                    # Profile type is typically at offset 0 in Multi-AP Profile TLV
-                    if len(tlv_value) == 1:
-                        profile_type = tlv_value[0]
-                        if profile_type in [0x01, 0x02, 0x03]:
-                            profile_name = get_profile_name(profile_type)
-                            print_success(f"Profile type extracted: 0x{profile_type:02X} ({profile_name})")
-                            return profile_type
-                        else:
-                            print_error(f"Profile type extracted: 0x{profile_type:02X} (Unknown profile type)")
-                            pytest.fail(f"Profile type extracted: 0x{profile_type:02X} (Unknown profile type)", pytrace=False)
-                    else:
-                        print_error("Multi-AP Profile TLV found but length is insufficient to extract profile type")
-                        pytest.fail("Multi-AP Profile  TLV found but length is insufficient to extract profile type", pytrace=False)
-    
-    if not message_presence:
-        print_error("Can't detect profile : AP Autoconfiguration Response message not found in the capture file.")
-        pytest.fail("Can't detect profile : AP Autoconfiguration Response message not found in the capture file", pytrace=False)
-    if not tlv_presence:
-        print_error("Multi-AP Profile TLV not found in AP Autoconfiguration Response message.")
-        pytest.fail("Multi-AP Profile TLV not found in AP Autoconfiguration Response message", pytrace=False)
 
 
-def verify_no_additional_tlvs(message_type, mandatory_tlvs, optional_tlvs, payload):
-    """
-    Check for additional TLVs in a message beyond the mandatory ones.
-
-    Input:
-        message_type (int): CMDU message type to search for
-        mandatory_tlvs (set): Set of mandatory TLV types
-        optional_tlvs (set): Set of optional TLV types
-        payload (bytes): The payload of the CMDU message to analyze
-
-    Returns:
-        additional_tlvs (set): Set of additional TLV types found beyond mandatory ones, or empty if none found
-    """
-    found_tlvs, _, _, _, _ = parse_tlvs(payload)
-    found_set = set(found_tlvs)
-    mandatory_set = set(mandatory_tlvs)
-    optional_set = set(optional_tlvs)
-    
-    extra_tlvs = found_set - mandatory_set - optional_set
-    
-    
-    if extra_tlvs:
-        extra_tlvs_list = [f"{get_tlv_type_name(tlv)} (0x{tlv:02X})" for tlv in sorted(extra_tlvs)]
-        print_error(f" Found Extra TLVs (neither mandatory nor optional) in {get_message_type_name(message_type)}: {extra_tlvs_list}")
-        return False
-    else:
-        print_success(f"No extra TLVs found beyond mandatory and optional tlvs in {get_message_type_name(message_type)}.")
-        return True
-            
-
-def validate_1905_message(config, profiletype, message, payload, controller_or_agent = None):
-    """
-    Validate a 1905 message against expected mandatory and optional TLVs based on profile and message type.
-
-    Args:
-        config: Configuration dictionary loaded from YAML
-        profiletype: Multi-AP profile type (1, 2, or 3)
-        message: CMDU message type to validate
-        controller_or_agent (str, optional): Specify "controller" or "agent" to validate
-
-    Returns: None. Prints validation results and errors.
-    """
-    message_type_string = get_message_type_name(message)
-
-    profiles_cfg = config.get("profiles", {})
-    profile_cfg = profiles_cfg.get(profiletype)
-
-    if profile_cfg is None:
-        print_warning(f"Profile {profiletype} is not defined in the configuration. Skipping validation for {message_type_string}.")
-        return
-
-    message_cfg = profile_cfg.get(message)
-    if message_cfg is None:
-        print_warning(
-            f"No TLV definition found for {message_type_string} (0x{message:04X}) in profile {profiletype}. "
-            "Skipping validation for this message."
-        )
-        return
-    
-    if controller_or_agent == "controller":
-        role_cfg = message_cfg.get("controller_tlvs")
-        if role_cfg is None:
-            print_warning(
-                f"No controller-specific TLV definition found for {message_type_string} in profile {profiletype}. "
-                "Skipping validation for this message."
-            )
-            return
-        mandatory = role_cfg.get("mandatory_tlvs", []) or []
-        optional = role_cfg.get("optional_tlvs", []) or []
-    elif controller_or_agent == "agent":
-        role_cfg = message_cfg.get("agent_tlvs")
-        if role_cfg is None:
-            print_warning(
-                f"No agent-specific TLV definition found for {message_type_string} in profile {profiletype}. "
-                "Skipping validation for this message."
-            )
-            return
-        mandatory = role_cfg.get("mandatory_tlvs", []) or []
-        optional = role_cfg.get("optional_tlvs", []) or []
-    else:
-        mandatory = message_cfg.get("mandatory_tlvs", []) or []
-        optional = message_cfg.get("optional_tlvs", []) or []
-    
-    if not mandatory:
-        print_warning(f"No mandatory TLVs defined for {message_type_string} in the profile. Skipping mandatory TLV presence verification.")
-    else:
-        for index, tlv in enumerate(mandatory, start=1):
-            tlv_type_string = get_tlv_type_name(tlv)
-            print_sub_step(f"Analyzing the {message_type_string}" +(f" from {controller_or_agent}" if controller_or_agent else "")+f" to verify the presence of the {tlv_type_string}")
-            # if controller_or_agent:
-            tlv_validation_result = verify_tlv_presence_with_type(message, tlv, payload)
-            check.equal(tlv_validation_result, True, f"\nFail: Expected TLV type '{tlv_type_string}' not found in {message_type_string}.")
-
-    print_sub_step(f"Analyzing the {message_type_string}" +(f" from {controller_or_agent}" if controller_or_agent else "")+" to check for any unexpected TLVs that are not defined as mandatory or optional in the profile")
-    check.equal(verify_no_additional_tlvs(message, mandatory, optional, payload), True, f"\nFail: Extra TLVs found in {message_type_string} from {controller_or_agent} that are not listed as mandatory or optional in the profile definition.")
 
 

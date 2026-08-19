@@ -18,14 +18,12 @@ global MSG_TYPE_CHANNEL_PREFERENCE_REPORT
 MSG_TYPE_CHANNEL_PREFERENCE_REPORT = 0x8005
 global MSG_TYPE_AP_AUTOCONFIGURATION_RENEW
 MSG_TYPE_AP_AUTOCONFIGURATION_RENEW = 0x000A
-global MSG_TYPE_AP_AUTOCONFIG_RENEW
-MSG_TYPE_AP_AUTOCONFIG_RENEW = 0x000A
 global MSG_TYPE_AP_TOPOLOGY_QUERY
 MSG_TYPE_AP_TOPOLOGY_QUERY = 0x0002
 global MSG_TYPE_AP_TOPOLOGY_RESPONSE
 MSG_TYPE_AP_TOPOLOGY_RESPONSE = 0x0003
-global MSG_TYPE_AP_AUTOCONFIG_WSC
-MSG_TYPE_AP_AUTOCONFIG_WSC = 0x0009
+global MSG_TYPE_AP_AUTOCONFIGURATION_WSC
+MSG_TYPE_AP_AUTOCONFIGURATION_WSC = 0x0009
 global MSG_TYPE_POLICY_CONFIG_REQUEST
 MSG_TYPE_POLICY_CONFIG_REQUEST = 0x8003
 global MSG_TYPE_CHANNEL_SELECTION_REQUEST
@@ -180,10 +178,10 @@ MSG_TYPE_BSS_CONFIGURATION_EXTENDED_REPORT = 0x804D
 
 
 global controller_mac
-controller_mac = "AA:BB:CC:DD:EE:FF"#"AL MAC address of the controller here" # Update this to the AL MAC address of the controller in your test setup
+controller_mac = ""#"AL MAC address of the controller here" # Update this to the AL MAC address of the controller in your test setup
 
 global agent_mac
-agent_mac = "AA:BB:CC:DD:EE:FF"#"AL MAC address of the agent here" # Update this to the AL MAC address of the agent in your test setup
+agent_mac = ""#"AL MAC address of the agent here" # Update this to the AL MAC address of the agent in your test setup
 
 global agent_front_radio_count
 agent_front_radio_count = 3 # Update this to the actual number of front radios in the agent as per your test setup, this is used for validating the count of WSC M1 messages in the test
@@ -193,3 +191,6 @@ M2_TYPE = 0x05
 
 global ssid_name
 ssid_name = "TDKB_Test123" #update this to the actual SSID name used in your test setup
+
+global number_of_radios
+number_of_radios = 3 # Update this to the actual number of radios in the agent
