@@ -25,7 +25,7 @@ Verify that disabling the fronthaul from the Controller removes all fronthaul BS
 
 1. Controller and Extenders are onboarded successfully.
 2. EasyMesh and IEEE 1905 services are running.
-3. RDKBCLI is available and accessible
+3. RDKBCLI is available and accessible or the DE Device.WiFi.DataElements.Network.Device.{i}.Radio.{i}.RadioEnable() should be available
 
 ---
 
@@ -44,11 +44,11 @@ Verify that disabling the fronthaul from the Controller removes all fronthaul BS
 
 | Step Number | Controller | EM Agent (all) | Clients (all) | Expected Result |
 |-------------|------------|----------------|---------------|-----------------|
-| 1 | Disable fronthaul from `rdkbcli`. | N/A | N/A | Fronthaul is disabled from the Controller. |
+| 1 | Disable fronthaul from `rdkbcli` or Device.WiFi.DataElements.Network.Device.{i}.Radio.{i}.RadioEnable() | N/A | N/A | Fronthaul is disabled from the Controller. |
 | 2 | Verify that no fronthaul BSS is listed: `iw dev`. | Verify that no fronthaul BSS is listed: `iw dev`. | Verify that no fronthaul BSS is listed: `sudo nmcli device wifi rescan` + `nmcli device wifi list`. | No fronthaul BSS available. |
 | 3 | N/A | Verify backhaul status: `iw dev <backhaul interface> link` or `Device.WiFi.DataElements.Network.Device.{i}.BackhaulMediaType`. | N/A | Backhaul remains connected. |
 | 4 | N/A | Verify internet connectivity using ping. | N/A | Internet connectivity is retained over the backhaul. |
-| 5 | Enable the fronthaul from `rdkbcli`. | N/A | N/A | Fronthaul is enabled from the Controller. |
+| 5 | Enable the fronthaul from `rdkbcli`or Device.WiFi.DataElements.Network.Device.{i}.Radio.{i}.RadioEnable() | N/A | N/A | Fronthaul is enabled from the Controller. |
 | 6 | Verify that fronthaul BSS is listed: `iw dev`. | Verify that fronthaul BSS is listed: `iw dev`. | N/A | Fronthaul BSS is available again on Controller and Agents. |
 | 7 | Verify that clients are reassociated using `iw dev <multi link interface> station dump`. | Verify that clients are reassociated using `iw dev <multi link interface> station dump`. | N/A | Clients are reassociated to the fronthaul BSS. |
 | 8 | N/A | Verify backhaul status: `iw dev <backhaul interface> link` or `Device.WiFi.DataElements.Network.Device.{i}.BackhaulMediaType`. | N/A | Backhaul remains connected. |
@@ -83,7 +83,7 @@ Verify that disabling a specific radio (2.4GHz, then repeated for 5GHz) from the
 
 1. Controller and Extenders are onboarded successfully.
 2. EasyMesh and IEEE 1905 services are running.
-3. RDKBCLI is available and accessible
+3. RDKBCLI is available or  Device.WiFi.DataElements.Network.Device.{i}.Radio.{i}.RadioEnable() is available
 
 ---
 
@@ -103,7 +103,7 @@ Verify that disabling a specific radio (2.4GHz, then repeated for 5GHz) from the
 
 | Step Number | Controller | EM Agent (all) | Clients (all) | Expected Result |
 |-------------|------------|----------------|---------------|-----------------|
-| 1 | Disable 2.4GHz radio using `rdkbcli`. | N/A | N/A | 2.4GHz radio is disabled from the Controller. |
+| 1 | Disable 2.4GHz radio using `rdkbcli`or Device.WiFi.DataElements.Network.Device.{i}.Radio.{i}.RadioEnable() | N/A | N/A | 2.4GHz radio is disabled from the Controller. |
 | 2 | Verify that no BSS is available for the 2.4GHz radio: `iw dev`. | N/A | N/A | No BSS available for the 2.4GHz radio. |
 | 3 | Verify that clients using the 2.4GHz radio were disconnected and others remain connected: `iw dev <multi link interface> station dump`. | N/A | N/A | Only 2.4GHz clients are disconnected; 5GHz and 6GHz clients remain connected. |
 | 4 | N/A | Verify backhaul status: `iw dev <backhaul interface> link` or `Device.WiFi.DataElements.Network.Device.{i}.BackhaulMediaType`. | N/A | Backhaul remains connected. |
@@ -111,7 +111,7 @@ Verify that disabling a specific radio (2.4GHz, then repeated for 5GHz) from the
 | 6 | N/A | Verify that no BSS is available for the 2.4GHz radio: `iw dev`. | N/A | No BSS available for the 2.4GHz radio on the Agents. |
 | 7 | N/A | Verify that clients using the 2.4GHz radio were disconnected and others remain connected: `iw dev <multi link interface> station dump`. | N/A | Only 2.4GHz clients are disconnected; 5GHz and 6GHz clients remain connected. |
 | 8 | N/A | N/A | Verify that clients connected to 5GHz and 6GHz BSS are able to ping google. | 5GHz and 6GHz clients retain internet connectivity. |
-| 9 | Enable 2.4GHz radio using `rdkbcli`. | N/A | N/A | 2.4GHz radio is enabled from the Controller. |
+| 9 | Enable 2.4GHz radio using `rdkbcli`or Device.WiFi.DataElements.Network.Device.{i}.Radio.{i}.RadioEnable() | N/A | N/A | 2.4GHz radio is enabled from the Controller. |
 | 10 | Verify that link is available for the 2.4GHz radio: `iw dev`. | N/A | N/A | BSS/link available for the 2.4GHz radio. |
 | 11 | Wait for client reconnect delay. | N/A | N/A | Reconnection delay elapses. |
 | 12 | Verify that clients using the 2.4GHz radio were reconnected and others remain connected: `iw dev <multi link interface> station dump`. | N/A | N/A | 2.4GHz clients are reconnected and other clients remain connected. |
@@ -173,7 +173,7 @@ Verify that setting a radio's operating class and channel from the Controller is
 | 1 | Set operating class and channel for a radio using `rdkbcli` (example: 2.4GHz radio, operating class 81, channel 6). | N/A | N/A | Operating class and channel are set on the Controller. |
 | 2 | Verify the channel and operating class using `iw dev` (operating class can be checked based on channel, width, band). | Verify the channel and operating class using `iw dev` (operating class can be checked based on channel, width, band). | N/A | Configured channel and operating class are reflected on Controller and Agents. |
 | 3 | N/A | N/A | Verify the channel using `sudo nmcli device wifi rescan` + `nmcli device wifi list`. | Configured channel is observed by clients. |
-| 4 | Disable 2.4GHz radio using `rdkbcli`. | N/A | N/A | 2.4GHz radio is disabled from the Controller. |
+| 4 | Disable 2.4GHz radio using `rdkbcli` or Device.WiFi.DataElements.Network.Device.{i}.Radio.{i}.RadioEnable() | N/A | N/A | 2.4GHz radio is disabled from the Controller. |
 | 5 | Verify that no BSS is available for the 2.4GHz radio: `iw dev`. | N/A | N/A | No BSS available for the 2.4GHz radio. |
 | 6 | Enable 2.4GHz radio. | N/A | N/A | 2.4GHz radio is enabled from the Controller. |
 | 7 | Verify that BSS is available for the 2.4GHz radio: `iw dev`. | N/A | N/A | BSS available for the 2.4GHz radio. |
