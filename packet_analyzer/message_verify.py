@@ -1,11 +1,7 @@
-import sys
-from scapy.all import rdpcap, Ether
 from . import conftest
 from .ieee1905_utils import *
-import re
 import yaml
-import pytest
-import pytest_check as check
+
 
 ETHERTYPE_1905 = 0x893A
 

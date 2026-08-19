@@ -1,0 +1,17 @@
+Metadata-Version: 2.4
+Name: rdkbmeshzap
+Version: 1.0.0
+Summary: RDKB Mesh plugin for Zaero
+Requires-Python: >=3.10
+License-File: LICENSE
+License-File: COPYING
+License-File: NOTICE
+Requires-Dist: paramiko==5.0.0
+Requires-Dist: PyYAML==6.0.1
+Requires-Dist: robotframework==7.3.2
+Requires-Dist: scp==0.15.0
+Requires-Dist: playwright==1.60.0
+Requires-Dist: pytest==8.4.1
+Requires-Dist: pyserial==3.5
+Requires-Dist: pytest-html>=4.0.0
+Dynamic: license-file

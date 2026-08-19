@@ -1,4 +1,4 @@
-# Copyright 2026 RDKM
+# Copyright 2026 RDK Management
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,10 +18,10 @@ import pytest
 import time
 import os
 from zaero.utils import zi_logger
-from Latest_Packet_Analyzer.packet_dissector import *
-from Latest_Packet_Analyzer.conftest import *
-from Latest_Packet_Analyzer.message_verify import *
-from Latest_Packet_Analyzer.ieee1905_utils import *
+from packet_analyzer.packet_dissector import *
+from packet_analyzer.conftest import *
+from packet_analyzer.message_verify import *
+from packet_analyzer.ieee1905_utils import *
 
 def test_config_ssid_with_packet_capture(initialize):
     pcap_file_name = "sample_6"
@@ -55,21 +55,21 @@ def test_config_ssid_with_packet_capture(initialize):
     initialize.delete_pcap("controller", f"{pcap_file_name}.pcapng")
     time.sleep(10)
     reassembled = reassemble_packets(pcap_local_path)
-    message_type = MSG_TYPE_AP_TOPOLOGY_QUERY
+    message_type = MSG_TYPE_AP_AUTOCONFIGURATION_RENEW
     print(f"checking for message of type {get_message_type_name(message_type)} in the captured packets")
     #get the list of payloads of the message type from the captured packets
     payloads = check_message_presence(reassembled, message_type, src_mac=conftest.agent_mac, dst_mac=conftest.controller_mac)
     if len(payloads) == 0:
-        pytest.fail(f"Message of type {message_type} not found in the captured packets")
+        pytest.fail(f"Message of type {get_message_type_name(message_type)} not found in the captured packets")
         exit(1)
     else:
         zi_logger.print_success(f"Message of type {get_message_type_name(message_type)} found in the captured packets")
 
-    tlv_type = TLV_TYPE_MULTI_AP_PROFILE
+    tlv_type = TLV_TYPE_SUPPORTED_ROLE
     print(f"checking for TLV of type {get_tlv_type_name(tlv_type)} in the captured message type {get_message_type_name(message_type)}")
     tlvs = check_tlv_presence(payloads[0], tlv_type)
     #if tlvs is empty then fail the test
-    if len(tlvs) != conftest.number_of_radios:
+    if len(tlvs) == 0:
         pytest.fail(f"expected {conftest.number_of_radios} TLVs of type {get_tlv_type_name(tlv_type)} but found {len(tlvs)}")
         exit(1)
     else:

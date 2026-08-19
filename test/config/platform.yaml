@@ -1,6 +1,3 @@
-# If not stated otherwise in this file or this component LICENSE file the
-# following copyright and licenses apply:
-#
 # Copyright 2026 Zilogic Systems
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
 
 controller:
     ui_port: 8888
     ui_home_page_title: 'EasyMesh R6 Pro Controller'
     bridge_iface: 'brlan0'
-    bridge_ip: <ip_address>
+    bridge_ip: '10.0.0.1'
     backhaul_capture_iface : 'eth0_virt_peer'
     filter_1905 : 'ether proto 0x893a'
     wifi_device: 'radio'
@@ -49,12 +47,12 @@ controller:
     bandwidth_40 : 40MHz
     bandwidth_80 : 80MHz
     bandwidth_160 : 160MHz
-    bandwidth_320 : 320MHz
+    bandwidht_320 : 320MHz
     bandwidth_20_val : 20
     bandwidth_40_val : 40
     bandwidth_80_val : 80
     bandwidth_160_val : 160
-    bandwidth_320_val : 320
+    bandwidht_320_val : 320
     operating_standard_a : a
     operating_standard_b : b
     operating_standard_g : g
@@ -101,16 +99,16 @@ controller:
     mld_ssid_3: rdkb_mld_ssid_3
     default_ssid: private_ssid
     security_none: None
-    security_wpa2: WPA2
+    security_wpa2: 
     security_wpa_personal: WPA-Personal
     security_wpa2_personal: WPA2-Personal
     security_wpa3_personal: WPA3-Personal
-    passphrase_1: CHANGEME
-    passphrase_2: CHANGEME1
+    passphrase_1: RdkbEm@12#
+    passphrase_2: RdkbEm@12#
 
 extender1:
     bridge_iface: 'brlan0'
-    bridge_ip: <ip_address>
+    bridge_ip: '10.0.0.64'
     wifi_ifname: 'wifi'
     mld_ifname: 'mld'
     mld_iface_index: 0
@@ -124,7 +122,7 @@ extender1:
 
 extender2:
     bridge_iface: 'brlan0'
-    bridge_ip: <ip_address>
+    bridge_ip: '10.0.0.64'
     wifi_ifname: 'wifi'
     mld_ifname: 'mld'
     mld_iface_index: 0

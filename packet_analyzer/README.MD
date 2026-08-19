@@ -21,10 +21,10 @@ agent_mac = "11:22:33:44:55:66"
 ## Import Required Modules
 
 ```python
-from Latest_Packet_Analyzer.packet_dissector import *
-from Latest_Packet_Analyzer.conftest import *
-from Latest_Packet_Analyzer.message_verify import *
-from Latest_Packet_Analyzer.ieee1905_utils import *
+from packet_analyzer.packet_dissector import *
+from packet_analyzer.conftest import *
+from packet_analyzer.message_verify import *
+from packet_analyzer.ieee1905_utils import *
 ```
 
 ## Reassemble Packets
@@ -106,10 +106,10 @@ Checks whether a specific TLV is present in a message payload.
 ## Example
 
 ```python
-from Latest_Packet_Analyzer.packet_dissector import *
-from Latest_Packet_Analyzer.conftest import *
-from Latest_Packet_Analyzer.message_verify import *
-from Latest_Packet_Analyzer.ieee1905_utils import *
+from packet_analyzer.packet_dissector import *
+from packet_analyzer.conftest import *
+from packet_analyzer.message_verify import *
+from packet_analyzer.ieee1905_utils import *
 
 # Reassemble packets from a PCAP file
 reassembled_packets = reassemble_packets("capture.pcap")
@@ -146,8 +146,7 @@ else:
 3. Extract the payload returned by the message verification API.
 4. Verify the required TLV using `check_tlv_presence()`.
 
-
 > **Note:** For a complete working example demonstrating packet reassembly, message verification, and TLV verification, refer to:
 >
-> `test/ref_test/test_ssid_config_packet_analyzer_usage.py`
+> [`test/ref_test/test_ssid_config_packet_analyzer_usage.py`]
 

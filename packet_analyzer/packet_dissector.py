@@ -19,6 +19,9 @@ def reassemble_packets(pcap_local_dir):
             continue
 
         payload = bytes(eth.payload)
+         # Guard against malformed/short CMDU headers
+        if len(payload) < 8:
+            continue
         # Extract fields from CMDU header
         message_type = (payload[2] << 8) | payload[3]
         message_id   = (payload[4] << 8) | payload[5]
@@ -77,13 +80,19 @@ def check_message_presence(reassembled_packets, message_type, src_mac=None, dst_
 def check_tlv_presence(message_payload, tlv_type=None):
     tlvs = []
     index = 8  # TLVs start after the 8-byte header
-    while index < len(message_payload):
+    while index + 3 <= len(message_payload):
         current_tlv_type = message_payload[index]
         current_tlv_length = (message_payload[index + 1] << 8) | message_payload[index + 2]
+        end = index + 3 + current_tlv_length
+        if end > len(message_payload):
+            break
         # Raw TLV bytes: 1-byte type + 2-byte length + value
-        current_tlv_raw = message_payload[index:index + 3 + current_tlv_length]
+        current_tlv_raw = message_payload[index:end]
         if tlv_type is None or current_tlv_type == tlv_type:
             tlvs.append(current_tlv_raw)
-        index += 3 + current_tlv_length
+         # End-of-Message TLV
+        if current_tlv_type == 0x00 and current_tlv_length == 0:
+            break
+        index = end
     return tlvs
 
