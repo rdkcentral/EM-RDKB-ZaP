@@ -11,15 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
 
-import zaero
 import pytest
 import time
 import os
 from zaero.utils import zi_logger
 from packet_analyzer.packet_dissector import *
-from packet_analyzer.conftest import *
+# from packet_analyzer.conftest import *
 from packet_analyzer.message_verify import *
 from packet_analyzer.ieee1905_utils import *
 
@@ -58,7 +56,11 @@ def test_config_ssid_with_packet_capture(initialize):
     message_type = MSG_TYPE_AP_AUTOCONFIGURATION_RENEW
     print(f"checking for message of type {get_message_type_name(message_type)} in the captured packets")
     #get the list of payloads of the message type from the captured packets
-    payloads = check_message_presence(reassembled, message_type, src_mac=conftest.controller_mac, dst_mac=conftest.agent_mac)
+    controler_almac = initialize.get_al_mac_address("controller", 'cli')
+    extender1_almac = initialize.get_al_mac_address("extender1", 'cli')
+    print(f"Controller AL MAC address : {controler_almac}")
+    print(f"Extender1 AL MAC address : {extender1_almac}")
+    payloads = check_message_presence(reassembled, message_type, src_mac=controler_almac, dst_mac=extender1_almac)
     if not payloads:
         pytest.fail(f"Message of type {get_message_type_name(message_type)} not found in the captured packets")
         exit(1)

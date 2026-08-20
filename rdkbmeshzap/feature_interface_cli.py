@@ -33,6 +33,25 @@ class FeatureInterfaceCLI(DatabaseModule,
         self.db_obj = self.get_database_module_object()
         zi_logger.log(f"==== db_obj : {self.db_obj}")
 
+    def get_al_mac_address(self, device: str) -> str:
+        """
+        To get AL MAC address of the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        if device == 'controller':
+            interface = "eth0_virt_peer"
+        else:
+            interface = "eth1_virt_peer"
+        command = f"cat /sys/class/net/{interface}/address"
+        output, error = connection_obj.execute_command(command,
+                                                   return_stderr=True)
+        if error != '':
+            raise RuntimeError(f"Command execution failed : {command}")
+        return str(output).strip()
+
     def set_ssid(self,
                  device: str,
                  index: str,

@@ -1,3 +1,17 @@
+# Copyright 2026 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from scapy.all import rdpcap
 from scapy.all import Ether
 from scapy.plist import PacketList
@@ -39,6 +53,7 @@ def reassemble_packets(pcap_local_dir):
         # Case 2: Fragmented packet — store the header and fragment per key
         if key not in fragment_store:
             header = bytearray(payload[:8])
+            header[6] = 0x00                  # reassembled CMDU should have fragment_id = 0
             header[7] = 0x80                     # mark reassembled frame as last fragment
             fragment_store[key] = {"header": header, "fragments": []}
 
@@ -104,4 +119,3 @@ def check_tlv_presence(message_payload, tlv_type=None):
             break
         index = end
     return tlvs or None
-

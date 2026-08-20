@@ -1,20 +1,6 @@
 # Packet Analyzer Usage Guide
 
-This packet analyzer filters and analyzes messages exchanged between an EasyMesh Controller and a specific Extender (Agent).
-
-## Configuration
-
-Before running the packet analyzer, update the MAC address fields in `conftest.py`:
-
-- Set the Controller AL-MAC address in the `controller_mac` variable.
-- Set the Extender (Agent) AL-MAC address in the `agent_mac` variable.
-
-Example `conftest.py` snippet:
-
-```python
-controller_mac = "AA:BB:CC:DD:EE:FF"
-agent_mac = "11:22:33:44:55:66"
-```
+This packet analyzer filters and analyzes messages exchanged in a Easymesh network.
 
 # Packet Analyzer Usage
 
@@ -22,7 +8,6 @@ agent_mac = "11:22:33:44:55:66"
 
 ```python
 from packet_analyzer.packet_dissector import *
-from packet_analyzer.conftest import *
 from packet_analyzer.message_verify import *
 from packet_analyzer.ieee1905_utils import *
 ```
@@ -107,7 +92,6 @@ Checks whether a specific TLV is present in a message payload.
 
 ```python
 from packet_analyzer.packet_dissector import *
-from packet_analyzer.conftest import *
 from packet_analyzer.message_verify import *
 from packet_analyzer.ieee1905_utils import *
 

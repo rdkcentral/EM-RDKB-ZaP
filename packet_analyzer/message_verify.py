@@ -1,40 +1,19 @@
-from . import conftest
+# Copyright 2026 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from .ieee1905_utils import *
 import yaml
-
-
-ETHERTYPE_1905 = 0x893A
-
-fragment_store = {}
-m1_message_store = {}
-header_1905 = ""
-
-controller_mac = conftest.controller_mac
-agent_mac = conftest.agent_mac
-M2_TYPE = conftest.M2_TYPE
-
-
-
-expected_message_types = [conftest.MSG_TYPE_AP_AUTOCONFIGURATION_RENEW,
-conftest.MSG_TYPE_AP_AUTOCONFIGURATION_WSC,
-conftest.MSG_TYPE_AP_TOPOLOGY_QUERY,
-conftest.MSG_TYPE_AP_TOPOLOGY_RESPONSE,
-conftest.MSG_TYPE_AP_CAPABILITY_REPORT,
-conftest.MSG_TYPE_AP_CAPABILITY_QUERY,
-conftest.MSG_TYPE_1905_ACK,
-conftest.MSG_TYPE_CHANNEL_PREFERENCE_QUERY,
-conftest.MSG_TYPE_CHANNEL_PREFERENCE_REPORT]
-
-
-#further items will populate if the key exists in the dictionary, otherwise it will be created with the default value of {"message_ids": set()}
-message_count_details = {
-    msg: {"message_ids": set()}
-    for msg in expected_message_types
-}
-
-message_details = {}
-
-#########################################################
 
 def load_yaml(file_path):
     with open(file_path, 'r') as f:
