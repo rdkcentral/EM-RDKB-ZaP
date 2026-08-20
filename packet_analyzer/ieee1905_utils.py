@@ -1,13 +1,11 @@
 """
 ieee1905_utils.py
 
-Reusable utility library for IEEE 1905.1 / EasyMesh frame validation.
+Reusable constants for IEEE 1905.1 / EasyMesh frame validation.
 
-Provides functions for:
-- Multicast validation
-- TLV parsing
-- Mandatory TLV validation
-- TLV length validation
+Currently provides:
+- IEEE 1905.1 control multicast address constant
+- TLV type constants
 """
 
 # ---------------------------------------------------------

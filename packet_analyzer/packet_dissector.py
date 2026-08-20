@@ -63,21 +63,30 @@ def reassemble_packets(pcap_local_dir):
 def check_message_presence(reassembled_packets, message_type, src_mac=None, dst_mac=None):
     matching_payloads = []
     for pkt in reassembled_packets:
+        if not pkt.haslayer(Ether):
+            continue
         eth = pkt[Ether]
         if eth.type != ETHERTYPE_1905:
             continue
         payload = bytes(eth.payload)
+
+        if len(payload) < 4:
+            continue
         msg_type = (payload[2] << 8) | payload[3]
-        if msg_type == message_type:
-            if src_mac and dst_mac:
-                if eth.src.lower() == src_mac.lower() and eth.dst.lower() == dst_mac.lower():
-                    matching_payloads.append(payload)
-            else:
-                matching_payloads.append(payload)
-    return matching_payloads
+
+        if msg_type != message_type:
+            continue
+        if src_mac and eth.src.lower() != src_mac.lower():
+            continue
+        if dst_mac and eth.dst.lower() != dst_mac.lower():
+            continue
+        matching_payloads.append(payload)
+    return matching_payloads or None
 
 #return the list of tlvs present in the message payload. 
 def check_tlv_presence(message_payload, tlv_type=None):
+    if len(message_payload) < 8:
+        return None
     tlvs = []
     index = 8  # TLVs start after the 8-byte header
     while index + 3 <= len(message_payload):
@@ -94,5 +103,5 @@ def check_tlv_presence(message_payload, tlv_type=None):
         if current_tlv_type == 0x00 and current_tlv_length == 0:
             break
         index = end
-    return tlvs
+    return tlvs or None
 

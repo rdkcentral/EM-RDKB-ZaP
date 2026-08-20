@@ -705,11 +705,11 @@ profiles:
       optional_tlvs:
 
     0x801A: # Backhaul Steering Response message
-        mandatory_tlvs:
-          - 0x9F # Backhaul Steering Response TLV
-          - 0x00 # End Of Message TLV
-        optional_tlvs:
-          - 0xA3 # Error Code TLV
+      mandatory_tlvs:
+        - 0x9F # Backhaul Steering Response TLV
+        - 0x00 # End Of Message TLV
+      optional_tlvs:
+        - 0xA3 # Error Code TLV
 
     0x801B: # Channel Scan Request message 
       mandatory_tlvs:

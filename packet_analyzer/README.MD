@@ -117,7 +117,7 @@ reassembled_packets = reassemble_packets("capture.pcap")
 # Verify the presence of a specific message
 payloads = check_message_presence(
     reassembled_packets,
-    TOPOLOGY_RESPONSE_MESSAGE,
+    MSG_TYPE_AP_TOPOLOGY_RESPONSE,
     src_mac="AA:BB:CC:DD:EE:FF",
     dst_mac="11:22:33:44:55:66"
 )
@@ -128,7 +128,7 @@ if payloads:
         # Verify the presence of a TLV
         tlvs = check_tlv_presence(
             payload,
-            TLV_AP_OPERATIONAL_BSS
+            TLV_TYPE_AP_OPERATIONAL_BSS
         )
 
         if tlvs:
