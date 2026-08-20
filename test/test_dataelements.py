@@ -451,7 +451,7 @@ def test_radio_bss_STA_MACaddress_de(initialize):
         zi_logger.print_success(f"Radio BSS STA MAC address data element found: {bss_sta_macaddress}")
 
 # ---------------------------------------------------------------------------
-# 4. Client Association Data Elements (15)
+# 4. Client Association Data Elements (13)
 # ---------------------------------------------------------------------------
 
 def test_ssid_AKMAllowed_de(initialize):

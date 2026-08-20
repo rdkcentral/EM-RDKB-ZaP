@@ -33,6 +33,8 @@ class FeatureRadio(DatabaseModule, ConnectionModules):
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
+        index = self.db_obj.read_from_database(device, index)
+        radio_index = self.db_obj.read_from_database(device, radio_index)
         cmd = f"rbuscli get Device.WiFi.DataElements.Network.Device.{index}.Radio.{radio_index}.Status"
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
         if 'Value :' not in output:
@@ -44,6 +46,8 @@ class FeatureRadio(DatabaseModule, ConnectionModules):
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
+        index = self.db_obj.read_from_database(device, index)
+        radio_index = self.db_obj.read_from_database(device, radio_index)
         cmd = f"rbuscli get Device.WiFi.DataElements.Network.Device.{index}.Radio.{radio_index}.Enabled"
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
         if 'Value :' not in output:
@@ -55,6 +59,7 @@ class FeatureRadio(DatabaseModule, ConnectionModules):
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
+        index = self.db_obj.read_from_database(device, index)
         cmd = f"rbuscli get Device.WiFi.DataElements.Network.Device.{index}.RadioNumberOfEntries"
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
         if 'Value :' not in output:
@@ -66,6 +71,9 @@ class FeatureRadio(DatabaseModule, ConnectionModules):
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
+        index = self.db_obj.read_from_database(device, index)
+        radio_index = self.db_obj.read_from_database(device, radio_index)
+        bss_index = self.db_obj.read_from_database(device, bss_index)
         cmd = f"rbuscli get Device.WiFi.DataElements.Network.Device.{index}.Radio.{radio_index}.BSS.{bss_index}.SSID"
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
         if 'Value :' not in output:
@@ -78,6 +86,9 @@ class FeatureRadio(DatabaseModule, ConnectionModules):
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
+        index = self.db_obj.read_from_database(device, index)
+        radio_index = self.db_obj.read_from_database(device, radio_index)
+        profile1_index = self.db_obj.read_from_database(device, profile1_index)
         cmd = f"rbuscli get Device.WiFi.DataElements.Network.Device.{index}.Radio.{radio_index}.CurrentOperatingProfile.{profile1_index}.OpClass"
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
         if 'Value :' not in output:
@@ -90,6 +101,9 @@ class FeatureRadio(DatabaseModule, ConnectionModules):
             connection = self.db_obj.read_from_database(device, 'connection')
             connection_obj = self.get_connection_module_object(connection)
             connection_obj.switch_connection(device)
+            index = self.db_obj.read_from_database(device, index)
+            radio_index = self.db_obj.read_from_database(device, radio_index)
+            profile1_index = self.db_obj.read_from_database(device, profile1_index)
             cmd = f"rbuscli get Device.WiFi.DataElements.Network.Device.{index}.Radio.{radio_index}.CurrentOperatingProfile.{profile1_index}.Channel"
             output, error = connection_obj.execute_command(cmd, return_stderr=True)
             if 'Value :' not in output:
@@ -102,6 +116,9 @@ class FeatureRadio(DatabaseModule, ConnectionModules):
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
+        index = self.db_obj.read_from_database(device, index)
+        radio_index = self.db_obj.read_from_database(device, radio_index)
+        bss_index = self.db_obj.read_from_database(device, bss_index)
         cmd = f"rbuscli get Device.WiFi.DataElements.Network.Device.{index}.Radio.{radio_index}.BSS.{bss_index}.STANumberOfEntries"
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
         if 'Value :' not in output:
@@ -114,6 +131,10 @@ class FeatureRadio(DatabaseModule, ConnectionModules):
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
+        index = self.db_obj.read_from_database(device, index)
+        radio_index = self.db_obj.read_from_database(device, radio_index)
+        bss_index = self.db_obj.read_from_database(device, bss_index)
+        sta_index = self.db_obj.read_from_database(device, sta_index)
         cmd = f"rbuscli get Device.WiFi.DataElements.Network.Device.{index}.Radio.{radio_index}.BSS.{bss_index}.STA.{sta_index}.MACAddress"
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
         if 'Value :' not in output:
