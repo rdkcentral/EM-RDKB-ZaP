@@ -59,7 +59,7 @@ def test_config_ssid_with_packet_capture(initialize):
     print(f"checking for message of type {get_message_type_name(message_type)} in the captured packets")
     #get the list of payloads of the message type from the captured packets
     payloads = check_message_presence(reassembled, message_type, src_mac=conftest.controller_mac, dst_mac=conftest.agent_mac)
-    if len(payloads) == 0:
+    if not payloads:
         pytest.fail(f"Message of type {get_message_type_name(message_type)} not found in the captured packets")
         exit(1)
     else:
@@ -69,8 +69,10 @@ def test_config_ssid_with_packet_capture(initialize):
     print(f"checking for TLV of type {get_tlv_type_name(tlv_type)} in the captured message type {get_message_type_name(message_type)}")
     tlvs = check_tlv_presence(payloads[0], tlv_type)
     #if tlvs is empty then fail the test
-    if len(tlvs) == 0:
-        pytest.fail(f"expected {conftest.number_of_radios} TLVs of type {get_tlv_type_name(tlv_type)} but found {len(tlvs)}")
+    if not tlvs:
+        found = 0 if tlvs is None else len(tlvs)
+        pytest.fail(f"expected {conftest.number_of_radios} TLVs of type {get_tlv_type_name(tlv_type)} but found {found}")
         exit(1)
     else:
         zi_logger.print_success(f"Found {len(tlvs)} TLVs of type {get_tlv_type_name(tlv_type)} as expected")
+
