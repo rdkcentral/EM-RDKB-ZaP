@@ -58,7 +58,7 @@ def test_config_ssid_with_packet_capture(initialize):
     message_type = MSG_TYPE_AP_AUTOCONFIGURATION_RENEW
     print(f"checking for message of type {get_message_type_name(message_type)} in the captured packets")
     #get the list of payloads of the message type from the captured packets
-    payloads = check_message_presence(reassembled, message_type, src_mac=conftest.agent_mac, dst_mac=conftest.controller_mac)
+    payloads = check_message_presence(reassembled, message_type, src_mac=conftest.controller_mac, dst_mac=conftest.agent_mac)
     if len(payloads) == 0:
         pytest.fail(f"Message of type {get_message_type_name(message_type)} not found in the captured packets")
         exit(1)
