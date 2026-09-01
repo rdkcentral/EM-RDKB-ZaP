@@ -14,14 +14,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import pytest
 from zaero.utils import zi_logger
-
 # ---------------------------------------------------------------------------
 # 1. Onboarding Data Elements (6)
 # ---------------------------------------------------------------------------
-
 def test_device_number_of_entries_de(initialize):
     """
     Test case for device number of entries data element.
@@ -32,7 +29,6 @@ def test_device_number_of_entries_de(initialize):
         zi_logger.print_error("No devices found, skipping the test.")
     else:
         zi_logger.print_success(f"Device count: {device_count}")
-
 def test_device_id_de(initialize):
     """
     Test case for device ID data element.
@@ -44,7 +40,6 @@ def test_device_id_de(initialize):
         zi_logger.print_error("Failed to get device ID, skipping the test.")
     else:
         zi_logger.print_success(f"Device ID: {device_id}")
-
 def test_onboarding_protocol_de(initialize):
     """
     Test case for onboarding protocol data element.
@@ -55,7 +50,6 @@ def test_onboarding_protocol_de(initialize):
         zi_logger.print_error("Failed to get onboarding protocol, skipping the test.")
     else:
         zi_logger.print_success(f"Onboarding Protocol: {onboarding_protocol}")
-
 def test_last_contact_time_de(initialize):
     """
     Test case for last contact time data element.
@@ -66,7 +60,6 @@ def test_last_contact_time_de(initialize):
         zi_logger.print_error("Failed to get last contact time, skipping the test.")
     else:
         zi_logger.print_success(f"Last Contact Time: {last_contact_time}")
-
 def test_easymesh_operation_mode_de(initialize):
     """
     Test case for EasyMesh operation mode data element.
@@ -77,7 +70,6 @@ def test_easymesh_operation_mode_de(initialize):
         zi_logger.print_error("Failed to get EasyMesh operation mode, skipping the test.")
     else:
         zi_logger.print_success(f"EasyMesh Operation Mode: {operation_mode}")
-
 def test_ssid(initialize):
     """
     Test case for SSID data element.
@@ -88,13 +80,9 @@ def test_ssid(initialize):
         zi_logger.print_error("Failed to get SSID, skipping the test.")
     else:
         zi_logger.print_success(f"SSID: {ssid}")
-
-
 # ---------------------------------------------------------------------------
 # 2.Backhaul Data Elements (24)
 # ---------------------------------------------------------------------------
-
-
 def test_backhaul_linktype_de(initialize):
     """
     Test case for backhaul link type data element.
@@ -105,7 +93,6 @@ def test_backhaul_linktype_de(initialize):
         zi_logger.print_error("Backhaul link type data element not found.")
     else:
         zi_logger.print_success(f"Backhaul link type data element found: {linktype}")
-
 def test_backhaul_macaddress_de(initialize):
     """
     Test case for backhaul MAC address data element.
@@ -116,7 +103,6 @@ def test_backhaul_macaddress_de(initialize):
         zi_logger.print_error("Backhaul MAC address data element not found.")
     else:
         zi_logger.print_success(f"Backhaul MAC address data element found: {macaddress}")
-
 def test_backhaul_backhaul_macaddress_de(initialize):
     """
     Test case for backhaul backhaul MAC address data element.
@@ -127,7 +113,6 @@ def test_backhaul_backhaul_macaddress_de(initialize):
         zi_logger.print_error("Backhaul backhaul MAC address data element not found.")
     else:
         zi_logger.print_success(f"Backhaul backhaul MAC address data element found: {backhaul_macaddress}")
-
 def test_backhaul_backhauluse_de(initialize):
     """
     Test case for backhaul use data element.
@@ -138,7 +123,6 @@ def test_backhaul_backhauluse_de(initialize):
         zi_logger.print_error("Backhaul use data element not found.")
     else:
         zi_logger.print_success(f"Backhaul use data element found: {use}")
-
 def test_backhaulsta_MACaddress_de(initialize):
     """
     Test case for backhaul STA MAC address data element.
@@ -149,7 +133,6 @@ def test_backhaulsta_MACaddress_de(initialize):
         zi_logger.print_error("Backhaul STA MAC address data element not found.")
     else:
         zi_logger.print_success(f"Backhaul STA MAC address data element found: {sta_macaddress}")
-
 def test_backhaul_stats_signalstrength_de(initialize):
     """
     Test case for backhaul stats signal strength data element.
@@ -160,7 +143,6 @@ def test_backhaul_stats_signalstrength_de(initialize):
         zi_logger.print_error("Backhaul stats signal strength data element not found.")
     else:
         zi_logger.print_success(f"Backhaul stats signal strength data element found: {signalstrength}")
-
 def test_controller_id_de(initialize):
     """
     Test case for controller ID data element.
@@ -171,7 +153,6 @@ def test_controller_id_de(initialize):
         zi_logger.print_error("Controller ID data element not found.")
     else:
         zi_logger.print_success(f"Controller ID data element found: {controller_id}")
-
 def test_backhaul_stats_bytesent_de(initialize):
     """
     Test case for backhaul stats bytes sent data element.
@@ -182,7 +163,6 @@ def test_backhaul_stats_bytesent_de(initialize):
         zi_logger.print_error("Backhaul stats bytes sent data element not found.")
     else:
         zi_logger.print_success(f"Backhaul stats bytes sent data element found: {bytesent}")
-
 def test_backhaul_stats_bytesreceived_de(initialize):
     """
     Test case for backhaul stats bytes received data element.
@@ -193,7 +173,6 @@ def test_backhaul_stats_bytesreceived_de(initialize):
         zi_logger.print_error("Backhaul stats bytes received data element not found.")
     else:
         zi_logger.print_success(f"Backhaul stats bytes received data element found: {bytesreceived}")
-
 def test_backhaul_stats_linkutilization_de(initialize):
     """
     Test case for backhaul stats link utilization data element.
@@ -204,7 +183,6 @@ def test_backhaul_stats_linkutilization_de(initialize):
         zi_logger.print_error("Backhaul stats link utilization data element not found.")
     else:
         zi_logger.print_success(f"Backhaul stats link utilization data element found: {linkutilization}")
-
 def test_backhaul_stats_linkdatadownlinkrate_de(initialize):
     """
     Test case for backhaul stats link data downlink rate data element.
@@ -215,7 +193,6 @@ def test_backhaul_stats_linkdatadownlinkrate_de(initialize):
         zi_logger.print_error("Backhaul stats link data downlink rate data element not found.")
     else:
         zi_logger.print_success(f"Backhaul stats link data downlink rate data element found: {downlinkrate}")
-
 def test_backhaul_stats_linkdatauplinkrate_de(initialize):
     """
     Test case for backhaul stats link data uplink rate data element.
@@ -226,7 +203,6 @@ def test_backhaul_stats_linkdatauplinkrate_de(initialize):
         zi_logger.print_error("Backhaul stats link data uplink rate data element not found.")
     else:
         zi_logger.print_success(f"Backhaul stats link data uplink rate data element found: {uplinkrate}")
-
 def test_backhaul_status_de(initialize):
     """
     Test case for backhaul status data element.
@@ -237,7 +213,6 @@ def test_backhaul_status_de(initialize):
         zi_logger.print_error("Backhaul status data element not found.")
     else:
         zi_logger.print_success(f"Backhaul status data element found: {status}")
-
 def test_backhaul_numberofentries_de(initialize):
     """
     Test case for backhaul number of entries data element.
@@ -248,7 +223,6 @@ def test_backhaul_numberofentries_de(initialize):
         zi_logger.print_error("Backhaul number of entries data element not found.")
     else:
         zi_logger.print_success(f"Backhaul number of entries data element found: {numberofentries}")
-
 def test_preferred_backhauls_MACaddress_de(initialize):
     """
     Test case for preferred backhauls MAC address data element.
@@ -259,7 +233,6 @@ def test_preferred_backhauls_MACaddress_de(initialize):
         zi_logger.print_error("Preferred backhauls MAC address data element not found.")
     else:
         zi_logger.print_success(f"Preferred backhauls MAC address data element found: {preferred_macaddress}")
-
 def test_preferredbackhauls_bstaMACaddress_de(initialize):
     """
     Test case for preferred backhauls BSTA MAC address data element.
@@ -270,7 +243,6 @@ def test_preferredbackhauls_bstaMACaddress_de(initialize):
         zi_logger.print_error("Preferred backhauls BSTA MAC address data element not found.")
     else:
         zi_logger.print_success(f"Preferred backhauls BSTA MAC address data element found: {preferred_bsta_macaddress}")
-
 def test_backhaul_downMACaddress_de(initialize):
     """
     Test case for backhaul down MAC address data element.
@@ -281,7 +253,6 @@ def test_backhaul_downMACaddress_de(initialize):
         zi_logger.print_error("Backhaul down MAC address data element not found.")
     else:
         zi_logger.print_success(f"Backhaul down MAC address data element found: {down_macaddress}")
-
 def test_backhaulalid_de(initialize):
     """
     Test case for backhaul ALID data element.
@@ -292,7 +263,6 @@ def test_backhaulalid_de(initialize):
         zi_logger.print_error("Backhaul ALID data element not found.")
     else:
         zi_logger.print_success(f"Backhaul ALID data element found: {backhaul_alid}")
-
 def test_backhaulmediatype_de(initialize):
     """
     Test case for backhaul media type data element.
@@ -303,7 +273,6 @@ def test_backhaulmediatype_de(initialize):
         zi_logger.print_error("Backhaul media type data element not found.")
     else:
         zi_logger.print_success(f"Backhaul media type data element found: {backhaul_mediatype}")
-
 def test_backhaul_akmsallowed_de(initialize):
     """
     Test case for backhaul AKMS allowed data element.
@@ -314,7 +283,6 @@ def test_backhaul_akmsallowed_de(initialize):
         zi_logger.print_error("Backhaul AKMS allowed data element not found.")
     else:
         zi_logger.print_success(f"Backhaul AKMS allowed data element found: {backhaul_akmsallowed}")
-
 def test_backhaul_backhaulmediatype_de(initialize):
     """
     Test case for backhaul backhaul media type data element.
@@ -325,7 +293,6 @@ def test_backhaul_backhaulmediatype_de(initialize):
         zi_logger.print_error("Backhaul backhaul media type data element not found.")
     else:
         zi_logger.print_success(f"Backhaul backhaul media type data element found: {backhaul_backhaulmediatype}")
-
 def test_backhaul_backhaulphyrate_de(initialize):
     """
     Test case for backhaul backhaul PHY rate data element.
@@ -336,7 +303,6 @@ def test_backhaul_backhaulphyrate_de(initialize):
         zi_logger.print_error("Backhaul backhaul PHY rate data element not found.")
     else:
         zi_logger.print_success(f"Backhaul backhaul PHY rate data element found: {backhaul_phy_rate}")
-
 def test_backhaul_backhauldeviceid_de(initialize):
     """
     Test case for backhaul backhaul device ID data element.
@@ -347,7 +313,6 @@ def test_backhaul_backhauldeviceid_de(initialize):
         zi_logger.print_error("Backhaul backhaul device ID data element not found.")
     else:
         zi_logger.print_success(f"Backhaul backhaul device ID data element found: {backhaul_device_id}")
-
 def test_backhaul_backhaulalid_de(initialize):
     """
     Test case for backhaul backhaul ALID data element.
@@ -358,11 +323,9 @@ def test_backhaul_backhaulalid_de(initialize):
         zi_logger.print_error("Backhaul backhaul ALID data element not found.")
     else:
         zi_logger.print_success(f"Backhaul backhaul ALID data element found: {backhaul_backhaul_alid}")
-
 # ---------------------------------------------------------------------------
 # 3. Radio Data Elements (8)
 # ---------------------------------------------------------------------------
-
 def test_radio_status_de(initialize):
     """
     Test case for radio status data element.
@@ -373,7 +336,6 @@ def test_radio_status_de(initialize):
         zi_logger.print_error("Radio status data element not found.")
     else:
         zi_logger.print_success(f"Radio status data element found: {radio_status}")
-
 def test_radio_enabled_de(initialize):
     """
     Test case for radio enabled data element.
@@ -384,7 +346,6 @@ def test_radio_enabled_de(initialize):
         zi_logger.print_error("Radio enabled data element not found.")
     else:
         zi_logger.print_success(f"Radio enabled data element found: {radio_enabled}")
-
 def test_radio_numberofentries_de(initialize):
     """
     Test case for radio number of entries data element.
@@ -395,7 +356,6 @@ def test_radio_numberofentries_de(initialize):
         zi_logger.print_error("Radio number of entries data element not found.")
     else:
         zi_logger.print_success(f"Radio number of entries data element found: {radio_numberofentries}")
-
 def test_radio_bss_ssid_de(initialize):
     """
     Test case for radio BSS SSID data element.
@@ -406,7 +366,6 @@ def test_radio_bss_ssid_de(initialize):
         zi_logger.print_error("Radio BSS SSID data element not found.")
     else:
         zi_logger.print_success(f"Radio BSS SSID data element found: {bss_ssid}")
-
 def test_currentoperatingprofile_opclass_de(initialize):
     """
     Test case for current operating profile opclass data element.
@@ -417,7 +376,6 @@ def test_currentoperatingprofile_opclass_de(initialize):
         zi_logger.print_error("Current operating profile opclass data element not found.")
     else:
         zi_logger.print_success(f"Current operating profile opclass data element found: {opclass}")
-
 def test_currentoperatingprofile_channel_de(initialize):
     """
     Test case for current operating profile channel data element.
@@ -428,7 +386,6 @@ def test_currentoperatingprofile_channel_de(initialize):
         zi_logger.print_error("Current operating profile channel data element not found.")
     else:
         zi_logger.print_success(f"Current operating profile channel data element found: {channel}")
-
 def test_radio_bss_STANumberofentries_de(initialize):
     """
     Test case for radio BSS STA number of entries data element.
@@ -439,7 +396,6 @@ def test_radio_bss_STANumberofentries_de(initialize):
         zi_logger.print_error("Radio BSS STA number of entries data element not found.")
     else:
         zi_logger.print_success(f"Radio BSS STA number of entries data element found: {bss_sta_numberofentries}")  
-
 def test_radio_bss_STA_MACaddress_de(initialize):
     """
     Test case for radio BSS STA MAC address data element.
@@ -450,11 +406,9 @@ def test_radio_bss_STA_MACaddress_de(initialize):
         zi_logger.print_error("Radio BSS STA MAC address data element not found.")
     else:
         zi_logger.print_success(f"Radio BSS STA MAC address data element found: {bss_sta_macaddress}")
-
 # ---------------------------------------------------------------------------
 # 4. Client Association Data Elements (13)
 # ---------------------------------------------------------------------------
-
 def test_ssid_AKMAllowed_de(initialize):
     """
     Test case for SSID AKM Allowed data element.
@@ -465,7 +419,6 @@ def test_ssid_AKMAllowed_de(initialize):
         zi_logger.print_error("Failed to get SSID AKM Allowed, skipping the test.")
     else:
         zi_logger.print_success(f"SSID AKM Allowed: {akm_allowed}")
-
 def test_ssid_MFPConfig_de(initialize):
     """
     Test case for SSID MFP Config data element.
@@ -476,7 +429,6 @@ def test_ssid_MFPConfig_de(initialize):
         zi_logger.print_error("Failed to get SSID MFP Config, skipping the test.")
     else:
         zi_logger.print_success(f"SSID MFP Config: {mfp_config}")
-
 def test_ssid_keyPassphrase_de(initialize):
     """
     Test case for SSID Key Passphrase data element.
@@ -487,7 +439,6 @@ def test_ssid_keyPassphrase_de(initialize):
         zi_logger.print_error("Failed to get SSID Key Passphrase, skipping the test.")
     else:
         zi_logger.print_success(f"SSID Key Passphrase: {key_passphrase}")
-
 def test_dhcpv4_server_enable_de(initialize):
     """
     Test case for DHCPv4 Server Enable data element.
@@ -498,7 +449,6 @@ def test_dhcpv4_server_enable_de(initialize):
         zi_logger.print_error("Failed to get DHCPv4 Server Enable, skipping the test.")
     else:
         zi_logger.print_success(f"DHCPv4 Server Enable: {dhcpv4_enable}")
-
 def test_dhcpv4_server_pool_Maxaddress_de(initialize):
     """
     Test case for DHCPv4 Server Pool Max Address data element.
@@ -509,7 +459,6 @@ def test_dhcpv4_server_pool_Maxaddress_de(initialize):
         zi_logger.print_error("Failed to get DHCPv4 Server Pool Max Address, skipping the test.")
     else:
         zi_logger.print_success(f"DHCPv4 Server Pool Max Address: {max_address}")
-
 def test_dhcpv4_server_pool_client_chaddr_de(initialize):
     """
     Test case for DHCPv4 Server Pool Client CHADDR data element.
@@ -520,7 +469,6 @@ def test_dhcpv4_server_pool_client_chaddr_de(initialize):
         zi_logger.print_error("Failed to get DHCPv4 Server Pool Client CHADDR, skipping the test.")
     else:
         zi_logger.print_success(f"DHCPv4 Server Pool Client CHADDR: {client_chaddr}")
-
 def test_dhcpv4_server_pool_client_number_of_entries_de(initialize):
     """
     Test case for DHCPv4 Server Pool Client Number of Entries data element.
@@ -531,7 +479,6 @@ def test_dhcpv4_server_pool_client_number_of_entries_de(initialize):
         zi_logger.print_error("Failed to get DHCPv4 Server Pool Client Number of Entries, skipping the test.")
     else:
         zi_logger.print_success(f"DHCPv4 Server Pool Client Number of Entries: {num_entries}")
-
 def test_IP_Interface_Enable_de(initialize):
     """
     Test case for IP Interface Enable data element.
@@ -542,7 +489,6 @@ def test_IP_Interface_Enable_de(initialize):
         zi_logger.print_error("Failed to get IP Interface Enable, skipping the test.")
     else:
         zi_logger.print_success(f"IP Interface Enable: {ip_interface_enable}")
-
 def test_IP_Interface_IPv4Address_IPAddress_de(initialize):
     """
     Test case for IP Interface IPv4 Address data element.
@@ -553,7 +499,6 @@ def test_IP_Interface_IPv4Address_IPAddress_de(initialize):
         zi_logger.print_error("Failed to get IP Interface IPv4 Address, skipping the test.")
     else:
         zi_logger.print_success(f"IP Interface IPv4 Address: {ip_address}")
-
 def test_Router_Enable_de(initialize):
     """
     Test case for Router Enable data element.
@@ -564,7 +509,6 @@ def test_Router_Enable_de(initialize):
         zi_logger.print_error("Failed to get Router Enable, skipping the test.")
     else:
         zi_logger.print_success(f"Router Enable: {router_enable}")
-
 def test_DHCPv4_Server_Pool_Client_IPv4Address_IPAddress_de(initialize):
     """
     Test case for DHCPv4 Server Pool Client IPv4 Address data element.
@@ -575,7 +519,6 @@ def test_DHCPv4_Server_Pool_Client_IPv4Address_IPAddress_de(initialize):
         zi_logger.print_error("Failed to get DHCPv4 Server Pool Client IPv4 Address, skipping the test.")
     else:
         zi_logger.print_success(f"DHCPv4 Server Pool Client IPv4 Address: {dhcp_client_ip}")
-
 def test_sta_BytesSent_de(initialize):
     """
     Test case for STA Bytes Sent data element.
@@ -586,7 +529,6 @@ def test_sta_BytesSent_de(initialize):
         zi_logger.print_error("Failed to get STA Bytes Sent, skipping the test.")
     else:
         zi_logger.print_success(f"STA Bytes Sent: {bytes_sent}")
-
 def test_sta_BytesReceived_de(initialize):
     """
     Test case for STA Bytes Received data element.
@@ -597,6 +539,3 @@ def test_sta_BytesReceived_de(initialize):
         zi_logger.print_error("Failed to get STA Bytes Received, skipping the test.")
     else:
         zi_logger.print_success(f"STA Bytes Received: {bytes_received}")
-
-
-

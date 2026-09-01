@@ -14,16 +14,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from zaero.bridge.database_module import DatabaseModule
 from zaero.bridge.connection_modules import ConnectionModules
 from zaero.bridge.ui_modules import UiModules
 import zaero.utils.zi_logger as zi_logger
-
 class FeatureInterfaceDE(DatabaseModule,
                          ConnectionModules,
                          UiModules):
-    
     def __init__(self):
         zi_logger.print_context()
         ConnectionModules.__init__(self)
@@ -31,7 +28,6 @@ class FeatureInterfaceDE(DatabaseModule,
         UiModules.__init__(self)
         self.db_obj = self.get_database_module_object()
         zi_logger.log(f"==== db_obj : {self.db_obj}")
-
     def set_ssid(self,
                  device: str,
                  index: str,
@@ -49,14 +45,12 @@ class FeatureInterfaceDE(DatabaseModule,
         except Exception as err: # pylint: disable=broad-except
             zi_logger.log(f"ERROR: {err}")
             raise RuntimeError(f"Could not find out the Radio of the device : {device}")
-
         command = f"dmcli eRT setv Device.WiFi.DataElements.Network.SSID.{index}.SSID string {ssid}"
         zi_logger.log(f"COMMAND : {command}")
         _, error = connection_obj.execute_command(command,
                                               return_stderr=True)
         if error != '':
             raise RuntimeError(f"Command execution failed : {command}")
-
     def get_ssid(self , device: str, index: str) -> str:
         """
         Get the ssid.
@@ -68,12 +62,9 @@ class FeatureInterfaceDE(DatabaseModule,
         index = self.db_obj.read_from_database(device, index)
         cmd = f"rbuscli get Device.WiFi.DataElements.Network.SSID.{index}.SSID"
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
-
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output}")
-
         return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def check_ssid(self,
                    device: str,
                    index: str,

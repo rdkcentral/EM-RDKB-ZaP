@@ -14,20 +14,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 from zaero.bridge.database_module import DatabaseModule
 from zaero.bridge.connection_modules import ConnectionModules
 import zaero.utils.zi_logger as zi_logger
-
 class FeatureRadio(DatabaseModule, ConnectionModules):
-    
     def __init__(self):
         DatabaseModule.__init__(self)
         ConnectionModules.__init__(self)
         self.db_obj = self.get_database_module_object()
         zi_logger.log(f"==== db_obj : {self.db_obj}")
-
     def get_radio_status(self, device: str, index: str, radio_index: str) -> str:
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
@@ -40,7 +35,6 @@ class FeatureRadio(DatabaseModule, ConnectionModules):
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output}")        
         return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_radio_enabled(self, device: str, index: str, radio_index: str) -> str:
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
@@ -53,7 +47,6 @@ class FeatureRadio(DatabaseModule, ConnectionModules):
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output}")        
         return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_radioNumberofentries(self, device: str, index: str) -> str:
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
@@ -64,7 +57,6 @@ class FeatureRadio(DatabaseModule, ConnectionModules):
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output}")
-        
         return output.partition('Value')[2].lstrip(' :').split()[0]
     def get_radio_bss_ssid(self, device: str, index: str, radio_index: str, bss_index: str) -> str:
         zi_logger.print_context()
@@ -78,9 +70,7 @@ class FeatureRadio(DatabaseModule, ConnectionModules):
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output}")
-        
         return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_currentoperatingprofile_opclass(self, device: str, index: str, radio_index: str, profile1_index: str) -> str:
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
@@ -93,9 +83,7 @@ class FeatureRadio(DatabaseModule, ConnectionModules):
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output}")
-
         return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_currentoperatingprofile_channel(self, device: str, index: str, radio_index: str, profile1_index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -108,9 +96,7 @@ class FeatureRadio(DatabaseModule, ConnectionModules):
             output, error = connection_obj.execute_command(cmd, return_stderr=True)
             if 'Value :' not in output:
                 raise RuntimeError(f"Command execution failed : {output}")
-    
             return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_radio_bss_STANumberOFEntries(self, device: str, index: str, radio_index: str, bss_index: str) -> str:
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
@@ -123,9 +109,7 @@ class FeatureRadio(DatabaseModule, ConnectionModules):
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output}")
-        
         return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_radio_bss_STA_MACAddress(self, device: str, index: str, radio_index: str, bss_index: str, sta_index: str) -> str:
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
@@ -139,9 +123,7 @@ class FeatureRadio(DatabaseModule, ConnectionModules):
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output}")
-        
         return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_bss_bssid(self, device: str, index: str, radio_index: str, bss_index: str) -> str:
         zi_logger.print_context()
         bssids = []
@@ -154,8 +136,6 @@ class FeatureRadio(DatabaseModule, ConnectionModules):
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output}")
         return output.partition('Value')[2].lstrip(' :').split()[0]
-
-    
     def get_radio_id(self, device: str, index: str, radio_index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -166,9 +146,4 @@ class FeatureRadio(DatabaseModule, ConnectionModules):
             output, error = connection_obj.execute_command(cmd, return_stderr=True)
             if 'Value :' not in output:
                 raise RuntimeError(f"Command execution failed : {output}")
-            
             return output.partition('Value')[2].lstrip(' :').split()[0]
-
-
-
-    

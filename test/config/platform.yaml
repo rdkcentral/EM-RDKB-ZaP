@@ -61,7 +61,7 @@ controller:
     6g_radio_bss_index: None                                # Dynamically discovered 6 GHz BSS index
     6g_radio_vap1_bss_index: None                           # Dynamically discovered BSS index for 6g_radio_vap1_mac
     6g_radio_vap2_bss_index: None                           # Dynamically discovered BSS index for 6g_radio_vap2_mac
-    mld_iface_index: None                                   # MLD interface index
+    mld_iface_index: 0                                      # MLD interface index
     backhaul_iface_index: 1.1.sta65                         # Backhaul interface index
     profile_index: 1                                        # Profile index
     sta_index: 1                                            # Station index

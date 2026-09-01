@@ -14,12 +14,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import zaero
 import pytest
 import time
 from zaero.utils import zi_logger
-
 def test_wifi_reset(initialize: zaero.zaero):
     ssid = initialize.get_random_ssid()
     initialize.set_ssid("controller", "mld_iface_index", ssid, 'gui')
@@ -36,7 +34,6 @@ def test_wifi_reset(initialize: zaero.zaero):
     else:
         pytest.fail("SSID is not changed in DUT by checking with iw command")
     time.sleep(10)
-    
     initialize.wifi_reset("controller", 'gui')
     time.sleep(10)
     initialize.reboot_device("extender1", "cli")
@@ -44,7 +41,6 @@ def test_wifi_reset(initialize: zaero.zaero):
     initialize.close_connection("controller")
     initialize.close_connection("extender1")
     time.sleep(10)
-
     for i in range(1, 41):
         zi_logger.log(f"FOR loop iteration : {i}")
         try:
@@ -57,7 +53,6 @@ def test_wifi_reset(initialize: zaero.zaero):
         time.sleep(10)
     else:
         pytest.fail("Could not re-establish connection with Controller")
-
     ssid = initialize.read_from_database("controller", "default_ssid")
     for i in range(1, 31):
         try:            
@@ -70,7 +65,6 @@ def test_wifi_reset(initialize: zaero.zaero):
         time.sleep(5)
     else:
         pytest.fail("SSID is not changed in DUT by checking with iw command")
-
     for i in range(1, 41):
         zi_logger.log(f"FOR loop iteration : {i}")
         try:
@@ -83,7 +77,6 @@ def test_wifi_reset(initialize: zaero.zaero):
         time.sleep(10)
     else:
         pytest.fail("Could not re-establish connection with - extender1")
-
     ssid = initialize.read_from_database("controller", "default_ssid")
     for i in range(1, 31):
         try:

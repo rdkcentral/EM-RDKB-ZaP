@@ -20,7 +20,6 @@ import time
 import pytest_html
 from zaero.utils import zi_logger
 from pathlib import Path
-
 @pytest.fixture(scope='session', autouse=True)
 def initialize():
     zi_logger.set_log_state(False)
@@ -47,7 +46,6 @@ def initialize():
     zaero_obj.ui_close_browser("controller")
     zaero_obj.ui_stop_playwright("controller")
     del(zaero_obj)
-
 @pytest.fixture(scope="session", autouse=True)
 def discover_indexes(initialize):
     zi_logger.print_step("========== Discovering Device, Radio and BSS Indexes ==========")
@@ -74,7 +72,6 @@ def discover_indexes(initialize):
         else:
             initialize.write_into_database("controller",f"{device}_device_index",str(device_index))
             zi_logger.print_success(f"{device} Device Index = {device_index}")
-
     # Radio Index
     radio_config = {"2g": {"mac_addr": "2g_radio_mac","index_key": "2g_radio_index"},
                     "5g": {"mac_addr": "5g_radio_mac","index_key": "5g_radio_index"},
@@ -92,7 +89,6 @@ def discover_indexes(initialize):
         else:
             initialize.write_into_database("controller",config["index_key"],str(radio_index))
             zi_logger.print_success(f"{band.upper()} Radio Index = {radio_index}")
-
     # BSS Index
     bss_config = {"2g": {"radio_index": "2g_radio_index","bss_macs": ["2g_radio_mac","2g_radio_vap1_mac", "2g_radio_vap2_mac"]},
                   "5g": {"radio_index": "5g_radio_index","bss_macs": ["5g_radio_mac","5g_radio_vap1_mac","5g_radio_vap2_mac"]}, # 5g_radio_vap3_mac is type managed
@@ -113,7 +109,6 @@ def discover_indexes(initialize):
                 radio_name = mac_addr.replace("_mac", "")
                 initialize.write_into_database("controller",f"{radio_name}_bss_index",str(bss_index))
                 zi_logger.print_success(f"{band.upper()} {radio_name} -> Radio.{radio_index}.BSS.{bss_index}")
-
 @pytest.fixture(scope='function', autouse=True)
 def test_setup(initialize):
     initialize.ui_open_context("controller")
@@ -127,34 +122,27 @@ def test_setup(initialize):
         initialize.stop_frame_capture("controller")
     except Exception as err:
         zi_logger.log(f"stop_frame_capture failed during teardown: {err}")
-
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_setup(item):
     # Start each test with a clean failure buffer.
     zi_logger.clear_error_logs()
     yield
-
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item, call):
     outcome = yield
     report = outcome.get_result()
-
     if report.when != "call":
         return
-
     errors = zi_logger.get_error_logs()
     if errors:
         report.outcome = "failed"
         report.longrepr = "Error logs found:\n" + "\n".join(errors)
-
     # Make the report available to fixtures/teardown that want to
     # inspect the outcome of the test they're running in.
     setattr(item, "rep_call", report)
-
     extra = getattr(report, "extras", None)
     if extra is None:
         extra = getattr(report, "extra", [])
-
     if report.failed:
         message = '<span style="color:red; font-weight:bold;">FAIL</span>'
     elif report.passed:
@@ -163,22 +151,15 @@ def pytest_runtest_makereport(item, call):
         message = '<span style="color:orange; font-weight:bold;">SKIPPED</span>'
     else:
         message = '<span>UNKNOWN</span>'
-
     extra.append(pytest_html.extras.html(message))
     report.extras = extra
-    
-
-
 def pytest_html_results_table_html(report, data):
     if report.when != "call":
         return
-
     new_data = []
-
     # Failure traceback (includes the zi_logger error summary above).
     if report.failed and hasattr(report, "longrepr"):
         new_data.append(f"<div>{report.longrepr}</div>")
-
     # Colorize captured stdout lines emitted by zi_logger.
     if hasattr(report, "capstdout"):
         formatted_lines = []
@@ -193,9 +174,7 @@ def pytest_html_results_table_html(report, data):
                 )
             else:
                 formatted_lines.append(line)
-
         html = "<br>".join(formatted_lines)
         new_data.append(f"<div>{html}</div>")
-
     data.clear()
     data.extend(new_data)

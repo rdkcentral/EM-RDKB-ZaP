@@ -14,26 +14,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 import cmd
 from curses import raw
 from operator import index
-
 from zaero.bridge.database_module import DatabaseModule
 from zaero.bridge.connection_modules import ConnectionModules
 import zaero.utils.zi_logger as zi_logger   
-
 class FeatureBackhaul(DatabaseModule,
                         ConnectionModules):
-    
     def __init__(self):
         zi_logger.print_context()
         ConnectionModules.__init__(self)
         DatabaseModule.__init__(self)
         self.db_obj = self.get_database_module_object()
         zi_logger.log(f"==== db_obj : {self.db_obj}")   
-
     def get_backhaul_linktype(self, device: str, index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -47,7 +41,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul Linktype: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-            
     def get_backhaul_MACaddress(self, device: str, index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -61,7 +54,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul MAC Address: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_backhaul_backhaulMACAddress(self, device: str, index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -75,7 +67,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul BackhaulMAC: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_backhaul_backhauluse(self, device: str, index: str,radio_index: str,BSS_index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -91,7 +82,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul BackhaulUse: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-          
     def get_backhaulsta_MACaddress(self, device: str, index: str,radio_index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -106,7 +96,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul MAC Address: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-            
     def get_backhaul_stats_signalstrength(self, device: str, index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -120,7 +109,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul Signal Strength: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_controller_id(self, device: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -133,7 +121,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get controller ID: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_backhaul_stats_bytessent(self, device: str, index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -147,7 +134,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul Bytes Sent: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_backhaul_stats_bytesreceived(self, device: str, index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -161,7 +147,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul Bytes Received: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_backhaul_stats_linkutilization  (self, device: str, index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -175,7 +160,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul Link Utilization: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_backhaul_stats_lastdatadownlinkrate(self, device: str, index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -189,7 +173,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul Last Data Downlink Rate: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_backhaul_stats_lastdatauplinkrate(self, device: str, index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -203,7 +186,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul Last Data Uplink Rate: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-    
     def get_backhaul_status(self, device: str, index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -217,7 +199,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul Status: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_backhaul_numberofentries(self, device: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -230,7 +211,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul Number of Entries: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_preferredbackhauls_MACaddress(self, device: str, index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -244,7 +224,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul MAC Address: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_preferredbackhauls_bstaMACaddress(self, device: str, index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -258,7 +237,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul bSTA MAC Address: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_backhaul_downMACaddress(self, device: str, index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -272,7 +250,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul Down MAC Address: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_backhaul_alid(self, device: str, index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -286,7 +263,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul ALID: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_backhaul_mediatype(self, device: str, index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -300,7 +276,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul MediaType: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_backhaul_akmsallowed(self, device: str, index: str,radio_index: str,BSS_index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -316,7 +291,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul AKMSAllowed: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-    
     def get_backhaul_backhaulmediatype(self, device: str, index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -330,7 +304,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul MediaType: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_backhaul_backhaulphyrate(self, device: str, index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -344,7 +317,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul PHY Rate: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_backhaul_backhauldeviceid(self, device: str, index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -358,7 +330,6 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul Device ID: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_backhaul_backhaulALID(self, device: str, index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
@@ -372,9 +343,3 @@ class FeatureBackhaul(DatabaseModule,
                   raise RuntimeError(f"Failed to get Backhaul ALID: {output.strip()}")      
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
-
-
-
-
-
-    

@@ -14,11 +14,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import pytest
 import time
 from zaero.utils import zi_logger
-
 def test_config_ssid(initialize):
     ssid = initialize.get_random_ssid()
     initialize.set_ssid("controller", "mld_iface_index", ssid, 'gui')
@@ -37,7 +35,6 @@ def test_config_ssid(initialize):
     else:
         pytest.fail("SSID is not changed in DUT by checking with iw command")
     time.sleep(5)
-
     if initialize.read_from_database("controller_wlan_client_1", "device_present"):
         for i in range(1, 31):
             try:

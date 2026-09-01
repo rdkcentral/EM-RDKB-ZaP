@@ -14,12 +14,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import pytest
 import datetime
 from pathlib import Path
 import os
-
 if __name__ == "__main__":
     BASE_DIR = Path(__file__).resolve().parent
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")

@@ -15,23 +15,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from operator import index
-
 from zaero.bridge.database_module import DatabaseModule
 from zaero.bridge.connection_modules import ConnectionModules
-
 import zaero.utils.zi_logger as zi_logger
-
-
 class FeatureOnboarding(DatabaseModule, ConnectionModules):
-    
     def __init__(self):
         DatabaseModule.__init__(self)
         ConnectionModules.__init__(self)
         self.db_obj = self.get_database_module_object()
         zi_logger.log(f"==== db_obj : {self.db_obj}")
-
     def get_device_number_of_entries(self, device: str) -> int:
         """
         Get the number of entries for a given device.
@@ -44,9 +36,7 @@ class FeatureOnboarding(DatabaseModule, ConnectionModules):
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output}")
-        
         return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_device_id(self, 
                            device: str, index: str) -> str:
         """
@@ -58,12 +48,9 @@ class FeatureOnboarding(DatabaseModule, ConnectionModules):
         connection_obj.switch_connection(device)
         cmd = f"rbuscli get Device.WiFi.DataElements.Network.Device.{index}.ID"
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
-
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output}")
-        
         return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_onboarding_protocol(self , device: str, index: str) -> str:
         """
         Get the onboarding protocol for a given device.
@@ -75,12 +62,9 @@ class FeatureOnboarding(DatabaseModule, ConnectionModules):
         index = self.db_obj.read_from_database(device, index)
         cmd = f"rbuscli get Device.WiFi.DataElements.Network.Device.{index}.OnboardingProtocol"
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
-
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output}")
-
         return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_last_contact_time(self, device: str, index: str) -> str:
         """
         Get the last contact time for a given device.
@@ -92,12 +76,9 @@ class FeatureOnboarding(DatabaseModule, ConnectionModules):
         index = self.db_obj.read_from_database(device, index)
         cmd = f"rbuscli get Device.WiFi.DataElements.Network.Device.{index}.LastContactTime"
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
-
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output}")
-        
         return output.partition('Value')[2].lstrip(' :').split()[0]
-
     def get_easymesh_operation_mode(self, device: str, index: str) -> str:
         """
         Get the EasyMesh operation mode for a given device.
@@ -111,6 +92,4 @@ class FeatureOnboarding(DatabaseModule, ConnectionModules):
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output.strip()}")
-
         return output.partition('Value')[2].lstrip(' :').split()[0]
-        
