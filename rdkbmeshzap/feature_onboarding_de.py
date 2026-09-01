@@ -56,7 +56,6 @@ class FeatureOnboarding(DatabaseModule, ConnectionModules):
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
-        index = self.db_obj.read_from_database(device, index)
         cmd = f"rbuscli get Device.WiFi.DataElements.Network.Device.{index}.ID"
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
 

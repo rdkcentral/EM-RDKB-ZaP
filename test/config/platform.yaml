@@ -16,128 +16,79 @@
 # limitations under the License.
 
 controller:
-    ui_port: 8888
-    ui_home_page_title: 'EasyMesh R6 Pro Controller'
-    bridge_iface: 'brlan0'
-    bridge_ip: <ip_address>
-    backhaul_capture_iface : 'eth0_virt_peer'
-    filter_1905 : 'ether proto 0x893a'
-    wifi_device: 'radio'
-    wifi_iface: 'default_radio{}'
-    wifi_ifname: 'wifi'
-    wifi_phy_ifname: 'phy'
-    mld_ifname: 'mld'
-    mld_iface_index: 0
-    controller_device_index: <controller_device_index>
-    extender1_device_index: <extender1_device_index>
-    2g_bh_iface_index: 0.1
-    2g_fh_iface_index: 0.2
-    5g_bh_iface_index: 1.1
-    5g_fh_iface_index: 1.2
-    6g_bh_iface_index: 2.1
-    6g_fh_iface_index: 2.2
-    2g_radio_index: 1
-    5g_radio_index: 2
-    6g_radio_index: 3
-    2g_ssid_index: 1
-    5g_ssid_index: 4
-    6g_ssid_index: 7
-    2g_ap_index: 1
-    5g_ap_index: 3
-    6g_ap_index: 5
-    bss_index: <bss_index>
-    profile1_index: 1
-    sta_index: <sta_index>
-    ip_index: <ip_index>
-    iperf_version: 3
-    bandwidth_auto : Auto
-    bandwidth_20 : 20MHz
-    bandwidth_40 : 40MHz
-    bandwidth_80 : 80MHz
-    bandwidth_160 : 160MHz
-    bandwidth_320 : 320MHz
-    bandwidth_20_val : 20
-    bandwidth_40_val : 40
-    bandwidth_80_val : 80
-    bandwidth_160_val : 160
-    bandwidth_320_val : 320
-    operating_standard_a : a
-    operating_standard_b : b
-    operating_standard_g : g
-    operating_standard_n : n
-    operating_standard_an : an
-    operating_standard_bg : bg
-    operating_standard_gn : gn
-    operating_standard_bgn : bgn
-    operating_standard_ac : ac
-    operating_standard_ax : ax
-    operating_standard_be : be
-    tx_power_6 : 6
-    tx_power_12 : 12
-    tx_power_25 : 25
-    tx_power_50 : 50
-    tx_power_100 : 100
-    tx_power_-1 : -1
-    reg_domain_us : US
-    reg_domain_de : DE
-    2g_channel_1 : 1
-    2g_channel_6 : 6
-    2g_channel_11 : 11
-    5g_channel_36: 36
-    5g_channel_40: 40
-    5g_channel_44: 44
-    5g_channel_48: 48
-    5g_channel_173: 173
-    5g_dfs_channel_52: 52
-    5g_dfs_channel_60: 60
-    5g_dfs_channel_100: 100
-    5g_dfs_channel_112: 112
-    5g_dfs_channel_124: 124
-    6g_channel_1: 1
-    6g_channel_33: 33
-    6g_channel_61: 61
-    2g_ssid_1: rdkb_2g_1
-    2g_ssid_2: rdkb_2g_2
-    5g_ssid_1: rdkb_5g_1
-    5g_ssid_2: rdkb_5g_2
-    6g_ssid_1: rdkb_6g_1
-    6g_ssid_2: rdkb_6g_2
-    mld_ssid_1: rdkb_mld_ssid_1
-    mld_ssid_2: rdkb_mld_ssid_2
-    mld_ssid_3: rdkb_mld_ssid_3
-    default_ssid: private_ssid
-    security_none: None
-    security_wpa2: WPA2
-    security_wpa_personal: WPA-Personal
-    security_wpa2_personal: WPA2-Personal
-    security_wpa3_personal: WPA3-Personal
-    passphrase_1: CHANGEME
-    passphrase_2: CHANGEME1
+    ui_port: 8888                                           # Port used by the Controller web UI
+    ui_home_page_title: 'EasyMesh R6 Pro Controller'        # Title displayed on the Controller web UI
+    bridge_iface: 'brlan0'                                  # LAN bridge interface used by the Controller
+    bridge_ip: <ip_address>                                     # IP address of the Controller bridge interface
+    backhaul_capture_iface: 'eth0_virt_peer'                # Interface used for capturing backhaul traffic
+    filter_1905: 'ether proto 0x893a'                       # Packet capture filter for IEEE 1905 traffic
+    wifi_device: 'radio'                                    # Wi-Fi device identifier used by the framework
+    wifi_iface: 'default_radio{}'                           # Wi-Fi interface naming pattern
+    wifi_ifname: 'wifi'                                     # Base name of the Wi-Fi interface
+    wifi_phy_ifname: 'phy'                                  # Base name of the Wi-Fi PHY interface
+    mld_ifname: 'mld'                                       # Multi-Link Device interface name
+    iperf_version: 3                                        # iperf version used for traffic testing
+    default_ssid: private_ssid                              # Default Wi-Fi SSID
+    passphrase_1: CHANGEME                                  # First Wi-Fi security passphrase
+    passphrase_2: CHANGEME1                                 # Second Wi-Fi security passphrase
+    # Expected Controller radio and BSS MAC addresses used to dynamically discover DataElements indexes
+    2g_radio_mac: 02:02:10:9b:5d:27                         # Expected 2.4 GHz radio MAC address
+    2g_radio_vap1_mac: 02:02:11:9b:5d:2a                    # Expected 2.4 GHz BSS 1 MAC address
+    2g_radio_vap2_mac: 02:02:12:9b:5d:2b                    # Expected 2.4 GHz BSS 2 MAC address
+    5g_radio_mac: 02:02:20:9b:5d:28                         # Expected 5 GHz radio MAC address
+    5g_radio_vap1_mac: 02:02:21:9b:5d:2c                    # Expected 5 GHz BSS 1 MAC address
+    5g_radio_vap2_mac: 02:02:22:9b:5d:2d                    # Expected 5 GHz BSS 2 MAC address
+    5g_radio_vap3_mac: 02:02:23:9b:5d:2e                    # Expected 5 GHz BSS 3 MAC address
+    6g_radio_mac: 02:02:30:9b:5d:29                         # Expected 6 GHz radio MAC address
+    6g_radio_vap1_mac: 02:02:31:9b:5d:2f                    # Expected 6 GHz BSS 1 MAC address
+    6g_radio_vap2_mac: 02:02:32:9b:5d:30                    # Expected 6 GHz BSS 2 MAC address
+    mld0_mac: 02:02:30:9b:5d:2a                             # Expected MLD interface MAC address
+    # Dynamic DataElements indexes - initialized to None and updated at runtime by discover_indexes()
+    controller_device_index: None                           # Dynamically discovered Controller Device index
+    extender1_device_index: None                            # Dynamically discovered Extender 1 Device index
+    extender2_device_index: None                            # Dynamically discovered Extender 2 Device index
+    extender3_device_index: None                            # Dynamically discovered Extender 3 Device index
+    2g_radio_index: None                                    # Dynamically discovered 2.4 GHz Radio index
+    5g_radio_index: None                                    # Dynamically discovered 5 GHz Radio index
+    6g_radio_index: None                                    # Dynamically discovered 6 GHz Radio index
+    2g_radio_bss_index: None                                # Dynamically discovered 2.4 GHz BSS index
+    2g_radio_vap1_bss_index: None                           # Dynamically discovered BSS index for 2g_radio_vap1_mac
+    2g_radio_vap2_bss_index: None                           # Dynamically discovered BSS index for 2g_radio_vap2_mac
+    5g_radio_bss_index: None                                # Dynamically discovered 5 GHz BSS index
+    5g_radio_vap1_bss_index: None                           # Dynamically discovered BSS index for 5g_radio_vap1_mac
+    5g_radio_vap2_bss_index: None                           # Dynamically discovered BSS index for 5g_radio_vap2_mac
+    5g_radio_vap3_bss_index: None                           # Dynamically discovered BSS index for 5g_radio_vap3_mac
+    6g_radio_bss_index: None                                # Dynamically discovered 6 GHz BSS index
+    6g_radio_vap1_bss_index: None                           # Dynamically discovered BSS index for 6g_radio_vap1_mac
+    6g_radio_vap2_bss_index: None                           # Dynamically discovered BSS index for 6g_radio_vap2_mac
+    mld_iface_index: None                                   # MLD interface index
+    backhaul_iface_index: 1.1.sta65                         # Backhaul interface index
+    profile_index: 1                                        # Profile index
+    sta_index: 1                                            # Station index
+    ip_index: 1                                             # IP index
+     
 
 extender1:
-    bridge_iface: 'brlan0'
-    bridge_ip: <ip_address>
-    wifi_ifname: 'wifi'
-    mld_ifname: 'mld'
-    mld_iface_index: 0
-    2g_bh_iface_index: 0.1
-    2g_fh_iface_index: 0.2
-    5g_bh_iface_index: 1.1
-    5g_fh_iface_index: 1.2
-    6g_bh_iface_index: 2.1
-    6g_fh_iface_index: 2.2
-    iperf_version: 3
-
-extender2:
-    bridge_iface: 'brlan0'
-    bridge_ip: <ip_address>
-    wifi_ifname: 'wifi'
-    mld_ifname: 'mld'
-    mld_iface_index: 0
-    2g_bh_iface_index: 0.1
-    2g_fh_iface_index: 0.2
-    5g_bh_iface_index: 1.1
-    5g_fh_iface_index: 1.2
-    6g_bh_iface_index: 2.1
-    6g_fh_iface_index: 2.2
-    iperf_version: 3
+    bridge_iface: 'brlan0'                                  # LAN bridge interface used by Extender 1
+    bridge_ip: <ip_address>                                   # IP address of Extender 1 bridge interface
+    wifi_ifname: 'wifi'                                     # Base Wi-Fi interface name on Extender 1
+    mld_ifname: 'mld'                                       # MLD interface name on Extender 1
+    mld_iface_index: 0                                      # MLD interface index on Extender 1
+    iperf_version: 3                                        # iperf version used by Extender 1
+    
+    
+extender2:    
+    bridge_iface: 'brlan0'                                  # LAN bridge interface used by Extender 2
+    bridge_ip: <ip_address>                                   # IP address of Extender 2 bridge interface
+    wifi_ifname: 'wifi'                                     # Base Wi-Fi interface name on Extender 2
+    mld_ifname: 'mld'                                       # MLD interface name on Extender 2
+    mld_iface_index: 0                                      # MLD interface index on Extender 2
+    iperf_version: 3                                        # iperf version used by Extender 2
+    
+extender3:    
+    bridge_iface: 'brlan0'                                  # LAN bridge interface used by Extender 3
+    bridge_ip: <ip_address>                                   # IP address of Extender 3 bridge interface
+    wifi_ifname: 'wifi'                                     # Base Wi-Fi interface name on Extender 3
+    mld_ifname: 'mld'                                       # MLD interface name on Extender 3
+    mld_iface_index: 0                                      # MLD interface index on Extender 3
+    iperf_version: 3                                        # iperf version used by Extender 3

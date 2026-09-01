@@ -62,7 +62,7 @@ class FeatureBackhaul(DatabaseModule,
              # 'Value' found -> extract and return just the value
             return output.partition('Value')[2].lstrip(' :').split()[0]
 
-    def get_backhaul_backhaulMAC(self, device: str, index: str) -> str:
+    def get_backhaul_backhaulMACAddress(self, device: str, index: str) -> str:
             zi_logger.print_context()
             connection = self.db_obj.read_from_database(device, 'connection')
             connection_obj = self.get_connection_module_object(connection)

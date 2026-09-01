@@ -101,6 +101,7 @@ class FeatureClientAssociation(DatabaseModule, ConnectionModules):
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
+        index = self.db_obj.read_from_database(device, index)
         cmd = f"rbuscli get Device.DHCPv4.Server.Pool.{index}.MaxAddress"
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
 
@@ -117,6 +118,8 @@ class FeatureClientAssociation(DatabaseModule, ConnectionModules):
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
+        index = self.db_obj.read_from_database(device, index)
+        sta_index = self.db_obj.read_from_database(device, sta_index)
         cmd = f"rbuscli get Device.DHCPv4.Server.Pool.{index}.Client.{sta_index}.Chaddr"
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
 

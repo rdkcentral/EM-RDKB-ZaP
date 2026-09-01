@@ -38,7 +38,8 @@ def test_device_id_de(initialize):
     Test case for device ID data element.
     """
     zi_logger.print_step("\n Test case for device ID data element.")
-    device_id = initialize.get_device_id('controller', "controller_device_index")
+    controller_device_index = initialize.read_from_database("controller", "controller_device_index")
+    device_id = initialize.get_device_id('controller', controller_device_index)
     if device_id is None:
         zi_logger.print_error("Failed to get device ID, skipping the test.")
     else:
@@ -121,7 +122,7 @@ def test_backhaul_backhaul_macaddress_de(initialize):
     Test case for backhaul backhaul MAC address data element.
     """
     zi_logger.print_step("\n Test case for backhaul backhaul MAC address data element.")
-    backhaul_macaddress = initialize.get_backhaul_backhaulMAC("controller","controller_device_index")
+    backhaul_macaddress = initialize.get_backhaul_backhaulMACAddress("controller","controller_device_index")
     if backhaul_macaddress is None:
         zi_logger.print_error("Backhaul backhaul MAC address data element not found.")
     else:
@@ -132,7 +133,7 @@ def test_backhaul_backhauluse_de(initialize):
     Test case for backhaul use data element.
     """
     zi_logger.print_step("\nTest case for backhaul use data element.")
-    use = initialize.get_backhaul_backhauluse("controller","controller_device_index","2g_radio_index","bss_index")
+    use = initialize.get_backhaul_backhauluse("controller","controller_device_index","2g_radio_index","2g_radio_bss_index")
     if use is None:
         zi_logger.print_error("Backhaul use data element not found.")
     else:
@@ -308,7 +309,7 @@ def test_backhaul_akmsallowed_de(initialize):
     Test case for backhaul AKMS allowed data element.
     """
     zi_logger.print_step("\nTest case for backhaul AKMS allowed data element.")
-    backhaul_akmsallowed = initialize.get_backhaul_akmsallowed("controller","controller_device_index","2g_radio_index","bss_index")
+    backhaul_akmsallowed = initialize.get_backhaul_akmsallowed("controller","controller_device_index","2g_radio_index","2g_radio_bss_index")
     if backhaul_akmsallowed is None:
         zi_logger.print_error("Backhaul AKMS allowed data element not found.")
     else:
@@ -400,7 +401,7 @@ def test_radio_bss_ssid_de(initialize):
     Test case for radio BSS SSID data element.
     """
     zi_logger.print_step("\nTest case for radio BSS SSID data element.")
-    bss_ssid = initialize.get_radio_bss_ssid("controller","controller_device_index","2g_radio_index","bss_index")
+    bss_ssid = initialize.get_radio_bss_ssid("controller","controller_device_index","2g_radio_index","2g_radio_bss_index")
     if bss_ssid is None:
         zi_logger.print_error("Radio BSS SSID data element not found.")
     else:
@@ -411,7 +412,7 @@ def test_currentoperatingprofile_opclass_de(initialize):
     Test case for current operating profile opclass data element.
     """
     zi_logger.print_step("\nTest case for current operating profile opclass data element.")
-    opclass = initialize.get_currentoperatingprofile_opclass("controller","controller_device_index","2g_radio_index","profile1_index")
+    opclass = initialize.get_currentoperatingprofile_opclass("controller","controller_device_index","2g_radio_index","profile_index")
     if opclass is None:
         zi_logger.print_error("Current operating profile opclass data element not found.")
     else:
@@ -422,7 +423,7 @@ def test_currentoperatingprofile_channel_de(initialize):
     Test case for current operating profile channel data element.
     """
     zi_logger.print_step("\nTest case for current operating profile channel data element.")
-    channel = initialize.get_currentoperatingprofile_channel("controller","controller_device_index","2g_radio_index","profile1_index")
+    channel = initialize.get_currentoperatingprofile_channel("controller","controller_device_index","2g_radio_index","profile_index")
     if channel is None:
         zi_logger.print_error("Current operating profile channel data element not found.")
     else:
@@ -433,7 +434,7 @@ def test_radio_bss_STANumberofentries_de(initialize):
     Test case for radio BSS STA number of entries data element.
     """
     zi_logger.print_step("\nTest case for radio BSS STA number of entries data element.")
-    bss_sta_numberofentries = initialize.get_radio_bss_STANumberOFEntries("controller","controller_device_index","2g_radio_index","bss_index")
+    bss_sta_numberofentries = initialize.get_radio_bss_STANumberOFEntries("controller","controller_device_index","2g_radio_index","2g_radio_bss_index")
     if bss_sta_numberofentries is None:
         zi_logger.print_error("Radio BSS STA number of entries data element not found.")
     else:
@@ -444,7 +445,7 @@ def test_radio_bss_STA_MACaddress_de(initialize):
     Test case for radio BSS STA MAC address data element.
     """
     zi_logger.print_step("\nTest case for radio BSS STA MAC address data element.")
-    bss_sta_macaddress = initialize.get_radio_bss_STA_MACAddress("controller","controller_device_index","2g_radio_index","bss_index","sta_index")
+    bss_sta_macaddress = initialize.get_radio_bss_STA_MACAddress("controller","controller_device_index","2g_radio_index","2g_radio_bss_index","sta_index")
     if bss_sta_macaddress is None:
         zi_logger.print_error("Radio BSS STA MAC address data element not found.")
     else:
@@ -580,7 +581,7 @@ def test_sta_BytesSent_de(initialize):
     Test case for STA Bytes Sent data element.
     """
     zi_logger.print_step("Test case for STA Bytes Sent data element.")
-    bytes_sent = initialize.get_sta_BytesSent('controller', "controller_device_index","2g_radio_index","bss_index","sta_index")
+    bytes_sent = initialize.get_sta_BytesSent('controller', "controller_device_index","2g_radio_index","2g_radio_bss_index","sta_index")
     if bytes_sent is None:
         zi_logger.print_error("Failed to get STA Bytes Sent, skipping the test.")
     else:
@@ -591,12 +592,11 @@ def test_sta_BytesReceived_de(initialize):
     Test case for STA Bytes Received data element.
     """
     zi_logger.print_step("Test case for STA Bytes Received data element.")
-    bytes_received = initialize.get_sta_BytesReceived('controller', "controller_device_index","2g_radio_index","bss_index","sta_index")
+    bytes_received = initialize.get_sta_BytesReceived('controller', "controller_device_index","2g_radio_index","2g_radio_bss_index","sta_index")
     if bytes_received is None:
         zi_logger.print_error("Failed to get STA Bytes Received, skipping the test.")
     else:
         zi_logger.print_success(f"STA Bytes Received: {bytes_received}")
-
 
 
 
