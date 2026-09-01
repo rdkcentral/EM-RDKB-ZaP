@@ -11,14 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from .ieee1905_utils import *
 import yaml
-
 def load_yaml(file_path):
     with open(file_path, 'r') as f:
         return yaml.safe_load(f)
-    
 def get_profile_name(profile_type):
     profile_names = {
         0x01: "Profile 1",
@@ -26,7 +23,6 @@ def get_profile_name(profile_type):
         0x03: "Profile 3"
     }
     return profile_names.get(profile_type, f"Unknown profile type: 0x{profile_type:02X}")
-
 def get_message_type_name(message_type):
     """
     Convert hex message type to human-readable string
@@ -121,7 +117,6 @@ def get_message_type_name(message_type):
         0x804D: "BSS Configuration Extended Report Message"
     }
     return message_names.get(message_type, f"Unknown message type: 0x{message_type:04X}")
-
 def get_tlv_type_name(tlv_type):
     """
     Convert hex TLV type to human-readable string
@@ -252,15 +247,12 @@ def get_tlv_type_name(tlv_type):
         0xED: "Supported Cipher Suites TLV"
     }
     return tlv_names.get(tlv_type, f"Unknown TLV type: 0x{tlv_type:02X}")
-
-
 # ---------------------------------------------------------
 # TLV length validation
 # ---------------------------------------------------------
 def validate_tlv_length(tlv_type, tlv_length):
     """
     Validate TLV length based on spec.
-
     Returns:
         Tuple of (expected_length: str, is_valid: bool)
     """
@@ -513,9 +505,3 @@ def validate_tlv_length(tlv_type, tlv_length):
     if tlv_type == TLV_TYPE_SUPPORTED_CIPHER_SUITES:
         return ("greater than 0", tlv_length > 0)   
     return ("unknown", True)
-
-
-
-
-
-

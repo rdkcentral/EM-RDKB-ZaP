@@ -14,17 +14,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from zaero.bridge.database_module import DatabaseModule
 from zaero.bridge.connection_modules import ConnectionModules
 from zaero.bridge.ui_modules import UiModules
 import zaero.utils.zi_logger as zi_logger
 import time
-
 class FeatureInterfaceGUI(DatabaseModule,
                           ConnectionModules,
                           UiModules):
-    
     def __init__(self):
         zi_logger.print_context()
         ConnectionModules.__init__(self)
@@ -32,12 +29,10 @@ class FeatureInterfaceGUI(DatabaseModule,
         UiModules.__init__(self)
         self.db_obj = self.get_database_module_object()
         zi_logger.log(f"==== db_obj : {self.db_obj}")
-
     def _create_ui_obj(self, device):
         zi_logger.print_context()
         platform = self.db_obj.read_from_database(device, 'platform')
         self.ui_obj = self.get_ui_module_object(platform)
-
     def set_ssid(self,
                 device: str,
                 index: str,
@@ -53,7 +48,6 @@ class FeatureInterfaceGUI(DatabaseModule,
         time.sleep(3)
         self.ui_obj.ui_update_input_and_save("Fronthaul", "#profile-ssid", ssid)        
         time.sleep(3)
-
     def get_ssid(self,
                  device: str,
                  index: str) -> str:
@@ -62,7 +56,6 @@ class FeatureInterfaceGUI(DatabaseModule,
         """
         zi_logger.print_context()
         raise NotImplementedError("FeatureInterfaceGUI.get_ssid() is not implemented")
-
     def check_ssid(self,
                    device: str,
                    index: str,
@@ -72,7 +65,6 @@ class FeatureInterfaceGUI(DatabaseModule,
         """
         zi_logger.print_context()
         raise NotImplementedError("FeatureInterfaceGUI.check_ssid() is not implemented")
-
     def wifi_reset(self,
                  device: str):
         """

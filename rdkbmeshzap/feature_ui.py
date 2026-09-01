@@ -14,14 +14,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from zaero.bridge.database_module import DatabaseModule
 import zaero.utils.zi_logger as zi_logger
-
 from playwright.sync_api import expect, sync_playwright, TimeoutError as PlaywrightTimeoutError
-
 import time
-
 class FeatureUi(DatabaseModule):
     def __init__(self):
         zi_logger.print_context()
@@ -33,7 +29,6 @@ class FeatureUi(DatabaseModule):
         self._browser = None
         self._context = None
         self._page = None
-
     def ui_start_playwright(self, device=None):
         zi_logger.print_context()
         try:
@@ -44,7 +39,6 @@ class FeatureUi(DatabaseModule):
         except Exception as ERR:
             zi_logger.log(f"Could not start playwright")
             raise Exception(f"ERROR : {ERR}")
-
     def ui_stop_playwright(self, device=None):
         zi_logger.print_context()
         try:
@@ -55,7 +49,6 @@ class FeatureUi(DatabaseModule):
         except Exception as ERR:
             zi_logger.log(f"Could not stop playwright")
             raise Exception(f"ERROR : {ERR}")
-
     def ui_open_browser(self, device=None):
         zi_logger.print_context()
         try:
@@ -66,7 +59,6 @@ class FeatureUi(DatabaseModule):
         except Exception as ERR:
             zi_logger.log(f"Could not open chromium browser")
             raise Exception(f"ERROR : {ERR}")
-
     def ui_close_browser(self, device=None):
         zi_logger.print_context()
         try:
@@ -78,7 +70,6 @@ class FeatureUi(DatabaseModule):
         except Exception as ERR:
             zi_logger.log("Could not close chromium browser")
             raise Exception(f"ERROR : {ERR}")
-
     def ui_open_context(self, device=None):
         zi_logger.print_context()
         try:
@@ -88,7 +79,6 @@ class FeatureUi(DatabaseModule):
         except Exception as ERR:
             zi_logger.log("Could not open new_context for the chromium browser")
             raise Exception(f"ERROR : {ERR}")
-
     def ui_close_context(self, device=None):
         zi_logger.print_context()
         try:
@@ -100,7 +90,6 @@ class FeatureUi(DatabaseModule):
         except Exception as ERR:
             zi_logger.log("Could not close new_context for the chromium browser")
             raise Exception(f"ERROR : {ERR}")
-        
     def ui_open_page(self, device=None):
         zi_logger.print_context()
         try:
@@ -112,7 +101,6 @@ class FeatureUi(DatabaseModule):
         except Exception as ERR:
             zi_logger.log("Could not open new_page in the chromium browser")
             raise Exception(f"ERROR : {ERR}")
-
     def ui_close_page(self, device=None):
         zi_logger.print_context()
         try:
@@ -123,7 +111,6 @@ class FeatureUi(DatabaseModule):
         except Exception as ERR:
             zi_logger.log("Could not close page in the chromium browser")
             raise Exception(f"ERROR : {ERR}")
-
     def ui_navigate_to_home_page(self, device):
         zi_logger.print_context()
         try:
@@ -137,7 +124,6 @@ class FeatureUi(DatabaseModule):
         except Exception as ERR:
             zi_logger.log(f"Could not open page {ip}:{port}")
             raise Exception(f"ERROR : {ERR}")
-
     def ui_navigate_to_required_page(self, page):
         zi_logger.print_context()
         try:
@@ -148,7 +134,6 @@ class FeatureUi(DatabaseModule):
         except Exception as ERR:
             zi_logger.log(f"Could not navigate to page : {page}")
             raise Exception(f"ERROR : {ERR}")
-
     def ui_update_input_and_save(self, profile, field, value):
         zi_logger.print_context()
         try:
@@ -166,34 +151,26 @@ class FeatureUi(DatabaseModule):
         except Exception as ERR:
             zi_logger.log(f"Failed to update profile settings")
             raise Exception(f"ERROR : {ERR}")
-
     def ui_wifi_reset_dialog_handler(self, dialog):
         try:
             msg = dialog.message.lower()
-
             zi_logger.log(f"Dialog Message:\n{msg}")
-
             if "resetting the wi-fi configuration" in msg:
                 dialog.accept()
                 zi_logger.log("Accepted reset confirmation dialog")
-
             elif "wi-fi configuration reset successfully" in msg:
                 dialog.accept()
                 zi_logger.log("Accepted success dialog")
-
             else:
                 zi_logger.log(f"Unknown dialog received: {msg}")
                 dialog.accept()
-
         except Exception as e:
             zi_logger.log(f"Dialog handler failed: {e}")
-
     def ui_set_dialog_handler(self):
         try:
             self._page.on("dialog", self.ui_wifi_reset_dialog_handler)
         except Exception as e:
             zi_logger.log(f"Failed to set dialog handler: {e}")
-
     def ui_click_button(self, btn_name):
         zi_logger.print_context()
         try:        

@@ -11,22 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 ieee1905_utils.py
-
 Reusable constants for IEEE 1905.1 / EasyMesh frame validation.
-
 Currently provides:
 - IEEE 1905.1 control multicast address constant
 - TLV type constants
 - Message type constants
 """
-
 # ---------------------------------------------------------
 # Constants
 # ---------------------------------------------------------
-
 # TLV Types
 TLV_TYPE_END_OF_MESSAGE = 0x00
 TLV_TYPE_AL_MAC_ADDRESS = 0x01
@@ -153,8 +148,6 @@ TLV_TYPE_RSN_DIAGNOSTIC_REPORT = 0xEA
 TLV_TYPE_RSN_PARAMETERS_CONFIGURATION = 0xEB
 TLV_TYPE_BSS_ADVANCED_CONFIGURATION = 0xEC
 TLV_TYPE_SUPPORTED_CIPHER_SUITES = 0xED
-
-
 #MSG Types
 MSG_TYPE_TOPOLOGY_DISCOVERY = 0x0000
 MSG_TYPE_TOPOLOGY_NOTIFICATION = 0x0001

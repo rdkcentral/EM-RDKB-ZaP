@@ -14,11 +14,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import pytest
 import time
 from zaero.utils import zi_logger
-
 def test_config_ssid_with_extenders(initialize):
     ssid = initialize.get_random_ssid()
     initialize.set_ssid("controller", "mld_iface_index", ssid, 'gui')

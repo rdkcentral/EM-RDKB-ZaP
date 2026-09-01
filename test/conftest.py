@@ -20,7 +20,6 @@ import time
 import pytest_html
 from zaero.utils import zi_logger
 from pathlib import Path
-
 @pytest.fixture(scope='session', autouse=True)
 def initialize():
     zi_logger.set_log_state(False)
@@ -47,7 +46,69 @@ def initialize():
     zaero_obj.ui_close_browser("controller")
     zaero_obj.ui_stop_playwright("controller")
     del(zaero_obj)
-
+@pytest.fixture(scope="session", autouse=True)
+def discover_indexes(initialize):
+    zi_logger.print_step("========== Discovering Device, Radio and BSS Indexes ==========")
+    # Device Index
+    devices = initialize.get_testbed_devices()
+    for device in devices:
+        al_mac = initialize.get_al_mac_address(device)
+        zi_logger.print_step(f"{device} AL MAC: {al_mac}")
+        device_index = None
+        if device == "controller":
+            for i in range(1, 10):
+                controller_al_mac_de = initialize.get_controller_id("controller")
+                if al_mac.lower() == controller_al_mac_de.lower():
+                    device_index = i
+                    break
+        else:
+            for i in range(1, 10):
+                extender_al_mac_de = initialize.get_device_id("controller", str(i))
+                if al_mac.lower() == extender_al_mac_de.lower():
+                    device_index = i
+                    break
+        if device_index is None:
+            zi_logger.print_error(f"{device} AL MAC {al_mac} not found")
+        else:
+            initialize.write_into_database("controller",f"{device}_device_index",str(device_index))
+            zi_logger.print_success(f"{device} Device Index = {device_index}")
+    # Radio Index
+    radio_config = {"2g": {"mac_addr": "2g_radio_mac","index_key": "2g_radio_index"},
+                    "5g": {"mac_addr": "5g_radio_mac","index_key": "5g_radio_index"},
+                    "6g": {"mac_addr": "6g_radio_mac","index_key": "6g_radio_index"}}
+    for band, config in radio_config.items():
+        radio_mac = initialize.read_from_database("controller",config["mac_addr"])
+        radio_index = None
+        for i in range(1, 10):
+            radio_id_de = initialize.get_radio_id("controller","controller_device_index",str(i))
+            if radio_mac.lower() == radio_id_de.lower():
+                radio_index = i
+                break
+        if radio_index is None:
+            zi_logger.print_error(f"{band.upper()} Radio MAC {radio_mac} not found")
+        else:
+            initialize.write_into_database("controller",config["index_key"],str(radio_index))
+            zi_logger.print_success(f"{band.upper()} Radio Index = {radio_index}")
+    # BSS Index
+    bss_config = {"2g": {"radio_index": "2g_radio_index","bss_macs": ["2g_radio_mac","2g_radio_vap1_mac", "2g_radio_vap2_mac"]},
+                  "5g": {"radio_index": "5g_radio_index","bss_macs": ["5g_radio_mac","5g_radio_vap1_mac","5g_radio_vap2_mac"]}, # 5g_radio_vap3_mac is type managed
+                  "6g": {"radio_index": "6g_radio_index","bss_macs": ["6g_radio_mac","6g_radio_vap1_mac","6g_radio_vap2_mac"]}}
+    for band, config in bss_config.items():
+        radio_index = initialize.read_from_database("controller",config["radio_index"])
+        for mac_addr in config["bss_macs"]:
+            expected_bssid = initialize.read_from_database("controller",mac_addr)
+            bss_index = None
+            for i in range(1, 20):
+                actual_bssid = initialize.get_bss_bssid("controller","controller_device_index",radio_index, str(i))
+                if (actual_bssid and expected_bssid.lower() == actual_bssid.lower()):
+                    bss_index = i
+                    break
+            if bss_index is None:
+                zi_logger.print_error(f"{band.upper()} BSSID {expected_bssid} not found")
+            else:
+                radio_name = mac_addr.replace("_mac", "")
+                initialize.write_into_database("controller",f"{radio_name}_bss_index",str(bss_index))
+                zi_logger.print_success(f"{band.upper()} {radio_name} -> Radio.{radio_index}.BSS.{bss_index}")
 @pytest.fixture(scope='function', autouse=True)
 def test_setup(initialize):
     initialize.ui_open_context("controller")
@@ -61,34 +122,27 @@ def test_setup(initialize):
         initialize.stop_frame_capture("controller")
     except Exception as err:
         zi_logger.log(f"stop_frame_capture failed during teardown: {err}")
-
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_setup(item):
     # Start each test with a clean failure buffer.
     zi_logger.clear_error_logs()
     yield
-
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item, call):
     outcome = yield
     report = outcome.get_result()
-
     if report.when != "call":
         return
-
     errors = zi_logger.get_error_logs()
     if errors:
         report.outcome = "failed"
         report.longrepr = "Error logs found:\n" + "\n".join(errors)
-
     # Make the report available to fixtures/teardown that want to
     # inspect the outcome of the test they're running in.
     setattr(item, "rep_call", report)
-
     extra = getattr(report, "extras", None)
     if extra is None:
         extra = getattr(report, "extra", [])
-
     if report.failed:
         message = '<span style="color:red; font-weight:bold;">FAIL</span>'
     elif report.passed:
@@ -97,22 +151,15 @@ def pytest_runtest_makereport(item, call):
         message = '<span style="color:orange; font-weight:bold;">SKIPPED</span>'
     else:
         message = '<span>UNKNOWN</span>'
-
     extra.append(pytest_html.extras.html(message))
     report.extras = extra
-    
-
-
 def pytest_html_results_table_html(report, data):
     if report.when != "call":
         return
-
     new_data = []
-
     # Failure traceback (includes the zi_logger error summary above).
     if report.failed and hasattr(report, "longrepr"):
         new_data.append(f"<div>{report.longrepr}</div>")
-
     # Colorize captured stdout lines emitted by zi_logger.
     if hasattr(report, "capstdout"):
         formatted_lines = []
@@ -127,9 +174,7 @@ def pytest_html_results_table_html(report, data):
                 )
             else:
                 formatted_lines.append(line)
-
         html = "<br>".join(formatted_lines)
         new_data.append(f"<div>{html}</div>")
-
     data.clear()
     data.extend(new_data)

@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from pathlib import Path
 import pytest
 from scapy.all import rdpcap
@@ -20,9 +19,7 @@ from scapy.plist import PacketList
 from .message_verify import *
 import pytest_check as check
 from zaero.utils import zi_logger
-
 ETHERTYPE_1905 = 0x893A
-
 def reassemble_packets(pcap_local_dir):
     packets = rdpcap(pcap_local_dir)
     reassembled_packets = PacketList()
@@ -69,7 +66,6 @@ def reassemble_packets(pcap_local_dir):
             reassembled_packets.append(reassembled_pkt)
             del fragment_store[key]
     return reassembled_packets
-
 #message presence checker function to check if the message is present in the captured packets. if present return list of payload of the same message type
 #  else return None
 def check_message_presence(reassembled_packets, message_type, src_mac=None, dst_mac=None):
@@ -92,7 +88,6 @@ def check_message_presence(reassembled_packets, message_type, src_mac=None, dst_
             continue
         matching_payloads.append(payload)
     return matching_payloads or None
-
 #return the list of tlvs present in the message payload. 
 def check_tlv_presence(message_payload, tlv_type=None):
     if len(message_payload) < 8:
@@ -114,19 +109,15 @@ def check_tlv_presence(message_payload, tlv_type=None):
             break
         index = end
     return tlvs or None
-
 def get_tlv_from_config():
     yaml_path = Path(__file__).with_name("config_ver6.yaml")
     tlv_data = load_yaml(str(yaml_path))
     return tlv_data
-
 def parse_tlvs(payload):
     """
     Parse TLVs from IEEE1905 payload.
-
     Input:
         payload (bytes)
-
     Returns:
         found_tlvs (list)
         tlv_lengths (list)
@@ -140,7 +131,6 @@ def parse_tlvs(payload):
     tlv_lengths = []
     tlv_values = []  # New list to store TLV values
     found_end_of_message = False
-
     while current_position < len(payload):
         # Check TLV header size
         if current_position + 3 > len(payload):
@@ -162,14 +152,11 @@ def parse_tlvs(payload):
             break
         current_position += 3 + tlv_length
     return found_tlvs, tlv_lengths, tlv_values, found_end_of_message, None
-
 def extract_profile_type(filtered_packets):
     """
     Extract profile type from 1905 messages.
-    
     Args:
         filtered_packets: list of reassembled and filtered packets
-    
     Returns:
         Profile type value if found, None otherwise
     """
@@ -209,20 +196,16 @@ def extract_profile_type(filtered_packets):
     if not tlv_presence:
         zi_logger.print_error("Multi-AP Profile TLV not found")
         pytest.fail("Multi-AP Profile TLV not found", pytrace=False)
-
 def verify_tlv_presence_with_type(requested_message_type, tlv_to_verify, payload):
     """
     Verify if a specific TLV type is present in a message
-    
     Args:
         requested_message_type: CMDU message type to search for
         tlv_to_verify: TLV type to verify presence
         payload: The payload of the message to search within
-    
     Returns:
         True if TLV is found, False otherwise
     """
-
     tlv_presence_flag = False
     tlv_length_valid_flag = False
     expected_tlv_length = ""
@@ -244,17 +227,14 @@ def verify_tlv_presence_with_type(requested_message_type, tlv_to_verify, payload
     if not tlv_presence_flag:
         zi_logger.print_error(f"{get_tlv_type_name(tlv_to_verify)} not found in {get_message_type_name(requested_message_type)}")
         return False, f"{get_tlv_type_name(tlv_to_verify)} not found in {get_message_type_name(requested_message_type)}"
-
 def verify_no_additional_tlvs(message_type, mandatory_tlvs, optional_tlvs, payload):
     """
     Check for additional TLVs in a message beyond the mandatory ones.
-
     Input:
         message_type (int): CMDU message type to search for
         mandatory_tlvs (set): Set of mandatory TLV types
         optional_tlvs (set): Set of optional TLV types
         payload (bytes): The payload of the CMDU message to analyze
-
     Returns:
         additional_tlvs (set): Set of additional TLV types found beyond mandatory ones, or empty if none found
     """
@@ -272,17 +252,14 @@ def verify_no_additional_tlvs(message_type, mandatory_tlvs, optional_tlvs, paylo
     else:
         zi_logger.print_success(f"No extra TLVs found beyond mandatory and optional tlvs in {get_message_type_name(message_type)}.")
         return True
-
 def validate_1905_message(tlv_data_from_config, profiletype, message, payload, controller_or_agent = None):
     """
     Validate a 1905 message against expected mandatory and optional TLVs based on profile and message type.
-
     Args:
         tlv_data_from_config: TLV data loaded from configuration
         profiletype: Multi-AP profile type (1, 2, or 3)
         message: CMDU message type to validate
         controller_or_agent (str, optional): Specify "controller" or "agent" to validate
-
     Returns: None. Prints validation results and errors.
     """
     message_type_string = get_message_type_name(message)
@@ -321,7 +298,6 @@ def validate_1905_message(tlv_data_from_config, profiletype, message, payload, c
     else:
         mandatory = message_cfg.get("mandatory_tlvs", []) or []
         optional = message_cfg.get("optional_tlvs", []) or []
-    
     if not mandatory:
         zi_logger.log(f"No mandatory TLVs defined for {message_type_string} in the profile. Skipping mandatory TLV presence verification.")
     else:
@@ -333,7 +309,6 @@ def validate_1905_message(tlv_data_from_config, profiletype, message, payload, c
             check.equal(tlv_validation_result, True, f"\nFail: {reason}")
     zi_logger.log(f"Analyzing the {message_type_string}" +(f" from {controller_or_agent}" if controller_or_agent else "")+" to check for any unexpected TLVs that are not defined as mandatory or optional in the profile")
     check.equal(verify_no_additional_tlvs(message, mandatory, optional, payload), True, f"\nFail: Extra TLVs found in {message_type_string}" +(f" from {controller_or_agent}" if controller_or_agent else "")+ f" that are not listed as mandatory or optional in the profile definition.")
-
 def packet_analyzer(pcap_local_dir, ctrl_al_mac=None, extender_al_mac=None):
     reassembled_packets = reassemble_packets(pcap_local_dir)
     #add logic to print the message types in the captured packets and its count
@@ -356,7 +331,6 @@ def packet_analyzer(pcap_local_dir, ctrl_al_mac=None, extender_al_mac=None):
            ((pkt[Ether].src == ctrl_al_mac.lower() and pkt[Ether].dst == extender_al_mac.lower()) or
             (pkt[Ether].src == extender_al_mac.lower() and pkt[Ether].dst == ctrl_al_mac.lower()))
     ]
-
     if not filtered_packets:
         pytest.fail(f"No messages between controller {ctrl_al_mac} and agent {extender_al_mac} found in the capture file.", pytrace=False)
     profiletype = extract_profile_type(filtered_packets)

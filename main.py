@@ -14,12 +14,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import pytest
 import datetime
 from pathlib import Path
 import os
-
 if __name__ == "__main__":
     BASE_DIR = Path(__file__).resolve().parent
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -32,12 +30,12 @@ if __name__ == "__main__":
     print(f"\n[INFO] Test Run Dir: {run_dir}\n")    
     raise SystemExit(pytest.main([
         "-v",
-#        f"{BASE_DIR}/test/test_plugin_arch.py",
-#        f"{BASE_DIR}/test/test_ssid_config.py",
-#        f"{BASE_DIR}/test/test_ssid_config_packet_capture.py",
-#        f"{BASE_DIR}/test/test_tunneling.py",
-#        f"{BASE_DIR}/test/test_tunneling_and_reboot.py",
-        f"{BASE_DIR}/test/ref_test/test_ssid_config_packet_analyzer_usage.py",
+        f"{BASE_DIR}/test/ref_test/test_plugin_arch.py",
+        f"{BASE_DIR}/test/ref_test/test_ssid_config.py",
+        f"{BASE_DIR}/test/ref_test/test_ssid_config_packet_capture.py",
+        f"{BASE_DIR}/test/ref_test/test_tunneling.py",
+        f"{BASE_DIR}/test/ref_test/test_tunneling_and_reboot.py",
+        f"{BASE_DIR}/test/test_dataelements.py",
         f"--html={reports_path}/report.html",
         "--self-contained-html",
         "--log-cli-level=INFO",
