@@ -52,6 +52,217 @@ class FeatureInterfaceCLI(DatabaseModule,
             raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
         return str(output).strip()
 
+    def get_file_presence_status(self,
+                          device: str,
+                          file_path: str) -> bool:
+        """
+        To check if a specific file exists on the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        command = f"python3 -c \"import os; print(os.path.exists('{file_path}'))\""
+        output, error = connection_obj.execute_command(command,
+                                                   return_stderr=True)
+        if error != '':
+            raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
+        return output.strip() == 'True'
+
+    def get_file_list(self,
+                   device: str,
+                   directory_path: str) -> list:
+        """
+        To list all files in a specific directory on the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        command = f"ls {directory_path}"
+        output, error = connection_obj.execute_command(command,
+                                                   return_stderr=True)
+        if error != '':
+            raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
+        # Normalize output and return a clean list. If the directory is empty,
+        # `ls` produces no stdout (empty string) so return an empty list instead
+        # of ['']. Use splitlines() to handle different newline styles and
+        # filter out any empty strings.
+        # If there's no stdout (empty directory), return None as requested.
+        if not output:
+            return None
+        entries = [entry for entry in output.splitlines() if entry]
+        return entries if entries else None
+
+    def get_backhaul_status(self,
+                                 device: str) -> bool:
+        """
+        To check the backhaul connection status of the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        command = "iw dev wifi1.3 link"  # Replace with the actual command
+        output, error = connection_obj.execute_command(command,
+                                                   return_stderr=True)
+        if error != '':
+            raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
+        return 'Connected' in output  # Adjust the condition based on the actual command output
+
+    def send_file(self,
+                  device: str,
+                  file_path: str):
+        """
+        To send a file to the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        command = f"scp {file_path} {device}:/tmp/"
+        _, error = connection_obj.execute_command(command,
+                                              return_stderr=True)
+        if error != '':
+            raise RuntimeError(f"Command execution failed : {command}. stderr: {error.strip()}")
+
+    def copy_file_to_remote(self,
+                            device: str,
+                            remote_device_ip: str,
+                            user: str,
+                            local_file_path: str,
+                            remote_file_path: str):
+        """
+        To copy a file from the local system to the remote device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        command = f"scp {local_file_path} {user}@{remote_device_ip}:{remote_file_path}"
+        _, error = connection_obj.execute_command(command,
+                                              return_stderr=True)
+        if error != '':
+            raise RuntimeError(f"Command execution failed : {command}. stderr: {error.strip()}")
+    def start_monitoring_service(self,
+                                 device: str) -> bool:
+        """
+        To start the monitoring service on the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        commands = ["systemctl daemon-reload",
+        "systemctl enable monitor_service.service",
+        "systemctl start monitor_service.service",
+        ]
+
+        for command in commands:
+            _, error = connection_obj.execute_command(command,
+                                                return_stderr=True)
+            if error != '':
+                raise RuntimeError(f"Command execution failed : {command}. stderr: {error.strip()}")
+
+        command  = "systemctl status monitor_service.service"
+        _, error = connection_obj.execute_command(command,
+                                              return_stderr=True)
+        if error != '':
+            raise RuntimeError(f"Command execution failed : {command}. stderr: {error.strip()}")
+        return True
+
+    def stop_monitoring_service(self,
+                                device: str) -> bool:
+        """
+        To stop the monitoring service on the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        command = "systemctl stop monitor_service.service"
+
+        _, error = connection_obj.execute_command(command,
+                                            return_stderr=True)
+        if error != '':
+            raise RuntimeError(f"Command execution failed : {command}. stderr: {error.strip()}")
+
+        command  = "systemctl status monitor_service.service"
+        _, error = connection_obj.execute_command(command,
+                                              return_stderr=True)
+        if error != '':
+            raise RuntimeError(f"Command execution failed : {command}. stderr: {error.strip()}")
+        return True
+
+    def get_time_stamp(self,
+                       device: str) -> float:
+        """
+        To get the current timestamp from the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        # command = "date +%s"
+        command = "python3 -c \"from datetime import datetime; print(datetime.now().timestamp())\""
+        output, error = connection_obj.execute_command(command,
+                                                   return_stderr=True)
+        if error != '':
+            raise RuntimeError(f"Command execution failed : {command}. stderr: {error.strip()}")
+        return float(output.strip())
+
+    def get_file_modified_time(self,
+                               device: str,
+                               file_path: str) -> float:
+        """
+        To get the last modified time of a specific file on the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        command = (
+            f"python3 -c \"from pathlib import Path; "
+            f"print(Path('{file_path}').stat().st_mtime)\""
+        )
+        output, error = connection_obj.execute_command(command,
+                                                   return_stderr=True)
+        if error != '':
+            raise RuntimeError(f"Command execution failed : {command}. stderr: {error.strip()}")
+        return float(output.strip())
+
+    def get_operating_channel(self,
+                            device: str) -> int:
+        """
+        To get the operating channel of the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        command = r"iw dev mld0 info | awk -F'[ ()]+' '/channel/ && $4 >= 2400 && $4 <= 2483.5 {print $3}'"
+        output, error = connection_obj.execute_command(command,
+                                                   return_stderr=True)
+        if error != '':
+            raise RuntimeError(f"Command execution failed : {command}. stderr: {error.strip()}")
+        return int(output.strip())
+
+    def get_mld_status(self,
+                        device: str) -> bool:
+        """
+        To get the current SSID status on the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        command = f"iw dev mld0 info | grep -q 'MLD with links:' && echo True || echo False"
+        output, error = connection_obj.execute_command(command,
+                                                   return_stderr=True)
+        if error != '':
+            raise RuntimeError(f"Command execution failed : {command}. stderr: {error.strip()}")
+        return str(output).strip() == 'True'
+    
     def set_ssid(self,
                  device: str,
                  index: str,
