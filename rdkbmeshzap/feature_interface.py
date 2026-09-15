@@ -39,6 +39,32 @@ class FeatureInterface(FeatureInterfaceModules):
         al_mac = iface_obj.get_al_mac_address(device)
         return al_mac
 
+    def get_iw_dev_output(self, device: str, iface: str = None, method: str = 'cli') -> str:
+        """
+        To get `iw dev` output, or the station dump for a specific interface.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_iw_dev_output(device, iface)
+
+    def get_iw_dev_link_output(self, device: str, iface: str, method: str = 'cli') -> str:
+        """Get `iw dev <interface> link` output for a device."""
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_iw_dev_link_output(device, iface)
+
+    def get_cpu_utilization(self, device: str, method: str = 'cli') -> str:
+        """Get one non-interactive CPU snapshot from the device."""
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_cpu_utilization(device)
+
+    def get_memory_utilization(self, device: str, method: str = 'cli') -> str:
+        """Get one memory snapshot from the device."""
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_memory_utilization(device)
+
     def set_ssid(self,
                  device: str,
                  index: str,
