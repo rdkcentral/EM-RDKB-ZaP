@@ -37,7 +37,23 @@ if __name__ == "__main__":
 #        f"{BASE_DIR}/test/test_ssid_config_packet_capture.py",
 #        f"{BASE_DIR}/test/test_tunneling.py",
 #        f"{BASE_DIR}/test/test_tunneling_and_reboot.py",
-        f"{BASE_DIR}/test/ref_test/test_ssid_config_packet_analyzer_usage.py",
+#        f"{BASE_DIR}/test/ref_test/test_ssid_config_packet_analyzer_usage.py",
+
+       f"{BASE_DIR}/test/testscripts/scale_validation_stability/test_controller_agent_connectivity.py",
+       f"{BASE_DIR}/test/testscripts/scale_validation_stability/test_client_association.py", 
+       f"{BASE_DIR}/test/testscripts/scale_validation_stability/test_cpu_utilization.py",
+       f"{BASE_DIR}/test/testscripts/scale_validation_stability/test_memory_utilization.py",   
+       f"{BASE_DIR}/test/testscripts/scale_validation/test_client_association_baseline.py",
+       f"{BASE_DIR}/test/testscripts/scale_validation/test_controller_agent_connectivity_baseline.py",
+       f"{BASE_DIR}/test/testscripts/link_stability/test_fronthaul_client_connectivity_stability.py",
+       f"{BASE_DIR}/test/testscripts/link_stability/test_fronthaul_phyrate_stability.py",
+       f"{BASE_DIR}/test/testscripts/link_stability/test_fronthaul_rssi_stability.py",
+       f"{BASE_DIR}/test/testscripts/link_stability/test_backhaul_link_stability.py",
+       f"{BASE_DIR}/test/testscripts/link_stability/test_backhaul_rssi_stability.py",
+       
+
+# 
+
         f"--html={reports_path}/report.html",
         "--self-contained-html",
         "--log-cli-level=INFO",
