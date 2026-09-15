@@ -32,6 +32,22 @@ class FeatureInterfaceDE(DatabaseModule,
         self.db_obj = self.get_database_module_object()
         zi_logger.log(f"==== db_obj : {self.db_obj}")
 
+    def get_ssid_status(self,
+                        device: str) -> bool:
+        """
+        To get the current SSID status on the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        command = f"dmcli eRT getv Device.WiFi.DataElements.Network.SSID.1.Enable | grep 'value:' | awk -F': ' '{{print $3}}'"
+        output, error = connection_obj.execute_command(command,
+                                                   return_stderr=True)
+        if error != '':
+            raise RuntimeError(f"Command execution failed : {command}")
+        return str(output).strip() == 'true'
+
     def set_ssid(self,
                  device: str,
                  index: str,

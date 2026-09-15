@@ -60,7 +60,7 @@ class FeatureUi(DatabaseModule):
         zi_logger.print_context()
         try:
             if not self._browser:
-                self._browser = self._playwright.chromium.launch(headless=True)
+                self._browser = self._playwright.chromium.launch(headless=False)
         except PlaywrightTimeoutError as e:
             raise Exception(f"Timeout while launching chromium browser: {e}")
         except Exception as ERR:
@@ -204,3 +204,200 @@ class FeatureUi(DatabaseModule):
         except Exception as ERR:
             zi_logger.log(f"Failed to reset WiFi")
             raise Exception(f"ERROR : {ERR}")
+
+    def set_channel_preference(self, uncheck_channel: int, check_channel: int, priority: int):
+        """
+        Uncheck the checkbox for `uncheck_channel`, check the checkbox for `check_channel`,
+        and set the inline preference select for `check_channel` to `priority`.
+        Then click the save button `#save-profile-settings`.
+        """
+        zi_logger.print_context()
+        try:
+            # uncheck previous channel if checked
+            uncheck_sel = f"div.list-row[data-channel=\"{uncheck_channel}\"] input.ch-check"
+            if self._page.locator(uncheck_sel).count() > 0:
+                if self._page.locator(uncheck_sel).is_checked():
+                    self._page.locator(uncheck_sel).click()
+
+            # check desired channel
+            check_sel = f"div.list-row[data-channel=\"{check_channel}\"] input.ch-check"
+            if self._page.locator(check_sel).count() > 0:
+                if not self._page.locator(check_sel).is_checked():
+                    self._page.locator(check_sel).click()
+            # set preference dropdown for checked channel
+            # the select is inside the same row with class pref-inline-dd
+            pref_select = f"div.list-row[data-channel=\"{check_channel}\"] select.pref-inline-dd"
+            # if the pref-choose button needs to be clicked to enable the select, click it
+            pref_btn = f"div.list-row[data-channel=\"{check_channel}\"] button.pref-choose"
+            if self._page.locator(pref_btn).count() > 0 and self._page.locator(pref_btn).is_enabled():
+                try:
+                    self._page.locator(pref_btn).click()
+                except Exception:
+                    pass
+            if self._page.locator(pref_select).count() > 0:
+                # ensure select is visible/enabled
+                self._page.locator(pref_select).evaluate("el => el.removeAttribute('hidden')")
+                self._page.locator(pref_select).select_option(str(priority))
+
+            # click save Apply Radio Settings save-radio-settings
+            if self._page.locator("#save-radio-settings").count() > 0:
+                # wait for it to be enabled then click
+                try:
+                    self._page.wait_for_selector("#save-radio-settings:not([disabled])", timeout=5000)
+                except Exception:
+                    pass
+                self._page.locator("#save-radio-settings").click()
+        except PlaywrightTimeoutError as e:
+            raise Exception(f"Timeout occurred while setting channel preference: {e}")
+        except Exception as ERR:
+            zi_logger.log(f"Failed to set channel preference: {ERR}")
+            raise Exception(f"ERROR : {ERR}")
+
+
+    def toggle_network_profile(self, profile, enable: bool):
+        """
+        Toggle the enable/disable checkbox for a network profile and save.
+
+        `profile` can be the profile name or identifier used in the UI.
+        `enable` True to enable the profile, False to disable.
+        """
+        zi_logger.print_context()
+        try:
+            if not self._page:
+                raise Exception("UI page not initialized")
+            # attempt direct match first
+            card_locator = self._page.locator(f".profile-card:has-text('{profile}')")
+            if card_locator.count() == 0:
+                # fallback: iterate all profile cards and match header h4 text (case-insensitive, substrings)
+                all_cards = self._page.locator(".profile-card")
+                found = None
+                for idx in range(all_cards.count()):
+                    card = all_cards.nth(idx)
+                    try:
+                        title_loc = card.locator(".profile-header h4")
+                        if title_loc.count() > 0:
+                            title = title_loc.first.inner_text().strip()
+                        else:
+                            title = card.inner_text().strip()
+                    except Exception:
+                        title = card.inner_text().strip()
+                    if profile.lower() in (title or "").lower():
+                        found = card
+                        break
+                if not found:
+                    raise Exception(f"Profile not found: {profile}")
+                checkbox = found.locator("input[type='checkbox']")
+            else:
+                checkbox = card_locator.locator("input[type='checkbox']")
+            chk_count = checkbox.count()
+            zi_logger.log(f"toggle_network_profile: profile='{profile}' card_found={1 if 'checkbox' in locals() else 0} checkbox_count={chk_count}")
+            if chk_count == 0:
+                # try alternate toggle control inside card (styled slider)
+                zi_logger.log("checkbox not found, attempting to locate toggle-slider or label")
+                slider = None
+                try:
+                    card = found if 'found' in locals() and found is not None else card_locator
+                    slider = card.locator(".toggle-slider")
+                    if slider.count() == 0:
+                        slider = card.locator("label.toggle-switch")
+                except Exception:
+                    slider = None
+                if slider and slider.count() > 0:
+                    zi_logger.log("Found toggle-slider/label, will click it instead of checkbox")
+                    # attempt to click slider/label
+                    try:
+                        # save debug screenshot before click
+                        pass
+                        slider.first.click()
+                        # wait briefly
+                        self._page.wait_for_timeout(1000)
+                    except Exception as e:
+                        zi_logger.log(f"Failed to click slider for profile {profile}: {e}")
+                        raise
+                else:
+                    raise Exception(f"Enable/disable checkbox not found for profile: {profile}")
+            else:
+                is_checked = checkbox.is_checked()
+            # only click if current state differs from desired
+            desired_state = bool(enable)
+            if (is_checked is None and desired_state) or (is_checked is not None and ((desired_state and not is_checked) or (not desired_state and is_checked))):
+                # choose the best clickable target: checkbox if visible/enabled, else slider/label
+                card = found if 'found' in locals() and found is not None else card_locator
+                chk = card.locator("input[type='checkbox']")
+                click_target = None
+                try:
+                    if chk.count() > 0 and chk.first.is_visible() and chk.first.is_enabled():
+                        click_target = chk.first
+                    else:
+                        alt = card.locator(".toggle-slider")
+                        if alt.count() > 0 and alt.first.is_visible() and alt.first.is_enabled():
+                            click_target = alt.first
+                        else:
+                            lbl = card.locator("label.toggle-switch")
+                            if lbl.count() > 0 and lbl.first.is_visible() and lbl.first.is_enabled():
+                                click_target = lbl.first
+                except Exception:
+                    click_target = None
+
+                if click_target is None:
+                    # as a last resort, try clicking the checkbox even if not visible
+                    try:
+                        chk.first.click()
+                    except Exception as e:
+                        zi_logger.log(f"No clickable target found for profile {profile}: {e}")
+                        raise
+                else:
+                    try:
+                        click_target.click()
+                    except Exception as e:
+                        zi_logger.log(f"Click on chosen target failed for profile {profile}: {e}")
+                        raise
+            # click save-profile-settings if available and wait for it to be enabled
+            if self._page.locator("#save-profile-settings").count() > 0:
+                try:
+                    self._page.wait_for_selector("#save-profile-settings:not([disabled])", timeout=7000)
+                    self._page.locator("#save-profile-settings").click()
+                except Exception:
+                    # if not enabled, still attempt to click
+                    try:
+                        self._page.locator("#save-profile-settings").click()
+                    except Exception:
+                        zi_logger.log("Could not click save-profile-settings")
+
+            # Wait for the checkbox state to reflect desired value, poll until timeout
+            desired = bool(enable)
+            end_time = time.time() + 10
+            last_state = None
+            while time.time() < end_time:
+                try:
+                    # re-query checkbox (in case DOM was re-rendered)
+                    card = found if 'found' in locals() and found is not None else card_locator
+                    chk = card.locator("input[type='checkbox']")
+                    if chk.count() == 0:
+                        # try slider state by checking aria-checked on label or input
+                        lbl = card.locator("label.toggle-switch")
+                        if lbl.count() > 0:
+                            aria = lbl.first.get_attribute('aria-checked')
+                            current = (aria == 'true')
+                        else:
+                            current = None
+                    else:
+                        current = chk.first.is_checked()
+                    last_state = current
+                    if current is not None and current == desired:
+                        break
+                except Exception:
+                    pass
+                time.sleep(0.5)
+            pass
+            if last_state == desired:
+                return True
+            else:
+                raise Exception(f"Timeout waiting for profile '{profile}' state to become {desired}")
+        except PlaywrightTimeoutError as e:
+            raise Exception(f"Timeout while toggling profile: {profile}")
+        except Exception as ERR:
+            zi_logger.log(f"Failed to toggle profile {profile}: {ERR}")
+            raise Exception(f"ERROR : {ERR}")
+
+

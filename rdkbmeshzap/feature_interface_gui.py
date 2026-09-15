@@ -88,3 +88,31 @@ class FeatureInterfaceGUI(DatabaseModule,
         time.sleep(3)
         self.ui_obj.ui_click_button("#reset-btn")        
         time.sleep(3)
+
+    def toggle_network_profile(self,
+                               device: str,
+                               profile: str,
+                               enable: bool):
+        """
+        To toggle network profile in the GUI Application
+        """
+        zi_logger.print_context()
+        self._create_ui_obj(device)
+        self.ui_obj.ui_navigate_to_home_page(device)
+        time.sleep(3)
+        self.ui_obj.ui_navigate_to_required_page("Wireless Settings")
+        time.sleep(3)
+        self.ui_obj.toggle_network_profile(profile, enable)
+        time.sleep(3)
+
+
+    def set_channel_preference(self, device: str, uncheck_channel: int, check_channel: int, priority: int):
+        zi_logger.print_context()
+        zi_logger.print_context()
+        self._create_ui_obj(device)
+        self.ui_obj.ui_navigate_to_home_page(device)
+        time.sleep(3)
+        self.ui_obj.ui_navigate_to_required_page( "Wireless Settings")
+        time.sleep(3)
+        self.ui_obj.set_channel_preference(uncheck_channel, check_channel, priority)
+        time.sleep(3)
