@@ -16,7 +16,7 @@
 # limitations under the License.
 
 from rdkbmeshzap.feature_interface_modules import FeatureInterfaceModules
-import zaero.utils.zi_logger as zi_logger
+from rdkbmeshzap import zi_logger
 
 class FeatureInterface(FeatureInterfaceModules):
     
@@ -38,6 +38,11 @@ class FeatureInterface(FeatureInterfaceModules):
         iface_obj = self.get_feature_interface_module_object(method)
         al_mac = iface_obj.get_al_mac_address(device)
         return al_mac
+
+    def verify_service_status(self, device: str, service_name: str,
+                              method: str = 'cli'):
+        iface_obj = self.get_feature_interface_module_object(method)
+        iface_obj.verify_service_status(device, service_name)
 
     def set_ssid(self,
                  device: str,
@@ -62,6 +67,14 @@ class FeatureInterface(FeatureInterfaceModules):
         iface_obj = self.get_feature_interface_module_object(method)
         ssid = iface_obj.get_ssid(device, index)
         return ssid
+
+    def get_fronthaul_credentials(self, device: str, method: str = 'cli') -> tuple:
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_fronthaul_credentials(device)
+
+    def get_fronthaul_bssids(self, device: str, method: str = 'cli') -> list:
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_fronthaul_bssids(device)
 
     def check_ssid(self,
                    device: str,
@@ -89,3 +102,19 @@ class FeatureInterface(FeatureInterfaceModules):
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
         iface_obj.wifi_reset(device)
+
+    def get_ap_metrics_reporting_interval(self,
+                                          device: str,
+                                          method: str = 'gui') -> str:
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_ap_metrics_reporting_interval(device)
+
+    def set_ap_metrics_reporting_interval(self,
+                                          device: str,
+                                          interval: int,
+                                          apply_scope: str = "all",
+                                          method: str = 'gui'):
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.set_ap_metrics_reporting_interval(
+            device, interval, apply_scope
+        )

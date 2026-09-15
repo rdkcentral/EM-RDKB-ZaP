@@ -18,7 +18,7 @@
 from zaero.bridge.database_module import DatabaseModule
 from zaero.bridge.connection_modules import ConnectionModules
 from zaero.bridge.ui_modules import UiModules
-import zaero.utils.zi_logger as zi_logger
+from rdkbmeshzap import zi_logger
 
 class FeatureInterfaceDE(DatabaseModule,
                          ConnectionModules,

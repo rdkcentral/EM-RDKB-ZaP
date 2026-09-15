@@ -18,7 +18,7 @@ import zaero
 import pytest
 import time
 import pytest_html
-from zaero.utils import zi_logger
+from rdkbmeshzap import zi_logger
 from pathlib import Path
 
 @pytest.fixture(scope='session', autouse=True)
@@ -79,7 +79,7 @@ def pytest_runtest_makereport(item, call):
     errors = zi_logger.get_error_logs()
     if errors:
         report.outcome = "failed"
-        report.longrepr = "Error logs found:\n" + "\n".join(errors)
+        report.longrepr = "Error logs found:\n" + "\n".join(str(error) for error in errors)
 
     # Make the report available to fixtures/teardown that want to
     # inspect the outcome of the test they're running in.
@@ -105,6 +105,7 @@ def pytest_runtest_makereport(item, call):
 
 def pytest_html_results_table_html(report, data):
     if report.when != "call":
+        data.clear()
         return
 
     new_data = []
@@ -117,6 +118,9 @@ def pytest_html_results_table_html(report, data):
     if hasattr(report, "capstdout"):
         formatted_lines = []
         for line in report.capstdout.splitlines():
+            # Framework chatter stays out of the report.
+            if line.startswith(("INFO :", "FUNC :", "ERROR :")):
+                continue
             if "PASS:" in line:
                 formatted_lines.append(
                     f'<span style="color:green; font-weight:bold;">{line}</span>'

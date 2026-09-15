@@ -16,7 +16,7 @@
 # limitations under the License.
 
 from zaero.bridge.database_module import DatabaseModule
-import zaero.utils.zi_logger as zi_logger
+from rdkbmeshzap import zi_logger
 
 from playwright.sync_api import expect, sync_playwright, TimeoutError as PlaywrightTimeoutError
 
@@ -203,4 +203,35 @@ class FeatureUi(DatabaseModule):
             raise Exception(f"Timeout occurred while wifi reset")
         except Exception as ERR:
             zi_logger.log(f"Failed to reset WiFi")
+            raise Exception(f"ERROR : {ERR}")
+
+    def ui_set_ap_metrics_reporting_interval(self, interval, apply_scope="all"):
+        """Set the AP Metrics reporting interval on the Policy Settings page."""
+        zi_logger.print_context()
+        try:
+            self._page.locator(
+                f"input[name='applyScope-ap'][value='{apply_scope}']"
+            ).check()
+            self._page.fill("#ap-interval", str(interval))
+            self._page.locator(
+                "button.apply-section[data-section='ap-metrics']"
+            ).click()
+            self._page.wait_for_timeout(3000)
+            self._page.locator("#apply-policy-settings").click()
+            self._page.wait_for_timeout(5000)
+        except PlaywrightTimeoutError:
+            raise Exception("Timeout while setting AP Metrics reporting interval")
+        except Exception as ERR:
+            zi_logger.log("Failed to set AP Metrics reporting interval")
+            raise Exception(f"ERROR : {ERR}")
+
+    def ui_get_ap_metrics_reporting_interval(self):
+        """Read back the AP Metrics reporting interval from Policy Settings."""
+        zi_logger.print_context()
+        try:
+            return self._page.locator("#ap-interval").input_value()
+        except PlaywrightTimeoutError:
+            raise Exception("Timeout while reading AP Metrics reporting interval")
+        except Exception as ERR:
+            zi_logger.log("Failed to read AP Metrics reporting interval")
             raise Exception(f"ERROR : {ERR}")

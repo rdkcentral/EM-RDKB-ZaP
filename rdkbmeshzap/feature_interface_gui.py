@@ -18,7 +18,7 @@
 from zaero.bridge.database_module import DatabaseModule
 from zaero.bridge.connection_modules import ConnectionModules
 from zaero.bridge.ui_modules import UiModules
-import zaero.utils.zi_logger as zi_logger
+from rdkbmeshzap import zi_logger
 import time
 
 class FeatureInterfaceGUI(DatabaseModule,
@@ -88,3 +88,29 @@ class FeatureInterfaceGUI(DatabaseModule,
         time.sleep(3)
         self.ui_obj.ui_click_button("#reset-btn")        
         time.sleep(3)
+
+    def set_ap_metrics_reporting_interval(self,
+                                          device: str,
+                                          interval: int,
+                                          apply_scope: str = "all"):
+        """
+        To set the AP Metrics reporting interval from the Policy Settings page
+        """
+        zi_logger.print_context()
+        self._create_ui_obj(device)
+        self.ui_obj.ui_navigate_to_home_page(device)
+        time.sleep(3)
+        self.ui_obj.ui_navigate_to_required_page("Policy Settings")
+        time.sleep(3)
+        self.ui_obj.ui_set_dialog_handler()
+        self.ui_obj.ui_set_ap_metrics_reporting_interval(interval, apply_scope)
+        time.sleep(3)
+
+    def get_ap_metrics_reporting_interval(self,
+                                          device: str) -> str:
+        """
+        To read the AP Metrics reporting interval from the Policy Settings page
+        """
+        zi_logger.print_context()
+        self._create_ui_obj(device)
+        return self.ui_obj.ui_get_ap_metrics_reporting_interval()

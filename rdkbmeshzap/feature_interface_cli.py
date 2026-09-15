@@ -18,7 +18,9 @@
 from zaero.bridge.database_module import DatabaseModule
 from zaero.bridge.connection_modules import ConnectionModules
 from zaero.bridge.ui_modules import UiModules
-import zaero.utils.zi_logger as zi_logger
+from rdkbmeshzap import zi_logger
+import re
+import shlex
 
 
 class FeatureInterfaceCLI(DatabaseModule,
@@ -51,6 +53,21 @@ class FeatureInterfaceCLI(DatabaseModule,
         if error != '':
             raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
         return str(output).strip()
+
+    def verify_service_status(self, device: str, service_name: str):
+        """Verify that a systemd service is active on the device."""
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        command = f"systemctl is-active {shlex.quote(service_name)}"
+        output, error = connection_obj.execute_command(
+            command, return_stderr=True
+        )
+        if error or str(output).strip() != "active":
+            raise RuntimeError(
+                f"{device}: service {service_name} is not active: "
+                f"{str(output).strip()} {str(error).strip()}"
+            )
 
     def set_ssid(self,
                  device: str,
@@ -100,6 +117,43 @@ class FeatureInterfaceCLI(DatabaseModule,
         if error != '':
             raise RuntimeError(f"Command execution failed : {command}")
         return str(output).strip()
+
+    def get_fronthaul_credentials(self, device: str) -> tuple:
+        """Read the fronthaul SSID and passphrase from OneWifiMesh."""
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        query = (
+            "SELECT SSID, PassPhrase FROM NetworkSSIDList "
+            "WHERE ID LIKE '%Fronthaul%OneWifiMesh%' LIMIT 1;"
+        )
+        command = f"mysql -N -B -D OneWifiMesh -e {shlex.quote(query)}"
+        output, error = connection_obj.execute_command(
+            command, return_stderr=True
+        )
+        if error:
+            raise RuntimeError(f"Command execution failed: {error.strip()}")
+        values = str(output).strip().split("\t", 1)
+        if len(values) != 2 or not all(values):
+            raise RuntimeError(f"Invalid OneWifiMesh credential row: {output}")
+        return values[0].strip(), values[1].strip()
+
+    def get_fronthaul_bssids(self, device: str) -> list:
+        """Read fronthaul BSSIDs from the device MLD interface."""
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        output, error = connection_obj.execute_command(
+            "iw dev mld0 info", return_stderr=True
+        )
+        if error:
+            raise RuntimeError(f"Command execution failed: {error.strip()}")
+        bssids = re.findall(
+            r"link addr ([0-9a-fA-F:]{17})", str(output)
+        )
+        if not bssids:
+            raise RuntimeError(f"No fronthaul BSSIDs found on {device}")
+        return [bssid.lower() for bssid in bssids]
 
     def check_ssid(self,
                    device: str,
