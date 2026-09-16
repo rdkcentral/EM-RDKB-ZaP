@@ -33,6 +33,7 @@ def initialize():
     devices = zaero_obj.get_testbed_devices()
     for device in devices:
         zaero_obj.connect_with_device(device)
+    zaero_obj.pdu_connect("pdu")
     # zaero_obj.connect_with_device("controller")
     # zaero_obj.connect_with_device("extender1")
     # zaero_obj.connect_with_device("extender2")
@@ -46,6 +47,7 @@ def initialize():
     yield zaero_obj
     zaero_obj.ui_close_browser("controller")
     zaero_obj.ui_stop_playwright("controller")
+    zaero_obj.pdu_disconnect("pdu")
     del(zaero_obj)
 
 @pytest.fixture(scope='function', autouse=True)
