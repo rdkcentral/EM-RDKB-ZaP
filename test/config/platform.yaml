@@ -135,3 +135,6 @@ extender2:
     6g_bh_iface_index: 2.1
     6g_fh_iface_index: 2.2
     iperf_version: 3
+
+protocol:
+    common_protocol_validation: True
