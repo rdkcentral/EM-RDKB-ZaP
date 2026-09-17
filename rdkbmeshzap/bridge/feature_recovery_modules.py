@@ -15,31 +15,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from rdkbmeshzap.gui.feature_interface_gui import FeatureInterfaceGUI
-from rdkbmeshzap.cli.feature_interface_cli import FeatureInterfaceCLI
-from rdkbmeshzap.de.feature_interface_de import FeatureInterfaceDE
+from rdkbmeshzap.cli.feature_recovery_cli import FeatureRecoveryCLI
+from rdkbmeshzap.gui.feature_recovery_gui import FeatureRecoveryGUI
+from rdkbmeshzap.de.feature_recovery_de import FeatureRecoveryDE
 import zaero.utils.zi_logger as zi_logger
 
-class FeatureInterfaceModules:
+
+class FeatureRecoveryModules:
 
     __instance = None
-    __modules = {'gui': FeatureInterfaceGUI,
-                 'cli': FeatureInterfaceCLI,
-                 'de': FeatureInterfaceDE}
+    __modules = {'gui': FeatureRecoveryGUI,
+                 'cli': FeatureRecoveryCLI,
+                 'de': FeatureRecoveryDE}
     __module_objects = {}
 
     def __new__(cls, *args, **kwargs):
         if cls.__instance is None:
-            zi_logger.log("FeatureInterfaceModules Instance created")
+            zi_logger.log("FeatureRecoveryModules Instance created")
             cls.__instance = super().__new__(cls)
         return cls.__instance
 
     def __init__(self):
         zi_logger.print_context()
 
-    def get_feature_interface_module_object(self, module):
+    def get_feature_recovery_module_object(self, module):
         zi_logger.print_context()
-        if module not in FeatureInterfaceModules.__module_objects:
-            zi_logger.log(f"FeatureInterfaceModules.modules : {FeatureInterfaceModules.__modules}")
-            FeatureInterfaceModules.__module_objects[module] = FeatureInterfaceModules.__modules[module]()
-        return FeatureInterfaceModules.__module_objects[module]
+        if module not in FeatureRecoveryModules.__module_objects:
+            zi_logger.log(f"FeatureRecoveryModules.modules : {FeatureRecoveryModules.__modules}")
+            FeatureRecoveryModules.__module_objects[module] = FeatureRecoveryModules.__modules[module]()
+        return FeatureRecoveryModules.__module_objects[module]

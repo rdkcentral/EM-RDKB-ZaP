@@ -15,24 +15,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from rdkbmeshzap.bridge.feature_interface import FeatureInterface
-from rdkbmeshzap.bridge.feature_recovery import FeatureRecovery
-from rdkbmeshzap.device_utils import get_enabled_extenders, get_enabled_extender_macs
+from rdkbmeshzap.bridge.feature_recovery_modules import FeatureRecoveryModules
 import zaero.utils.zi_logger as zi_logger
 
-class rdkbmeshzap(FeatureInterface):
-    
+
+class FeatureRecovery(FeatureRecoveryModules):
+
     def __init__(self):
         zi_logger.print_context()
-        FeatureInterface.__init__(self)
-        zi_logger.log("Rdkb __init__ : END")
+        FeatureRecoveryModules.__init__(self)
+        zi_logger.log("RDKB.FeatureRecovery __init__ : END")
 
-
-__all__ = [
-    "FeatureInterface",
-    "FeatureRecovery",
-    "get_enabled_extenders",
-    "get_enabled_extender_macs",
-    "rdkbmeshzap",
-]
-
+    def __getattr__(self, name):
+        recovery_module = self.get_feature_recovery_module_object('cli')
+        if hasattr(recovery_module, name):
+            return getattr(recovery_module, name)
+        raise AttributeError(name)

@@ -15,24 +15,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from rdkbmeshzap.bridge.feature_interface import FeatureInterface
-from rdkbmeshzap.bridge.feature_recovery import FeatureRecovery
-from rdkbmeshzap.device_utils import get_enabled_extenders, get_enabled_extender_macs
+from rdkbmeshzap.cli.feature_recovery_cli import FeatureRecoveryCLI
 import zaero.utils.zi_logger as zi_logger
 
-class rdkbmeshzap(FeatureInterface):
-    
+
+class FeatureRecoveryDE(FeatureRecoveryCLI):
+
     def __init__(self):
         zi_logger.print_context()
-        FeatureInterface.__init__(self)
-        zi_logger.log("Rdkb __init__ : END")
-
-
-__all__ = [
-    "FeatureInterface",
-    "FeatureRecovery",
-    "get_enabled_extenders",
-    "get_enabled_extender_macs",
-    "rdkbmeshzap",
-]
-
+        FeatureRecoveryCLI.__init__(self)
+        zi_logger.log("RDKB.FeatureRecoveryDE __init__ : END")

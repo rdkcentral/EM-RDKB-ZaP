@@ -19,11 +19,17 @@ import pytest
 import time
 import pytest_html
 from zaero.utils import zi_logger
+from zaero.utils.database import Database
+import sys
 from pathlib import Path
 from packet_analyzer.packet_dissector import *
 from packet_analyzer.message_verify import *
 from packet_analyzer.ieee1905_utils import *
 from packet_analyzer.protocol_validation import *
+
+COMMON_UTILS_PATH = Path(__file__).resolve().parents[1] / "common-utils"
+if str(COMMON_UTILS_PATH) not in sys.path:
+    sys.path.insert(0, str(COMMON_UTILS_PATH))
 
 @pytest.fixture(scope='session', autouse=True)
 def initialize():
@@ -34,6 +40,8 @@ def initialize():
     zaero_obj.initialize_database(current_directory)
     platform = zaero_obj.read_from_database("controller", "platform")
     zaero_obj.configure_platform(platform)
+    for device_name, device_data in Database._Database__database.items():
+        device_data.setdefault("device_present", device_name != "protocol")
     devices = zaero_obj.get_testbed_devices()
     for device in devices:
         zaero_obj.connect_with_device(device)
@@ -109,19 +117,36 @@ def pytest_html_results_table_html(report, data):
 
     new_data = []
 
-    # Failure traceback (includes the zi_logger error summary above).
+    if report.failed:
+        result_html = '<span style="color:red; font-weight:bold;">FAIL</span>'
+    elif report.passed:
+        result_html = '<span style="color:green; font-weight:bold;">PASS</span>'
+    elif report.skipped:
+        result_html = '<span style="color:orange; font-weight:bold;">SKIPPED</span>'
+    else:
+        result_html = '<span>UNKNOWN</span>'
+
+    new_data.append(f"<div>Result: {result_html}</div>")
+
     if report.failed and hasattr(report, "longrepr"):
         new_data.append(f"<div>{report.longrepr}</div>")
 
-    # Colorize captured stdout lines emitted by zi_logger.
     if hasattr(report, "capstdout"):
         formatted_lines = []
         for line in report.capstdout.splitlines():
-            if "PASS:" in line:
+            if "STEP" in line:
+                formatted_lines.append(
+                    f'<span style="color:blue; font-weight:bold;">{line}</span>'
+                )
+            elif "PASS:" in line:
                 formatted_lines.append(
                     f'<span style="color:green; font-weight:bold;">{line}</span>'
                 )
             elif "FAIL:" in line:
+                formatted_lines.append(
+                    f'<span style="color:red; font-weight:bold;">{line}</span>'
+                )
+            elif "ERROR :" in line or "ERROR:" in line:
                 formatted_lines.append(
                     f'<span style="color:red; font-weight:bold;">{line}</span>'
                 )
