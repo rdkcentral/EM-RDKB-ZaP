@@ -398,4 +398,18 @@ class FeatureUi(DatabaseModule):
             raise Exception(f"Timeout while toggling profile: {profile}")
         except Exception as ERR:
             zi_logger.log(f"Failed to toggle profile {profile}: {ERR}")
+    def ui_get_input_value(self, profile, field):
+        zi_logger.print_context()
+        try:
+            self._page.locator(f"button[onclick*=\"editProfile('{profile}')\"]").click()
+            time.sleep(2)
+            value = self._page.input_value(field)
+            time.sleep(1)
+            self._page.click("button:has-text('Cancel')")
+            time.sleep(1)
+            return value
+        except PlaywrightTimeoutError as e:
+            raise Exception(f"Timeout occurred while getting input value")
+        except Exception as ERR:
+            zi_logger.log(f"Failed to get input value")
             raise Exception(f"ERROR : {ERR}")

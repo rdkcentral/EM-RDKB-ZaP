@@ -16,11 +16,16 @@
 # limitations under the License.
 
 from rdkbmeshzap.bridge.feature_interface import FeatureInterface
+<<<<<<< HEAD
+=======
+from rdkbmeshzap.utils import Utils
+>>>>>>> 4b97ea0 (Task #51 and #55 Added 2TCs for Multi-Agent-Onboarding and 4TCs for Client Association)
 import zaero.utils.zi_logger as zi_logger
 
-class rdkbmeshzap(FeatureInterface):
+class rdkbmeshzap(FeatureInterface,Utils):
     
     def __init__(self):
         zi_logger.print_context()
         FeatureInterface.__init__(self)
+        Utils.__init__(self)
         zi_logger.log("Rdkb __init__ : END")
