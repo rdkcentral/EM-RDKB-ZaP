@@ -39,6 +39,8 @@ if __name__ == "__main__":
         f"{BASE_DIR}/test/ref_test/test_tunneling_and_reboot.py",
         f"{BASE_DIR}/test/ref_test/test_ssid_config_packet_analyzer_usage.py",
         f"{BASE_DIR}/test/ref_test/test_protocol_validation.py",
+        f"{BASE_DIR}/test/multi_agent_onboarding/test_multi_agent_onboarding.py",
+        f"{BASE_DIR}/test/client_association/test_client_connectivity.py",
         f"--html={reports_path}/report.html",
         "--self-contained-html",
         "--log-cli-level=INFO",

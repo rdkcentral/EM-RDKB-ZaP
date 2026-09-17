@@ -15,9 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from rdkbmeshzap.feature_interface_gui import FeatureInterfaceGUI
-from rdkbmeshzap.feature_interface_cli import FeatureInterfaceCLI
-from rdkbmeshzap.feature_interface_de import FeatureInterfaceDE
+from rdkbmeshzap.gui.feature_interface_gui import FeatureInterfaceGUI
+from rdkbmeshzap.cli.feature_interface_cli import FeatureInterfaceCLI
+from rdkbmeshzap.de.feature_interface_de import FeatureInterfaceDE
 import zaero.utils.zi_logger as zi_logger
 
 class FeatureInterfaceModules:
