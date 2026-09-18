@@ -18,7 +18,7 @@
 from zaero.bridge.database_module import DatabaseModule
 from zaero.bridge.connection_modules import ConnectionModules
 from zaero.bridge.ui_modules import UiModules
-from rdkbmeshzap import zi_logger
+import zaero.utils.zi_logger as zi_logger
 import time
 
 class FeatureInterfaceGUI(DatabaseModule,
@@ -89,12 +89,11 @@ class FeatureInterfaceGUI(DatabaseModule,
         self.ui_obj.ui_click_button("#reset-btn")        
         time.sleep(3)
 
-    def set_ap_metrics_reporting_interval(self,
-                                          device: str,
-                                          interval: int,
-                                          apply_scope: str = "all"):
+    def set_ap_metrics_reporting_interval(
+        self, device: str, interval: int, apply_scope: str = "all"
+    ):
         """
-        To set the AP Metrics reporting interval from the Policy Settings page
+        To set the AP Metrics reporting interval from Policy Settings.
         """
         zi_logger.print_context()
         self._create_ui_obj(device)
@@ -103,14 +102,34 @@ class FeatureInterfaceGUI(DatabaseModule,
         self.ui_obj.ui_navigate_to_required_page("Policy Settings")
         time.sleep(3)
         self.ui_obj.ui_set_dialog_handler()
-        self.ui_obj.ui_set_ap_metrics_reporting_interval(interval, apply_scope)
-        time.sleep(3)
+        try:
+            page = self.ui_obj._page
+            page.locator(
+                f"input[name='applyScope-ap'][value='{apply_scope}']"
+            ).check()
+            page.fill("#ap-interval", str(interval))
+            page.locator(
+                "button.apply-section[data-section='ap-metrics']"
+            ).click()
+            page.wait_for_timeout(3000)
+            page.locator("#apply-policy-settings").click()
+            page.wait_for_timeout(5000)
+        except Exception as error:
+            zi_logger.log("Failed to set AP Metrics reporting interval")
+            raise RuntimeError(
+                f"Could not set AP Metrics reporting interval: {error}"
+            ) from error
 
-    def get_ap_metrics_reporting_interval(self,
-                                          device: str) -> str:
+    def get_ap_metrics_reporting_interval(self, device: str) -> str:
         """
-        To read the AP Metrics reporting interval from the Policy Settings page
+        To read the AP Metrics reporting interval from Policy Settings.
         """
         zi_logger.print_context()
         self._create_ui_obj(device)
-        return self.ui_obj.ui_get_ap_metrics_reporting_interval()
+        try:
+            return self.ui_obj._page.locator("#ap-interval").input_value()
+        except Exception as error:
+            zi_logger.log("Failed to read AP Metrics reporting interval")
+            raise RuntimeError(
+                f"Could not read AP Metrics reporting interval: {error}"
+            ) from error
