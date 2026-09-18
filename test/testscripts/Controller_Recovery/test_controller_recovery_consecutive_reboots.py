@@ -1,27 +1,20 @@
 import time
-import importlib.util
-from pathlib import Path
 
 import pytest
-from packet_analyzer.ieee1905_utils import *  # noqa: F401,F403
-from packet_analyzer.packet_dissector import *  # noqa: F401,F403
-from zaero.utils import zi_logger
+from packet_analyzer.ieee1905_utils import *
+from packet_analyzer.packet_dissector import *
+import test_report_utils as zi_logger
 
 import controller_recovery_utils as cr_utils
-
-
-DEVICE_UTILS_PATH = Path(__file__).resolve().parents[3] / "common-utils" / "device_utils.py"
-device_utils_spec = importlib.util.spec_from_file_location(
-    "device_utils", DEVICE_UTILS_PATH
-)
-device_utils = importlib.util.module_from_spec(device_utils_spec)
-device_utils_spec.loader.exec_module(device_utils)
+import device_utils
+from rdkbmeshzap.cli.feature_interface_cli import FeatureInterfaceCLI
 
 
 REBOOT_CYCLES = 5
 
 
 def test_controller_recovery_consecutive_reboots(initialize):
+    interface_cli = FeatureInterfaceCLI()
     extenders = device_utils.get_enabled_extenders(initialize)
     if not extenders:
         pytest.fail("No enabled extenders found in infra.yaml")
@@ -37,7 +30,7 @@ def test_controller_recovery_consecutive_reboots(initialize):
             f"STEP 1: Start IEEE 1905 capture on enabled extenders: {extenders}"
         )
         for extender in extenders:
-            capture_names[extender] = cr_utils.start_extender_capture(
+            capture_names[extender] = device_utils.start_capture(
                 initialize, extender, "controller_recovery", step=1
             )
             capture_started.add(extender)
@@ -50,7 +43,7 @@ def test_controller_recovery_consecutive_reboots(initialize):
             cycle_start = time.monotonic()
             initialize.reboot_device("controller", method="cli")
             time.sleep(10)
-            cr_utils.recover_device(
+            controller_result = cr_utils.recover_device(
                 initialize,
                 "controller",
                 cycle_start,
@@ -58,10 +51,23 @@ def test_controller_recovery_consecutive_reboots(initialize):
                 2,
                 zi_logger,
             )
+            if isinstance(controller_result, Exception):
+                pytest.fail(f"controller: recovery failed: {controller_result}")
+            if controller_result >= cr_utils.RECOVERY_KPI_SECONDS:
+                pytest.fail(
+                    f"controller: recovery took {controller_result:.1f}s; "
+                    f"KPI is < {cr_utils.RECOVERY_KPI_SECONDS}s"
+                )
 
             if cycle == REBOOT_CYCLES:
                 for extender in extenders:
-                    cr_utils.reconnect_device(initialize, extender, zi_logger, step=2)
+                    cr_utils.reconnect_device(
+                        initialize,
+                        extender,
+                        zi_logger,
+                        step=2,
+                        started_at=cycle_start,
+                    )
                     recovery_times[extender] = time.monotonic() - cycle_start
             else:
                 zi_logger.print_success(f"PASS: Controller recovered after reboot cycle {cycle}")
@@ -89,7 +95,7 @@ def test_controller_recovery_consecutive_reboots(initialize):
         packets_by_extender = {}
         for extender in extenders:
             capture_started.remove(extender)
-            local_path = cr_utils.stop_and_collect_capture(initialize, extender, capture_names[extender])
+            local_path = device_utils.stop_and_collect_capture(initialize, extender, capture_names[extender])
             packets_by_extender[extender] = local_path
 
         for extender, local_path in packets_by_extender.items():
@@ -115,6 +121,6 @@ def test_controller_recovery_consecutive_reboots(initialize):
                 if extender not in capture_started:
                     continue
                 try:
-                    cr_utils.stop_and_collect_capture(initialize, extender, capture_name)
+                    device_utils.stop_and_collect_capture(initialize, extender, capture_name)
                 except Exception as error:
                     zi_logger.log(f"Could not stop {extender} capture: {error}")

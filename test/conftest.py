@@ -18,7 +18,6 @@ import zaero
 import pytest
 import time
 import pytest_html
-from zaero.utils import zi_logger
 from zaero.utils.database import Database
 import sys
 from pathlib import Path
@@ -27,9 +26,12 @@ from packet_analyzer.message_verify import *
 from packet_analyzer.ieee1905_utils import *
 from packet_analyzer.protocol_validation import *
 
-COMMON_UTILS_PATH = Path(__file__).resolve().parents[1] / "common-utils"
+COMMON_UTILS_PATH = (
+    Path(__file__).resolve().parents[1] / "rdkbmeshzap" / "common-utils"
+)
 if str(COMMON_UTILS_PATH) not in sys.path:
     sys.path.insert(0, str(COMMON_UTILS_PATH))
+import test_report_utils as zi_logger
 
 @pytest.fixture(scope='session', autouse=True)
 def initialize():
@@ -97,14 +99,7 @@ def pytest_runtest_makereport(item, call):
     if extra is None:
         extra = getattr(report, "extra", [])
 
-    if report.failed:
-        message = '<span style="color:red; font-weight:bold;">FAIL</span>'
-    elif report.passed:
-        message = '<span style="color:green; font-weight:bold;">PASS</span>'
-    elif report.skipped:
-        message = '<span style="color:orange; font-weight:bold;">SKIPPED</span>'
-    else:
-        message = '<span>UNKNOWN</span>'
+    message = zi_logger.format_result_status(report)
 
     extra.append(pytest_html.extras.html(message))
     report.extras = extra
@@ -117,14 +112,7 @@ def pytest_html_results_table_html(report, data):
 
     new_data = []
 
-    if report.failed:
-        result_html = '<span style="color:red; font-weight:bold;">FAIL</span>'
-    elif report.passed:
-        result_html = '<span style="color:green; font-weight:bold;">PASS</span>'
-    elif report.skipped:
-        result_html = '<span style="color:orange; font-weight:bold;">SKIPPED</span>'
-    else:
-        result_html = '<span>UNKNOWN</span>'
+    result_html = zi_logger.format_result_status(report)
 
     new_data.append(f"<div>Result: {result_html}</div>")
 
@@ -132,28 +120,10 @@ def pytest_html_results_table_html(report, data):
         new_data.append(f"<div>{report.longrepr}</div>")
 
     if hasattr(report, "capstdout"):
-        formatted_lines = []
-        for line in report.capstdout.splitlines():
-            if "STEP" in line:
-                formatted_lines.append(
-                    f'<span style="color:blue; font-weight:bold;">{line}</span>'
-                )
-            elif "PASS:" in line:
-                formatted_lines.append(
-                    f'<span style="color:green; font-weight:bold;">{line}</span>'
-                )
-            elif "FAIL:" in line:
-                formatted_lines.append(
-                    f'<span style="color:red; font-weight:bold;">{line}</span>'
-                )
-            elif "ERROR :" in line or "ERROR:" in line:
-                formatted_lines.append(
-                    f'<span style="color:red; font-weight:bold;">{line}</span>'
-                )
-            else:
-                formatted_lines.append(line)
-
-        html = "<br>".join(formatted_lines)
+        html = "<br>".join(
+            zi_logger.format_report_line(line)
+            for line in report.capstdout.splitlines()
+        )
         new_data.append(f"<div>{html}</div>")
 
     data.clear()

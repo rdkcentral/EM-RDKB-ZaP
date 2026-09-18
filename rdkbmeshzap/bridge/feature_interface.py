@@ -36,6 +36,9 @@ class FeatureInterface(FeatureInterfaceModules):
 
     def verify_service_status(self, device: str, service_name: str,
                               method: str = 'cli'):
+        """
+        To verify the status of a device service.
+        """
         iface_obj = self.get_feature_interface_module_object(method)
         iface_obj.verify_service_status(device, service_name)
 
@@ -64,10 +67,16 @@ class FeatureInterface(FeatureInterfaceModules):
         return ssid
 
     def get_fronthaul_credentials(self, device: str, method: str = 'cli') -> tuple:
+        """
+        To get the fronthaul SSID and passphrase.
+        """
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.get_fronthaul_credentials(device)
 
     def get_fronthaul_bssids(self, device: str, method: str = 'cli') -> list:
+        """
+        To get the fronthaul BSSIDs of a device.
+        """
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.get_fronthaul_bssids(device)
 
@@ -87,6 +96,9 @@ class FeatureInterface(FeatureInterfaceModules):
     def reboot_device(self,
                       device,
                       method = 'gui'):
+        """
+        To reboot a device using the selected interface method.
+        """
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
         iface_obj.reboot_device(device)
@@ -94,6 +106,9 @@ class FeatureInterface(FeatureInterfaceModules):
     def wifi_reset(self,
                    device: str,
                    method = 'gui'):
+        """
+        To reset Wi-Fi settings on a device.
+        """
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
         iface_obj.wifi_reset(device)
@@ -101,15 +116,53 @@ class FeatureInterface(FeatureInterfaceModules):
     def get_ap_metrics_reporting_interval(self,
                                           device: str,
                                           method: str = 'gui') -> str:
+        """
+        To get the AP Metrics reporting interval.
+        """
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.get_ap_metrics_reporting_interval(device)
 
-    def set_ap_metrics_reporting_interval(self,
-                                          device: str,
-                                          interval: int,
-                                          apply_scope: str = "all",
-                                          method: str = 'gui'):
+    def set_ap_metrics_reporting_interval(
+        self,
+        device: str,
+        interval: int,
+        apply_scope: str = "all",
+        method: str = 'gui',
+    ):
+        """
+        To set the AP Metrics reporting interval.
+        """
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.set_ap_metrics_reporting_interval(
             device, interval, apply_scope
         )
+
+    def get_wifi_interfaces_from_bridge(self, bridge_output, method: str = 'cli'):
+        """
+        To get Wi-Fi interfaces from bridge output.
+        """
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_wifi_interfaces_from_bridge(bridge_output)
+
+    def get_associated_station_interface(
+        self, initialize, device, bridge_iface, method: str = 'cli'
+    ):
+        """
+        To get the Wi-Fi interface with an associated station.
+        """
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_associated_station_interface(
+            initialize, device, bridge_iface
+        )
+
+    def get_connected_wifi_interface(
+        self, initialize, device, bridge_iface, method: str = 'cli'
+    ):
+        """
+        To get the Wi-Fi interface with an active connection.
+        """
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_connected_wifi_interface(
+            initialize, device, bridge_iface
+        )
+

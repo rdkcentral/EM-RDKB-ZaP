@@ -2,70 +2,17 @@ import time
 import threading
 
 import pytest
-from packet_analyzer.ieee1905_utils import *  # noqa: F401,F403
-from packet_analyzer.packet_dissector import *  # noqa: F401,F403
-from zaero.utils import zi_logger
+from packet_analyzer.packet_dissector import *
+import test_report_utils as zi_logger
 
 import controller_recovery_utils as cr_utils
+import client_utils
 import device_utils
-
-
-def _recover_extender(
-    initialize,
-    extender,
-    clients,
-    capture_name,
-    started_at,
-    allowed_bssids,
-    results,
-    step=None,
-):
-    try:
-        recovery_result = cr_utils.recover_device(
-            initialize,
-            extender,
-            started_at,
-            results,
-            step,
-            zi_logger,
-        )
-        if isinstance(recovery_result, Exception):
-            raise recovery_result
-        recovery_time = recovery_result
-        zi_logger.print_success(f"{extender}: SSH reachable after {recovery_time:.1f}s")
-        results[extender] = {
-            "recovery_time": recovery_time,
-            "clients": clients,
-        }
-        zi_logger.print_success(f"PASS: {extender} services active; timer stopped at {recovery_time:.1f}s")
-        zi_logger.print_step(f"{extender}: waiting 20 seconds before stopping capture")
-        time.sleep(20)
-        local_path = cr_utils.stop_and_collect_capture(
-            initialize, extender, capture_name
-        )
-        zi_logger.print_step(f"{extender}: capture stopped")
-        for client in clients:
-            cr_utils.reconnect_device(initialize, client, zi_logger, step=9)
-        results[extender]["client_accessible"] = all(
-            initialize.is_device_alive(client) for client in clients
-        )
-        ssh = initialize.get_connection_module_object("ssh")
-        results[extender]["bssid_matches"] = {
-            client: cr_utils.get_connected_bssid(initialize, client, ssh)
-            in allowed_bssids
-            for client in clients
-        }
-        zi_logger.print_success(f"{extender}: assigned client SSH access = {results[extender]['client_accessible']} ({clients})")
-        results[extender]["ping_outputs"] = cr_utils.download_client_pings(
-            initialize, clients, extender
-        )
-        results[extender]["capture_path"] = local_path
-        zi_logger.print_step(f"{extender}: downloaded ping output and capture {local_path}")
-    except Exception as error:
-        results[extender] = {"error": error}
+from rdkbmeshzap.cli.feature_interface_cli import FeatureInterfaceCLI
 
 
 def test_controller_recovery_client_continuity(initialize):
+    interface_cli = FeatureInterfaceCLI()
     zi_logger.print_test(
         "Entering test_controller_recovery_client_continuity"
     )
@@ -80,6 +27,13 @@ def test_controller_recovery_client_continuity(initialize):
     ]
     if not client_devices:
         pytest.fail("No enabled WLAN clients found in infra.yaml")
+    extenders = [
+        extender
+        for extender in extenders
+        if any(client.startswith(f"{extender}_") for client in client_devices)
+    ]
+    if not extenders:
+        pytest.fail("No enabled extenders have a configured WLAN client")
 
     zi_logger.print_step("STEP 2: Map the first WLAN client to each extender")
     client_groups = cr_utils.map_clients_to_extenders(client_devices, extenders)
@@ -107,21 +61,21 @@ def test_controller_recovery_client_continuity(initialize):
             # Record the original BSSID before recovery changes the topology.
             clients = client_groups[extender]
             client = clients[0]
-            cr_utils.connect_clients_to_extender(initialize, [client], extender)
-            client_bssid = cr_utils.get_connected_bssid(initialize, client, ssh)
+            client_utils.connect_clients_to_extender(initialize, [client], extender)
+            client_bssid = client_utils.get_connected_client_bssid(initialize, client, ssh)
             if not client_bssid:
                 pytest.fail(f"{client}: could not determine initial connected BSSID")
             allowed_bssids.add(client_bssid)
             zi_logger.print_success(f"PASS: {extender} client connected by BSSID: {[client]}")
 
-        allowed_bssids.update(cr_utils.get_fronthaul_bssids(initialize, "controller", ssh))
+        allowed_bssids.update(initialize.get_fronthaul_bssids("controller"))
         for extender in extenders:
-            allowed_bssids.update(cr_utils.get_fronthaul_bssids(initialize, extender, ssh))
+            allowed_bssids.update(initialize.get_fronthaul_bssids(extender))
 
         zi_logger.print_step("STEP 4: Start packet captures on all extenders")
         for extender in extenders:
             # Start capture and ping traffic before rebooting the controller.
-            capture_names[extender] = cr_utils.start_extender_capture(
+            capture_names[extender] = device_utils.start_capture(
                 initialize, extender, "controller_recovery_client", step=4
             )
             extender_al_macs[extender] = initialize.get_al_mac_address(
@@ -130,7 +84,7 @@ def test_controller_recovery_client_continuity(initialize):
             capture_started.add(extender)
             clients = client_groups[extender]
             if clients:
-                cr_utils.start_client_ping(
+                client_utils.start_client_ping(
                     initialize,
                     clients,
                     f"/tmp/controller_recovery_{extender}_client_ping.txt",
@@ -165,9 +119,10 @@ def test_controller_recovery_client_continuity(initialize):
         for extender in extenders:
             # Recover each extender in parallel once the controller returns.
             thread = threading.Thread(
-                target=_recover_extender,
+                target=cr_utils.recover_extender_and_client,
                 args=(
                     initialize,
+                    interface_cli,
                     extender,
                     client_groups[extender],
                     capture_names[extender],
@@ -182,6 +137,16 @@ def test_controller_recovery_client_continuity(initialize):
             thread.start()
         for thread in threads:
             thread.join()
+        for extender, result in recovery_results.items():
+            if "capture_path" in result:
+                capture_started.discard(extender)
+            if "error" in result:
+                pytest.fail(f"{extender}: recovery failed: {result['error']}")
+            if result["recovery_time"] >= cr_utils.RECOVERY_KPI_SECONDS:
+                pytest.fail(
+                    f"{extender}: recovery took {result['recovery_time']:.1f}s; "
+                    f"KPI is < {cr_utils.RECOVERY_KPI_SECONDS}s"
+                )
 
         zi_logger.print_step("STEP 10: Validate recovery KPI and extender reachability")
         for extender in extenders:
@@ -201,6 +166,15 @@ def test_controller_recovery_client_continuity(initialize):
             )
 
         zi_logger.print_step("STEP 11: Validate client connectivity and ping recovery")
+        bssid_devices = {
+            bssid: "controller"
+            for bssid in initialize.get_fronthaul_bssids("controller")
+        }
+        for extender in extenders:
+            bssid_devices.update({
+                bssid: extender
+                for bssid in initialize.get_fronthaul_bssids(extender)
+            })
         for extender in extenders:
             result = recovery_results[extender]
             if not result["client_accessible"]:
@@ -215,11 +189,21 @@ def test_controller_recovery_client_continuity(initialize):
                     f"{extender}: clients connected to a non-fronthaul BSSID after recovery: "
                     f"{mismatched_bssids}"
                 )
+            for client, bssid in result["client_bssids"].items():
+                connected_device = bssid_devices.get(bssid)
+                if connected_device is None:
+                    connected_device = cr_utils.get_bssid_device(
+                        initialize, ["controller", *extenders], bssid
+                    ) or "unknown device"
+                zi_logger.print_step(
+                    f"{client}: connected to {connected_device} after recovery "
+                    f"(BSSID {bssid})"
+                )
             zi_logger.print_success(f"PASS: {extender} clients stayed on a valid fronthaul BSSID")
             zi_logger.print_step(f"{extender}: Validate client ping outage and recovery")
             zi_logger.print_success(f"PASS: {extender} assigned clients are SSH accessible")
             for client, output in result["ping_outputs"].items():
-                cr_utils.validate_ping_recovery(output, client)
+                client_utils.validate_ping_recovery(output, client)
                 zi_logger.print_success(f"PASS: {client} ping shows recovery outage and successful replies")
 
         zi_logger.print_step("STEP 12: Validate topology packet captures")
@@ -242,8 +226,8 @@ def test_controller_recovery_client_continuity(initialize):
             try:
                 if extender not in capture_started:
                     continue
-                ssh.switch_connection(extender)
-                initialize.stop_frame_capture(extender)
-                initialize.delete_captured_pcap(extender, capture_name)
+                device_utils.stop_and_collect_capture(
+                    initialize, extender, capture_name
+                )
             except Exception as error:
                 zi_logger.log(f"Could not clean up {extender} capture: {error}")

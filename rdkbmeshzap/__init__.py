@@ -16,7 +16,6 @@
 # limitations under the License.
 
 from rdkbmeshzap.bridge.feature_interface import FeatureInterface
-from rdkbmeshzap.bridge.feature_recovery import FeatureRecovery
 from rdkbmeshzap.device_utils import get_enabled_extenders, get_enabled_extender_macs
 import zaero.utils.zi_logger as zi_logger
 
@@ -30,7 +29,6 @@ class rdkbmeshzap(FeatureInterface):
 
 __all__ = [
     "FeatureInterface",
-    "FeatureRecovery",
     "get_enabled_extenders",
     "get_enabled_extender_macs",
     "rdkbmeshzap",

@@ -2,18 +2,20 @@ import time
 import threading
 
 import pytest
-from packet_analyzer.ieee1905_utils import *  # noqa: F401,F403
-from packet_analyzer.packet_dissector import *  # noqa: F401,F403
-from zaero.utils import zi_logger
+from packet_analyzer.ieee1905_utils import *
+from packet_analyzer.packet_dissector import *
+import test_report_utils as zi_logger
 
 import controller_recovery_utils as cr_utils
 import device_utils
+from rdkbmeshzap.cli.feature_interface_cli import FeatureInterfaceCLI
 
 
 def test_controller_recovery_star_extender_reconnection(initialize):
+    interface_cli = FeatureInterfaceCLI()
     zi_logger.print_test("Entering test_controller_recovery_star_extender_reconnection")
     zi_logger.print_step("STEP 1: Discover enabled star extenders")
-    extenders = cr_utils.get_extenders_by_topology_role(initialize, "star")
+    extenders = device_utils.get_extenders_by_topology_role(initialize, "star")
     if not extenders:
         pytest.fail("No star extenders found in infra.yaml")
 
@@ -22,14 +24,18 @@ def test_controller_recovery_star_extender_reconnection(initialize):
     recovery_times = {}
     recovery_started = {}
     controller_recovery = {}
+    extender_al_macs = {}
     validation_errors = []
 
     try:
         # Collect captures before the controller reboot so recovery traffic is retained.
         zi_logger.print_step("STEP 2: Start IEEE 1905 packet capture on star extenders")
         for extender in extenders:
-            capture_names[extender] = cr_utils.start_extender_capture(
+            capture_names[extender] = device_utils.start_capture(
                 initialize, extender, "controller_recovery_star", step=2
+            )
+            extender_al_macs[extender] = initialize.get_al_mac_address(
+                extender, "cli"
             )
             capture_started.add(extender)
 
@@ -70,6 +76,15 @@ def test_controller_recovery_star_extender_reconnection(initialize):
         for thread in threads:
             thread.join()
 
+        for extender, result in recovery_times.items():
+            if isinstance(result, Exception):
+                pytest.fail(f"{extender}: recovery failed: {result}")
+            if result >= cr_utils.RECOVERY_KPI_SECONDS:
+                pytest.fail(
+                    f"{extender}: recovery took {result:.1f}s; "
+                    f"KPI is < {cr_utils.RECOVERY_KPI_SECONDS}s"
+                )
+
         zi_logger.print_step(
             "STEP 6: Wait for topology packets to propagate before stopping captures"
         )
@@ -97,7 +112,11 @@ def test_controller_recovery_star_extender_reconnection(initialize):
             capture_started.remove(extender)
             try:
                 cr_utils.stop_collect_reassemble_and_validate_topology_capture(
-                    initialize, extender, capture_names[extender], 8
+                    initialize,
+                    extender,
+                    capture_names[extender],
+                    8,
+                    extender_al_macs[extender],
                 )
             except Exception as error:
                 validation_errors.append(f"{extender}: {error}")
@@ -112,6 +131,6 @@ def test_controller_recovery_star_extender_reconnection(initialize):
                 if extender not in capture_started:
                     continue
                 try:
-                    cr_utils.stop_and_collect_capture(initialize, extender, capture_name)
+                    device_utils.stop_and_collect_capture(initialize, extender, capture_name)
                 except Exception as error:
                     zi_logger.log(f"Could not stop {extender} capture: {error}")
