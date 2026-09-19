@@ -5,15 +5,14 @@ import re
 import pytest
 from packet_analyzer.ieee1905_utils import *
 from packet_analyzer.packet_dissector import *
-import test_report_utils as zi_logger
+from rdkbmeshzap.common_utils import report_logger
 
-import client_utils
-import device_utils
+from rdkbmeshzap.common_utils import client_utils, device_utils
 
 RECOVERY_KPI_SECONDS = 300
 RETRY_INTERVAL_SECONDS = 5
 MAX_RETRIES = RECOVERY_KPI_SECONDS // RETRY_INTERVAL_SECONDS
-def reconnect_device(initialize, device, logger=zi_logger, step=None, started_at=None):
+def reconnect_device(initialize, device, logger=report_logger, step=None, started_at=None):
     """Reconnect a device within the configured recovery KPI window."""
     message = f"{device}: waiting for SSH recovery"
     logger.print_step(message if step is None else f"STEP {step}: {message}")
@@ -41,7 +40,7 @@ def reconnect_device(initialize, device, logger=zi_logger, step=None, started_at
         f"Could not reconnect {device} within {RECOVERY_KPI_SECONDS} seconds"
     )
 
-def recover_device(initialize, device, started_at, results, step, logger=zi_logger):
+def recover_device(initialize, device, started_at, results, step, logger=report_logger):
     """Reconnect a device, verify services, and record recovery time."""
     try:
         reconnect_device(
@@ -54,7 +53,7 @@ def recover_device(initialize, device, started_at, results, step, logger=zi_logg
             )
         deadline = started_at + RECOVERY_KPI_SECONDS
         if device == "controller":
-            device_utils.verify_controller_services(initialize, step, deadline)
+            device_utils.verify_controller_services(initialize, deadline)
         else:
             device_utils.verify_extender_services(initialize, device, deadline)
         results[device] = recovery_time
@@ -125,12 +124,12 @@ def map_clients_to_extenders(client_devices, extenders):
         )
     return client_groups
 
-def recover_extender_and_client(initialize, interface_cli, extender, clients, capture_name,
+def recover_extender_and_client(initialize, extender, clients, capture_name,
                      started_at, allowed_bssids, results, step=None):
     """Recover an extender, collect its capture, and validate client access."""
     try:
         recovery_result = recover_device(
-            initialize, extender, started_at, results, step, zi_logger
+            initialize, extender, started_at, results, step, report_logger
         )
         if isinstance(recovery_result, Exception):
             raise recovery_result
@@ -144,7 +143,7 @@ def recover_extender_and_client(initialize, interface_cli, extender, clients, ca
         )
         results[extender]["capture_path"] = local_path
         for client in clients:
-            reconnect_device(initialize, client, zi_logger, step=9)
+            reconnect_device(initialize, client, report_logger, step=9)
         results[extender]["client_accessible"] = all(
             initialize.is_device_alive(client) for client in clients
         )

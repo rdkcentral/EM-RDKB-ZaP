@@ -3,7 +3,8 @@
 import re
 import time
 
-import test_report_utils as zi_logger
+import pytest
+from rdkbmeshzap.common_utils import report_logger
 
 def get_enabled_extenders(initialize):
     """Return enabled extender devices from the configured testbed."""
@@ -44,9 +45,10 @@ def get_enabled_testbed_device_macs(initialize):
         for device in devices
     }
 
-def create_capture_name(prefix, extender, extension="pcapng"):
-    """Create a timestamped capture filename for an extender."""
-    return f"{prefix}_{extender}_{int(time.time())}.{extension}"
+def create_capture_name(prefix, device=None, extension="pcapng"):
+    """Create a timestamped capture filename, optionally including a device."""
+    device_suffix = f"_{device}" if device else ""
+    return f"{prefix}{device_suffix}_{int(time.time())}.{extension}"
 
 def get_extenders_by_topology_role(initialize, role):
     """Return enabled extenders matching the requested topology role."""
@@ -86,19 +88,22 @@ def get_backhaul_capture_interface(initialize, device):
             return preferred
     if candidates:
         return candidates[0]
-    raise RuntimeError(f"{device}: could not determine backhaul capture interface")
+    pytest.fail(f"{device}: could not determine backhaul capture interface")
 
-def start_capture(initialize, device, capture_prefix, step):
+def start_capture(
+    initialize, device, capture_prefix, step, include_device=False
+):
     """
     Start an IEEE 1905 capture on a device backhaul interface.
     """
-    capture_name = create_capture_name(capture_prefix, device)
+    capture_device = device if include_device else None
+    capture_name = create_capture_name(capture_prefix, capture_device)
     capture_interface = get_backhaul_capture_interface(initialize, device)
     capture_filter = initialize.read_from_database(device, "filter_1905")
     initialize.start_frame_capture(
         device, capture_interface, capture_filter, capture_name
     )
-    zi_logger.print_step(
+    report_logger.print_step(
         f"STEP {step}: {device}: capture started on "
         f"{capture_interface}; file {capture_name}"
     )
@@ -113,7 +118,7 @@ def stop_and_collect_capture(initialize, device, capture_name):
     try:
         initialize.delete_captured_pcap(device, capture_name)
     except Exception as error:
-        zi_logger.print_step(
+        report_logger.print_step(
             f"{device}: capture already unavailable during cleanup: {error}"
         )
     return local_path
@@ -136,11 +141,11 @@ def verify_services(initialize, device, service_names, deadline=None):
             if remaining <= 0:
                 break
             time.sleep(min(2, remaining))
-    raise RuntimeError(
+    pytest.fail(
         f"{device}: services did not become active after 5 attempts: {last_error}"
     )
 
-def verify_controller_services(initialize, step, deadline=None):
+def verify_controller_services(initialize, deadline=None):
     """Verify controller services after recovery."""
     verify_services(
         initialize,
@@ -149,7 +154,7 @@ def verify_controller_services(initialize, step, deadline=None):
         deadline,
     )
 
-def verify_extender_services(initialize, extender, step, deadline=None):
+def verify_extender_services(initialize, extender, deadline=None):
     """Verify extender services after recovery."""
     verify_services(
         initialize,

@@ -3,18 +3,17 @@ import time
 import pytest
 from packet_analyzer.ieee1905_utils import *
 from packet_analyzer.packet_dissector import *
-import test_report_utils as zi_logger
+from rdkbmeshzap.common_utils import report_logger
 
 import controller_recovery_utils as cr_utils
-import device_utils
-from rdkbmeshzap.cli.feature_interface_cli import FeatureInterfaceCLI
+from rdkbmeshzap.common_utils import device_utils
 
 
 REBOOT_CYCLES = 5
 
 
 def test_controller_recovery_consecutive_reboots(initialize):
-    interface_cli = FeatureInterfaceCLI()
+    report_logger.print_test("Entering test_controller_recovery_consecutive_reboots")
     extenders = device_utils.get_enabled_extenders(initialize)
     if not extenders:
         pytest.fail("No enabled extenders found in infra.yaml")
@@ -26,18 +25,22 @@ def test_controller_recovery_consecutive_reboots(initialize):
     capture_validation_errors = []
 
     try:
-        zi_logger.print_step(
+        report_logger.print_step(
             f"STEP 1: Start IEEE 1905 capture on enabled extenders: {extenders}"
         )
         for extender in extenders:
             capture_names[extender] = device_utils.start_capture(
-                initialize, extender, "controller_recovery", step=1
+                initialize,
+                extender,
+                "test_controller_recovery_consecutive_reboots",
+                step=1,
+                include_device=True,
             )
             capture_started.add(extender)
-        zi_logger.print_success("PASS: Packet capture started on all enabled extenders")
+        report_logger.print_success("PASS: Packet capture started on all enabled extenders")
 
         for cycle in range(1, REBOOT_CYCLES + 1):
-            zi_logger.print_step(
+            report_logger.print_step(
                 f"STEP {cycle + 1}: Reboot controller, consecutive cycle {cycle}/{REBOOT_CYCLES}"
             )
             cycle_start = time.monotonic()
@@ -49,12 +52,15 @@ def test_controller_recovery_consecutive_reboots(initialize):
                 cycle_start,
                 controller_recovery,
                 2,
-                zi_logger,
+                report_logger,
             )
             if isinstance(controller_result, Exception):
-                pytest.fail(f"controller: recovery failed: {controller_result}")
+                report_logger.print_error(
+                    f"controller: recovery failed: {controller_result}"
+                )
+                continue
             if controller_result >= cr_utils.RECOVERY_KPI_SECONDS:
-                pytest.fail(
+                report_logger.print_error(
                     f"controller: recovery took {controller_result:.1f}s; "
                     f"KPI is < {cr_utils.RECOVERY_KPI_SECONDS}s"
                 )
@@ -64,32 +70,38 @@ def test_controller_recovery_consecutive_reboots(initialize):
                     cr_utils.reconnect_device(
                         initialize,
                         extender,
-                        zi_logger,
+                        report_logger,
                         step=2,
                         started_at=cycle_start,
                     )
                     recovery_times[extender] = time.monotonic() - cycle_start
             else:
-                zi_logger.print_success(f"PASS: Controller recovered after reboot cycle {cycle}")
+                report_logger.print_success(f"PASS: Controller recovered after reboot cycle {cycle}")
         time.sleep(40)
-        zi_logger.print_step(
+        report_logger.print_step(
             "STEP 7: Validate recovery KPI and reachability for each extender"
         )
         for extender in extenders:
             if extender not in recovery_times:
-                pytest.fail(f"{extender}: recovery did not produce a result")
+                report_logger.print_error(
+                    f"{extender}: recovery result is unavailable; the recovery "
+                    "process may have failed or did not complete"
+                )
+                continue
             if not initialize.is_device_alive(extender):
-                pytest.fail(f"{extender}: extender is not reachable after recovery")
+                report_logger.print_error(
+                    f"{extender}: extender is not reachable after recovery"
+                )
             if recovery_times[extender] >= cr_utils.RECOVERY_KPI_SECONDS:
-                pytest.fail(
+                report_logger.print_error(
                     f"{extender}: recovery took {recovery_times[extender]:.1f}s; "
                     f"KPI is < {cr_utils.RECOVERY_KPI_SECONDS}s"
                 )
-            zi_logger.print_success(
+            report_logger.print_success(
                 f"PASS: {extender} recovered in {recovery_times[extender]:.1f}s and is reachable after recovery"
             )
 
-        zi_logger.print_step(
+        report_logger.print_step(
             "STEP 8: Stop captures and validate final-cycle topology synchronization"
         )
         packets_by_extender = {}
@@ -109,13 +121,16 @@ def test_controller_recovery_consecutive_reboots(initialize):
                     raise RuntimeError(
                         "expected Topology Query and Response after final reboot"
                     )
-                zi_logger.print_success(f"PASS: {extender} recovery produced topology traffic")
+                report_logger.print_success(f"PASS: {extender} recovery produced topology traffic")
             except Exception as error:
                 capture_validation_errors.append(f"{extender}: {error}")
 
-        if capture_validation_errors:
-            pytest.fail("; ".join(capture_validation_errors))
+        for error in capture_validation_errors:
+            report_logger.print_error(error)
     finally:
+        report_logger.print_test(
+            "Exiting test_controller_recovery_consecutive_reboots"
+        )
         if capture_started:
             for extender, capture_name in capture_names.items():
                 if extender not in capture_started:
@@ -123,4 +138,4 @@ def test_controller_recovery_consecutive_reboots(initialize):
                 try:
                     device_utils.stop_and_collect_capture(initialize, extender, capture_name)
                 except Exception as error:
-                    zi_logger.log(f"Could not stop {extender} capture: {error}")
+                    report_logger.log(f"Could not stop {extender} capture: {error}")

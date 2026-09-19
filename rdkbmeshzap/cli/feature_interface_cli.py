@@ -108,49 +108,6 @@ class FeatureInterfaceCLI(DatabaseModule,
             raise RuntimeError(f"Command execution failed : {command}")
         return str(output).strip()
 
-    def get_fronthaul_credentials(
-        self,
-        device: str,
-    ) -> tuple:
-        """
-        Return the OneWifiMesh fronthaul SSID and passphrase.
-        """
-        connection = self.db_obj.read_from_database(device, "connection")
-        connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
-        query = (
-            "SELECT SSID, PassPhrase FROM NetworkSSIDList "
-            "WHERE ID LIKE '%Fronthaul%OneWifiMesh%' LIMIT 1;"
-        )
-        command = f"mysql -N -B -D OneWifiMesh -e {shlex.quote(query)}"
-        output, error = connection_obj.execute_command(command, return_stderr=True)
-        if error:
-            raise RuntimeError(f"Command execution failed: {error.strip()}")
-        values = str(output).strip().split("\t", 1)
-        if len(values) != 2 or not all(values):
-            raise RuntimeError(f"Invalid OneWifiMesh credential row: {output}")
-        return values[0].strip(), values[1].strip()
-
-    def get_fronthaul_bssids(
-        self,
-        device: str,
-    ) -> list:
-        """
-        Return fronthaul BSSIDs from the device MLD interface.
-        """
-        connection = self.db_obj.read_from_database(device, "connection")
-        connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
-        output, error = connection_obj.execute_command(
-            "iw dev mld0 info", return_stderr=True
-        )
-        if error:
-            raise RuntimeError(f"Command execution failed: {error.strip()}")
-        bssids = re.findall(r"link addr ([0-9a-fA-F:]{17})", str(output))
-        if not bssids:
-            raise RuntimeError(f"No fronthaul BSSIDs found on {device}")
-        return [bssid.lower() for bssid in bssids]
-
     def check_ssid(
         self,
         device: str,
@@ -197,6 +154,49 @@ class FeatureInterfaceCLI(DatabaseModule,
         connection_obj.execute_command(
             "reboot >/dev/null 2>&1 &", blocking_call=False
         )
+
+    def get_fronthaul_credentials(
+        self,
+        device: str,
+    ) -> tuple:
+        """
+        Return the OneWifiMesh fronthaul SSID and passphrase.
+        """
+        connection = self.db_obj.read_from_database(device, "connection")
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        query = (
+            "SELECT SSID, PassPhrase FROM NetworkSSIDList "
+            "WHERE ID LIKE '%Fronthaul%OneWifiMesh%' LIMIT 1;"
+        )
+        command = f"mysql -N -B -D OneWifiMesh -e {shlex.quote(query)}"
+        output, error = connection_obj.execute_command(command, return_stderr=True)
+        if error:
+            raise RuntimeError(f"Command execution failed: {error.strip()}")
+        values = str(output).strip().split("\t", 1)
+        if len(values) != 2 or not all(values):
+            raise RuntimeError(f"Invalid OneWifiMesh credential row: {output}")
+        return values[0].strip(), values[1].strip()
+
+    def get_fronthaul_bssids(
+        self,
+        device: str,
+    ) -> list:
+        """
+        Return fronthaul BSSIDs from the device MLD interface.
+        """
+        connection = self.db_obj.read_from_database(device, "connection")
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        output, error = connection_obj.execute_command(
+            "iw dev mld0 info", return_stderr=True
+        )
+        if error:
+            raise RuntimeError(f"Command execution failed: {error.strip()}")
+        bssids = re.findall(r"link addr ([0-9a-fA-F:]{17})", str(output))
+        if not bssids:
+            raise RuntimeError(f"No fronthaul BSSIDs found on {device}")
+        return [bssid.lower() for bssid in bssids]
 
     def verify_service_status(
         self,

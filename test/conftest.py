@@ -19,23 +19,16 @@ import pytest
 import time
 import pytest_html
 from zaero.utils.database import Database
-import sys
 from pathlib import Path
 from packet_analyzer.packet_dissector import *
 from packet_analyzer.message_verify import *
 from packet_analyzer.ieee1905_utils import *
 from packet_analyzer.protocol_validation import *
-
-COMMON_UTILS_PATH = (
-    Path(__file__).resolve().parents[1] / "rdkbmeshzap" / "common-utils"
-)
-if str(COMMON_UTILS_PATH) not in sys.path:
-    sys.path.insert(0, str(COMMON_UTILS_PATH))
-import test_report_utils as zi_logger
+from rdkbmeshzap.common_utils import report_logger
 
 @pytest.fixture(scope='session', autouse=True)
 def initialize():
-    zi_logger.set_log_state(False)
+    report_logger.set_log_state(False)
     zaero_obj = zaero.zaero()
     current_file = Path(__file__)
     current_directory = current_file.parent / "config"
@@ -75,7 +68,7 @@ def test_setup(initialize):
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_setup(item):
     # Start each test with a clean failure buffer.
-    zi_logger.clear_error_logs()
+    report_logger.clear_error_logs()
     yield
 
 @pytest.hookimpl(hookwrapper=True)
@@ -86,7 +79,7 @@ def pytest_runtest_makereport(item, call):
     if report.when != "call":
         return
 
-    errors = zi_logger.get_error_logs()
+    errors = report_logger.get_error_logs()
     if errors:
         report.outcome = "failed"
         report.longrepr = "Error logs found:\n" + "\n".join(errors)
@@ -99,7 +92,7 @@ def pytest_runtest_makereport(item, call):
     if extra is None:
         extra = getattr(report, "extra", [])
 
-    message = zi_logger.format_result_status(report)
+    message = report_logger.format_result_status(report)
 
     extra.append(pytest_html.extras.html(message))
     report.extras = extra
@@ -108,11 +101,12 @@ def pytest_runtest_makereport(item, call):
 
 def pytest_html_results_table_html(report, data):
     if report.when != "call":
+        data.clear()
         return
 
     new_data = []
 
-    result_html = zi_logger.format_result_status(report)
+    result_html = report_logger.format_result_status(report)
 
     new_data.append(f"<div>Result: {result_html}</div>")
 
@@ -120,9 +114,14 @@ def pytest_html_results_table_html(report, data):
         new_data.append(f"<div>{report.longrepr}</div>")
 
     if hasattr(report, "capstdout"):
-        html = "<br>".join(
-            zi_logger.format_report_line(line)
+        report_lines = [
+            line
             for line in report.capstdout.splitlines()
+            if not report_logger.is_zaero_report_log(line)
+        ]
+        html = "<br>".join(
+            report_logger.format_report_line(line)
+            for line in report_lines
         )
         new_data.append(f"<div>{html}</div>")
 
@@ -131,26 +130,26 @@ def pytest_html_results_table_html(report, data):
 
 @pytest.fixture
 def protocol_validation(request,initialize):
-    zi_logger.print_step("========== Start Frame Capture ==========")
+    report_logger.print_step("========== Start Frame Capture ==========")
     backhaul_iface = initialize.read_from_database("controller", "backhaul_capture_iface")
     frame_filter = initialize.read_from_database("controller", "filter_1905")
     initialize.start_frame_capture("controller" ,backhaul_iface, frame_filter, f"{request.node.name}.pcap")
     yield True
-    zi_logger.print_step("========== Stop Frame Capture ==========")
+    report_logger.print_step("========== Stop Frame Capture ==========")
     initialize.stop_frame_capture("controller")
-    zi_logger.print_step(f"Frame Capture saved as {request.node.name}.pcap")
-    zi_logger.print_step("Download Captured pcap file from DUT to local machine")
+    report_logger.print_step(f"Frame Capture saved as {request.node.name}.pcap")
+    report_logger.print_step("Download Captured pcap file from DUT to local machine")
     initialize.download_captured_pcap("controller", f"{request.node.name}.pcap")
     initialize.delete_captured_pcap("controller", f"{request.node.name}.pcap")
     CPV = initialize.read_from_database("protocol", "common_protocol_validation")
     if CPV:
-        zi_logger.print_step("========== Start Common Protocol Validation ==========")
+        report_logger.print_step("========== Start Common Protocol Validation ==========")
         try:
             common_protocol_validation(f"{request.node.name}.pcap")
         except Exception as err:
-            zi_logger.print_error(f"Protocol Validation Failed : {err}")
+            report_logger.print_error(f"Protocol Validation Failed : {err}")
             pytest.fail(f"Protocol Validation Failed : {err}")
-        zi_logger.print_step("========== Stop Common Protocol Validation ==========")
+        report_logger.print_step("========== Stop Common Protocol Validation ==========")
 
     if hasattr(request.node, 'protocol_specific_function'):
         try:

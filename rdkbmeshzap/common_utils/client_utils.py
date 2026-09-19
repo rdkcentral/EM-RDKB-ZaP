@@ -6,8 +6,7 @@ import shlex
 import time
 from pathlib import Path
 
-import pytest
-import test_report_utils as zi_logger
+from rdkbmeshzap.common_utils import report_logger
 
 def get_client_bssids(initialize, client, ssid, ssh):
     """
@@ -87,7 +86,7 @@ def connect_clients_to_extender(initialize, client_devices, extender):
                 f"sudo -S -p '' nmcli device disconnect {shlex.quote(interface)}"
             )
         except Exception:
-            zi_logger.print_step(f"{client}: Wi-Fi interface already disconnected")
+            report_logger.print_step(f"{client}: Wi-Fi interface already disconnected")
         time.sleep(2)
         for attempt in range(3):
             try:
@@ -112,7 +111,7 @@ def connect_clients_to_extender(initialize, client_devices, extender):
 
 def validate_ping_recovery(ping_output, client):
     """
-    Require an outage followed by successful ping replies.
+    Validate an outage followed by successful ping replies.
     """
     lines = ping_output.splitlines()
     outage_indexes = [
@@ -120,13 +119,18 @@ def validate_ping_recovery(ping_output, client):
         if "unreachable" in line.lower() or "100% packet loss" in line.lower()
     ]
     if not outage_indexes:
-        pytest.fail(f"{client}: ping did not show an outage during recovery")
+        report_logger.print_error(
+            f"{client}: ping did not show an outage during recovery"
+        )
+        return False
     last_outage = outage_indexes[-1]
     if not any("bytes from" in line for line in lines[last_outage + 1:]):
-        pytest.fail(
+        report_logger.print_error(
             f"{client}: ping produced no successful replies after the outage:\n"
             f"{ping_output}"
         )
+        return False
+    return True
 
 def download_client_pings(initialize, clients, extender):
     """
@@ -144,5 +148,5 @@ def download_client_pings(initialize, clients, extender):
         local_path = local_directory / f"{extender}_{client}_ping.txt"
         local_path.write_text(output, encoding="utf-8")
         outputs[client] = output
-        zi_logger.print_step(f"{client}: ping output stored at {local_path}")
+        report_logger.print_step(f"{client}: ping output stored at {local_path}")
     return outputs

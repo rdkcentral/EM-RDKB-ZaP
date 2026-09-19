@@ -7,12 +7,24 @@ from html import escape
 _error_logs = []
 _enable_log = True
 _ANSI_ESCAPE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+_ZAERO_REPORT_LOG_MARKERS = (
+    "INFO :",
+    "INFO:",
+    "COMMAND :",
+    "COMMAND:",
+    "OUTPUT :",
+    "OUTPUT:",
+)
+
+def is_zaero_report_log(line):
+    """Return whether a captured line is Zaero framework log output."""
+    return any(marker in line for marker in _ZAERO_REPORT_LOG_MARKERS)
 
 def format_report_line(line):
     """Strip terminal markup and return a bold, HTML-safe report line."""
     plain_line = _ANSI_ESCAPE.sub("", line)
     plain_line = re.sub(r"</?span[^>]*>", "", plain_line, flags=re.IGNORECASE)
-    if plain_line.lstrip().startswith(("Entering Test", "Exiting Test")):
+    if plain_line.lstrip().lower().startswith(("entering test", "exiting test")):
         color, weight = "#0055aa", "bold"
     elif plain_line.lstrip().startswith(("Step", "STEP")):
         color, weight = "#8a5a00", "bold"
