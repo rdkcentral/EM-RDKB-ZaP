@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from rdkbmeshzap.feature_interface import FeatureInterface
+from rdkbmeshzap.bridge.feature_interface import FeatureInterface
 import zaero.utils.zi_logger as zi_logger
 
 class rdkbmeshzap(FeatureInterface):
@@ -24,3 +24,10 @@ class rdkbmeshzap(FeatureInterface):
         zi_logger.print_context()
         FeatureInterface.__init__(self)
         zi_logger.log("Rdkb __init__ : END")
+
+
+__all__ = [
+    "FeatureInterface",
+    "rdkbmeshzap",
+]
+

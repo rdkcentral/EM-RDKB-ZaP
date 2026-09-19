@@ -32,15 +32,14 @@ if __name__ == "__main__":
     print(f"\n[INFO] Test Run Dir: {run_dir}\n")    
     raise SystemExit(pytest.main([
         "-v",
-        f"{BASE_DIR}/test/ref_test/test_plugin_arch.py",
-        f"{BASE_DIR}/test/ref_test/test_ssid_config.py",
-        f"{BASE_DIR}/test/ref_test/test_ssid_config_packet_capture.py",
-        f"{BASE_DIR}/test/ref_test/test_tunneling.py",
-        f"{BASE_DIR}/test/ref_test/test_tunneling_and_reboot.py",
-        f"{BASE_DIR}/test/ref_test/test_ssid_config_packet_analyzer_usage.py",
-        f"{BASE_DIR}/test/ref_test/test_protocol_validation.py",
+        "--capture=tee-sys",
+        #f"{BASE_DIR}/test/testscripts/Metrics_Collection/test_ap_metrics_response_disable.py",
+        #f"{BASE_DIR}/test/testscripts/Metrics_Collection/test_ap_metrics_periodic_reporting.py",
+        #f"{BASE_DIR}/test/testscripts/Controller_Recovery/test_controller_recovery_star_extender_reconnection.py",
+        f"{BASE_DIR}/test/testscripts/Controller_Recovery/test_controller_recovery_client_continuity.py",
+        #f"{BASE_DIR}/test/testscripts/Controller_Recovery/test_controller_recovery_consecutive_reboots.py",
+        #f"{BASE_DIR}/test/testscripts/Agent_Recovery/test_agent_recovery_controller_rediscovery.py",
         f"--html={reports_path}/report.html",
         "--self-contained-html",
         "--log-cli-level=INFO",
-        "-s"
     ]))

@@ -109,6 +109,7 @@ controller:
     passphrase_2: CHANGEME1
 
 extender1:
+    topology_role: star
     bridge_iface: 'brlan0'
     bridge_ip: <ip_address>
     wifi_ifname: 'wifi'
@@ -121,8 +122,11 @@ extender1:
     6g_bh_iface_index: 2.1
     6g_fh_iface_index: 2.2
     iperf_version: 3
+    backhaul_capture_iface : 'eth1_virt_peer'
+    filter_1905 : 'ether proto 0x893a'
 
 extender2:
+    topology_role: star
     bridge_iface: 'brlan0'
     bridge_ip: <ip_address>
     wifi_ifname: 'wifi'
@@ -135,6 +139,11 @@ extender2:
     6g_bh_iface_index: 2.1
     6g_fh_iface_index: 2.2
     iperf_version: 3
+    backhaul_capture_iface : 'eth1_virt_peer'
+    filter_1905 : 'ether proto 0x893a'
+
+extender3:
+    topology_role: daisy_child
 
 protocol:
     common_protocol_validation: True
