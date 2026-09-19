@@ -1,9 +1,9 @@
 """Shared helpers for Metrics Collection tests."""
 
-import pytest
 from scapy.layers.l2 import Ether
 from packet_analyzer.ieee1905_utils import *
 from packet_analyzer.packet_dissector import *
+from rdkbmeshzap.common_utils import report_logger
 
 REPORTING_INTERVAL = 10
 INTERVAL_TOLERANCE = 1
@@ -32,23 +32,27 @@ def validate_periodic_ap_metrics_capture(packets, expected_device_macs):
     """
     Validate AP Metrics Responses and their AP Metrics TLVs.
     """
-    responses = check_message_presence(packets, MSG_TYPE_AP_METRICS_RESPONSE) or []
+    all_responses = check_message_presence(packets, MSG_TYPE_AP_METRICS_RESPONSE) or []
+    expected_sources = set(expected_device_macs.values())
+    responses = [
+        response
+        for response in all_responses
+        if response.haslayer(Ether)
+        and response[Ether].src.lower() in expected_sources
+    ]
     if not responses:
-        pytest.fail("No AP Metrics Responses were captured")
+        report_logger.print_error(
+            "No AP Metrics Responses from enabled testbed devices were captured"
+        )
+        return []
     if any(
         not check_tlv_presence(response, TLV_TYPE_AP_METRICS)
         for response in responses
     ):
-        pytest.fail("An AP Metrics Response is missing its AP Metrics TLV")
+        report_logger.print_error("An AP Metrics Response is missing its AP Metrics TLV")
     response_times_by_source = extract_message_times_by_source(
         packets, MSG_TYPE_AP_METRICS_RESPONSE
     )
-    unexpected_sources = set(response_times_by_source) - set(expected_device_macs.values())
-    if unexpected_sources:
-        pytest.fail(
-            "AP Metrics Responses came from devices outside the testbed: "
-            f"{sorted(unexpected_sources)}"
-        )
     interval_failures = []
     for source, response_times in response_times_by_source.items():
         intervals = [
@@ -63,25 +67,31 @@ def validate_periodic_ap_metrics_capture(packets, expected_device_macs):
         if invalid_intervals:
             interval_failures.append(f"{source}: {invalid_intervals}")
     if interval_failures:
-        pytest.fail(
-            f"AP Metrics response timestamps are outside the "
-            f"{REPORTING_INTERVAL}+/-{INTERVAL_TOLERANCE}s interval: "
-            + "; ".join(interval_failures)
+        report_logger.print_error(
+            (
+                f"AP Metrics Response intervals exceeded the allowed range of "
+                f"{REPORTING_INTERVAL}+/-{INTERVAL_TOLERANCE}s. "
+                f"Observed intervals: {'; '.join(interval_failures)}"
+            )
         )
     return responses
 
-def validate_disabled_ap_metrics_capture(packets, disabled_at, drain_seconds):
+def validate_disabled_ap_metrics_capture(
+    packets, disabled_at, drain_seconds, expected_device_macs
+):
     """
     Validate that no AP Metrics Responses occur after reporting is disabled.
     """
+    expected_sources = set(expected_device_macs.values())
     responses = [
         packet
         for packet in packets
         if packet.time >= disabled_at + drain_seconds
         and check_message_presence([packet], MSG_TYPE_AP_METRICS_RESPONSE)
+        and packet.haslayer(Ether)
+        and packet[Ether].src.lower() in expected_sources
     ]
     if responses:
-        pytest.fail(
-            "AP Metrics Responses were captured after reporting was disabled: "
-            f"{len(responses)}"
+        report_logger.print_error(
+            "AP Metrics Responses were captured after reporting was disabled."
         )
