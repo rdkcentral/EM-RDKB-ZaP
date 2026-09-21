@@ -292,3 +292,57 @@ class FeatureInterfaceCLI(DatabaseModule,
             raise RuntimeError(
                 f"Service {service_name} on {device} is not active: {status}"
             )
+
+    def get_file_presence_status(self,
+                            device: str,
+                            file_path: str) -> bool:
+        """
+        To check if a specific file exists on the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        command = f"python3 -c \"import os; print(os.path.exists('{file_path}'))\""
+        output, error = connection_obj.execute_command(command,
+                                                   return_stderr=True)
+        if error != '':
+            raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
+        return output.strip() == 'True'
+
+    def get_time_stamp(self,
+                    device: str) -> float:
+        """
+        To get the current timestamp from the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        # command = "date +%s"
+        command = "python3 -c \"from datetime import datetime; print(datetime.now().timestamp())\""
+        output, error = connection_obj.execute_command(command,
+                                                    return_stderr=True)
+        if error != '':
+            raise RuntimeError(f"Command execution failed : {command}. stderr: {error.strip()}")
+        return float(output.strip())
+
+    def get_file_list(self,
+                    device: str,
+                    directory_path: str) -> list:
+        """
+        To list all files in a specific directory on the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        command = f"ls {directory_path}"
+        output, error = connection_obj.execute_command(command,
+                                                   return_stderr=True)
+        if error != '':
+            raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
+        if not output:
+            return None
+        entries = [entry for entry in output.splitlines() if entry]
+        return entries if entries else None

@@ -189,3 +189,32 @@ class FeatureInterface(FeatureInterfaceModules):
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.get_fronthaul_bssids(device)
+
+    def get_file_presence_status(self,device: str,file_path: str,
+                        method = 'cli') -> bool:
+        """
+        To check if a specific file exists on the device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_file_presence_status(device, file_path)
+
+    def get_time_stamp(self,device: str,
+                    method = 'cli') -> float:
+        """
+        To get the current timestamp from the device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_time_stamp(device)
+
+    def get_file_list(self,
+                device: str,
+                directory_path: str,
+                method = 'cli') -> list:
+        """
+        To list all files in a specific directory on the device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_file_list(device, directory_path)
