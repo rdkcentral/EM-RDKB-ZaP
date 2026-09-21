@@ -52,6 +52,82 @@ class FeatureInterfaceCLI(DatabaseModule,
             raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
         return str(output).strip()
 
+    def get_iw_dev_info(self, device: str) -> str:
+        """
+        Get `iw dev` output for the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        command = "iw dev"
+        output, error = connection_obj.execute_command(command, return_stderr=True)
+        if error != '':
+            raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
+        return str(output).strip()
+
+    def get_iw_dev_sta_dump(self, device: str, iface: str) -> str:
+        """
+        Get `iw dev <interface> station dump` output for the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        command = f"iw dev {iface} station dump"
+        output, error = connection_obj.execute_command(command, return_stderr=True)
+        if error != '':
+            raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
+        return str(output).strip()
+
+    def get_iw_dev_link_info(self, device: str, iface: str) -> str:
+        """
+        Get `iw dev <interface> link` output for the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        command = f"iw dev {iface} link"
+        output, error = connection_obj.execute_command(command, return_stderr=True)
+        if error != '':
+            raise RuntimeError(
+                f"Command execution failed: {command}. stderr: {error.strip()}"
+            )
+        return str(output).strip()
+
+    def get_cpu_utilization(self, device: str) -> str:
+        """
+        Get one non-interactive CPU snapshot from the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        command = "top -b -n 1"
+        output, error = connection_obj.execute_command(command, return_stderr=True)
+        if error != '':
+            raise RuntimeError(
+                f"Command execution failed: {command}. stderr: {error.strip()}"
+            )
+        return str(output).strip()
+
+    def get_memory_utilization(self, device: str) -> str:
+        """
+        Get one memory snapshot using `free -m`.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        command = "free -m"
+        output, error = connection_obj.execute_command(command, return_stderr=True)
+        if error != '':
+            raise RuntimeError(
+                f"Command execution failed: {command}. stderr: {error.strip()}"
+            )
+        return str(output).strip()
+
     def set_ssid(self,
                  device: str,
                  index: str,
