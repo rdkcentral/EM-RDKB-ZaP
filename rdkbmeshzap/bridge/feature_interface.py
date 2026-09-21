@@ -39,6 +39,36 @@ class FeatureInterface(FeatureInterfaceModules):
         al_mac = iface_obj.get_al_mac_address(device)
         return al_mac
 
+    def get_iw_dev_info(self, device: str, method: str = 'cli') -> str:
+        """Get `iw dev` output for a device."""
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_iw_dev_info(device)
+
+    def get_iw_dev_sta_dump(self, device: str, iface: str, method: str = 'cli') -> str:
+        """Get `iw dev <interface> station dump` output for a device."""
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_iw_dev_sta_dump(device, iface)
+
+    def get_iw_dev_link_info(self, device: str, iface: str, method: str = 'cli') -> str:
+        """Get `iw dev <interface> link` output for a device."""
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_iw_dev_link_info(device, iface)
+
+    def get_cpu_utilization(self, device: str, method: str = 'cli') -> str:
+        """Get one non-interactive CPU snapshot from the device."""
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_cpu_utilization(device)
+
+    def get_memory_utilization(self, device: str, method: str = 'cli') -> str:
+        """Get one memory snapshot from the device."""
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_memory_utilization(device)
+
     def set_ssid(self,
                  device: str,
                  index: str,
