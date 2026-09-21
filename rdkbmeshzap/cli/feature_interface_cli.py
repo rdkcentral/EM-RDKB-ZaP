@@ -15,6 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
+import shlex
 from zaero.bridge.database_module import DatabaseModule
 from zaero.bridge.connection_modules import ConnectionModules
 from zaero.bridge.ui_modules import UiModules
@@ -61,6 +63,20 @@ class FeatureInterfaceCLI(DatabaseModule,
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
         command = "iw dev"
+        output, error = connection_obj.execute_command(command, return_stderr=True)
+        if error != '':
+            raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
+        return str(output).strip()
+
+    def get_iw_dev_interface_info(self, device: str, iface: str) -> str:
+        """
+        Get `iw dev <interface> info` output for the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        command = f"iw dev {shlex.quote(iface)} info"
         output, error = connection_obj.execute_command(command, return_stderr=True)
         if error != '':
             raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
@@ -219,3 +235,60 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.log(f"COMMAND : {command}")
         connection_obj.execute_command(command,
                                        blocking_call = False)
+
+    def get_fronthaul_credentials(self, device: str) -> tuple:
+        """
+        Return the OneWifiMesh fronthaul SSID and passphrase.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        query = (
+            "SELECT SSID, PassPhrase FROM NetworkSSIDList "
+            "WHERE ID LIKE '%Fronthaul%OneWifiMesh%' LIMIT 1;"
+        )
+        command = f"mysql -N -B -D OneWifiMesh -e {shlex.quote(query)}"
+        output, error = connection_obj.execute_command(
+            command, return_stderr=True
+        )
+        if error:
+            raise RuntimeError(f"Command execution failed: {error.strip()}")
+        values = str(output).strip().split("\t", 1)
+        if len(values) != 2 or not all(values):
+            raise RuntimeError(f"Invalid OneWifiMesh credential row: {output}")
+        return values[0].strip(), values[1].strip()
+
+    def get_fronthaul_bssids(self, device: str) -> list:
+        """
+        Return fronthaul BSSIDs from the device MLD interface.
+        """
+        zi_logger.print_context()
+        output = self.get_iw_dev_interface_info(device, "mld0")
+        bssids = re.findall(
+            r"link\s+ID\s+\d+\s+link\s+addr\s+([0-9a-fA-F:]{17})",
+            str(output),
+        )
+        if not bssids:
+            raise RuntimeError(f"No fronthaul BSSIDs found on {device}")
+        return [bssid.lower() for bssid in bssids]
+
+    def verify_service_status(self, device: str, service_name: str):
+        """
+        Verify that a systemd service is active on a device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        command = f"systemctl is-active {service_name}"
+        output, error = connection_obj.execute_command(
+            command, return_stderr=True
+        )
+        if error:
+            raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
+        status = str(output).strip()
+        if status != "active":
+            raise RuntimeError(
+                f"Service {service_name} on {device} is not active: {status}"
+            )

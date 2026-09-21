@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from rdkbmeshzap.feature_interface_modules import FeatureInterfaceModules
+from rdkbmeshzap.bridge.feature_interface_modules import FeatureInterfaceModules
 import zaero.utils.zi_logger as zi_logger
 
 class FeatureInterface(FeatureInterfaceModules):
@@ -46,6 +46,15 @@ class FeatureInterface(FeatureInterfaceModules):
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.get_iw_dev_info(device)
+
+    def get_iw_dev_interface_info(
+        self, device: str, iface: str, method: str = 'cli') -> str:
+        """
+        Get `iw dev <interface> info` output for a device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_iw_dev_interface_info(device, iface)
 
     def get_iw_dev_sta_dump(self, device: str, iface: str, method: str = 'cli') -> str:
         """
@@ -129,3 +138,54 @@ class FeatureInterface(FeatureInterfaceModules):
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
         iface_obj.wifi_reset(device)
+
+    def set_ap_metrics_reporting_interval(self,
+                                          device: str,
+                                          interval: int,
+                                          apply_scope: str = 'all',
+                                          method: str = 'gui'):
+        """
+        Set the AP Metrics reporting interval through the selected interface.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        iface_obj.set_ap_metrics_reporting_interval(
+            device, interval, apply_scope
+        )
+
+    def get_ap_metrics_reporting_interval(self,
+                                          device: str,
+                                          method: str = 'gui') -> str:
+        """
+        Get the AP Metrics reporting interval through the selected interface.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_ap_metrics_reporting_interval(device)
+
+    def verify_service_status(self, device: str, service_name: str,
+                              method: str = 'cli'):
+        """
+        Verify the status of a device service.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        iface_obj.verify_service_status(device, service_name)
+
+    def get_fronthaul_credentials(self, device: str,
+                                  method: str = 'cli') -> tuple:
+        """
+        Return the fronthaul SSID and passphrase.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_fronthaul_credentials(device)
+
+    def get_fronthaul_bssids(self, device: str,
+                             method: str = 'cli') -> list:
+        """
+        Return the fronthaul BSSIDs of a device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_fronthaul_bssids(device)
