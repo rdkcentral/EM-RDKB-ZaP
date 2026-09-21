@@ -28,7 +28,7 @@ def test_client_association_discovery_easymesh_ssid(initialize):
     zi_logger.print_step("------------------------------------------EM_Client_Association_Discovery_EasyMesh_SSID----------------------------------------- ")
     zi_logger.print_step("Step 1: Get SSID from DataElements")
     ssid = initialize.get_ssid("controller", "controller_device_index", 'de')
-    zi_logger.print_step(f"Retrieved SSID: {ssid}")
+    zi_logger.print_success(f"PASS: Retrieved SSID: {ssid}")
     zi_logger.print_step("Step 2: Wait for some time for SSID propagation")
     time.sleep(10)
     zi_logger.print_step("Step 3: Initiate WiFi scan on each wlan client of the devices")
@@ -38,6 +38,7 @@ def test_client_association_discovery_easymesh_ssid(initialize):
             output = []
             try:
                 output = initialize.get_ap_ssid_visibility(client, ssid, 'cli')
+                time.sleep(10)
                 zi_logger.print_success(f"PASS: WiFi scan initiated successfully on {client} with SSID: {ssid} and output: {output}")
                 zi_logger.print_step(f"Step 4: Count SSID occurrences for {client}")
                 if len(output) >= 2:
@@ -55,7 +56,7 @@ def test_client_association_authentication_correct_credentials(initialize):
     zi_logger.print_step("--------------EM_Client_Association_Authentication_Correct_Credentials------------------------------------------------- ")
     zi_logger.print_step("Step 1: Get SSID AKM Configuration from DataElements")
     try:
-        ssid_akm = initialize.get_ssid_AKMAllowed("controller", "controller_device_index", 'de')
+        ssid_akm = initialize.get_ssid_AKMAllowed( "controller","controller_device_index",'de')
         if not ssid_akm:
             zi_logger.print_error("FAIL: Failed to get SSID AKM Configuration from DataElements")
         else:
@@ -65,82 +66,93 @@ def test_client_association_authentication_correct_credentials(initialize):
         pytest.fail(f"DataElements query failed: {e}")
     zi_logger.print_step("Step 2: Get PMF Configuration from DataElements")
     try:
-        pmf_config = initialize.get_ssid_MFPConfig("controller", "controller_device_index", 'de')
+        pmf_config = initialize.get_ssid_MFPConfig("controller","controller_device_index",'de')
         if not pmf_config:
             zi_logger.print_error("FAIL: Failed to get PMF Configuration from DataElements")
         else:
             zi_logger.print_success(f"PASS: PMF Configuration retrieved successfully: {pmf_config}")
     except Exception as e:
         zi_logger.print_error(f"FAIL: Failed to query PMF Configuration from DataElements: {e}")
-        pytest.fail(f"DataElements query failed: {e}")   
+        pytest.fail(f"DataElements query failed: {e}")
     zi_logger.print_step("Step 3: Get Passphrase from GUI")
-    password = initialize.get_fronthaul_password("controller", "gui")
+    password = initialize.get_fronthaul_password("controller","gui")
     zi_logger.print_success(f"PASS: Fronthaul password retrieved successfully: {password}")
     zi_logger.print_step("Step 4: Wait for some time for SSID propagation")
     time.sleep(10)
-    zi_logger.print_step("Step 5: Connect client with correct credentials and verify the connection status")
-    ssid = initialize.get_ssid("controller", "controller_device_index", 'de')
+    zi_logger.print_step("Step 5: Connect client with correct credentials and verify the connection status" )
+    ssid = initialize.get_ssid("controller","controller_device_index",'de')
     clients = initialize.get_enabled_clients()
     for client in clients:
         if not initialize.read_from_database(client, "device_present"):
             continue
         device = client.split("_wlan_client")[0]
         try:
-            device_bssid = initialize.read_from_database(device, "2g_radio_mac")
-            initialize.connect_client_to_ssid(client, ssid, password, device_bssid)
-            zi_logger.print_success(f"PASS: Client {client} connected to SSID {ssid} with correct credentials")
+            # Get all available radio MAC addresses
+            radio_macs = {"2G": initialize.read_from_database(device,"2g_radio_mac"),
+                          "5G": initialize.read_from_database(device,"5g_radio_mac"),
+                          "6G": initialize.read_from_database(device,"6g_radio_mac")}
+            connected = False
+            # Try 2G -> 5G -> 6G
+            for radio, device_bssid in radio_macs.items():
+                if not device_bssid:
+                    zi_logger.print_step(f"{radio} radio MAC is not available for {device}, skipping")
+                    continue
+                zi_logger.print_step(f"Trying to connect client {client} to {radio} radio ({device_bssid})")
+                try:
+                    initialize.connect_client_to_ssid(client,ssid,password,device_bssid)
+                    time.sleep(10)
+                    zi_logger.print_success(f"PASS: Client {client} connected to SSID {ssid} through {radio} radio ({device_bssid})")
+                    connected = True
+                    break
+                except Exception as e:
+                    zi_logger.print_error(f"Client {client} failed to connect through {radio} radio ({device_bssid}): {e}")
+            if not connected:
+                pytest.fail(f"Client {client} could not connect to SSID {ssid} through 2G, 5G or 6G radio")
         except Exception as e:
             zi_logger.print_error(f"FAIL: Failed to connect client {client} to SSID {ssid}: {e}")
     zi_logger.print_step("Step 6: Verify association status on clients")
     for client in clients:
-        if not initialize.read_from_database(client, "device_present"):
+        if not initialize.read_from_database( client,"device_present"):
             continue
         device = client.split("_wlan_client")[0]
         try:
-            associated_mac = initialize.get_association_status(client, 'cli')
-            device_mac = initialize.read_from_database(device, "2g_radio_mac")
-            zi_logger.print_step(
-                f"Verifying association for client {client} with {device}. "
-                f"Associated MAC: {associated_mac}, {device} MAC: {device_mac}"
-            )
-            if associated_mac == device_mac:
-                zi_logger.print_success(f"PASS: Client {client} is associated with {device}")
+            associated_mac = initialize.get_association_status(client,'cli')
+            # Get all radio MAC addresses
+            radio_macs = {
+                "2G": initialize.read_from_database(device,"2g_radio_mac"),
+                "5G": initialize.read_from_database(device,"5g_radio_mac"),
+                "6G": initialize.read_from_database(device,"6g_radio_mac")}
+            associated_radio = None
+            for radio, radio_mac in radio_macs.items():
+                if radio_mac and associated_mac.lower() == radio_mac.lower():
+                    associated_radio = radio
+                    break
+            zi_logger.print_step(f"Client {client} associated MAC: {associated_mac}")
+            if associated_radio:
+                zi_logger.print_success(f"PASS: Client {client} is associated with {device} {associated_radio} radio ({associated_mac})")
             else:
-                zi_logger.print_error(
-                    f"FAIL: Client {client} is not associated with {device}. "
-                    f"Associated MAC: {associated_mac}, {device} MAC: {device_mac}"
-                )
+                zi_logger.print_error(f"FAIL: Client {client} is not associated with any known radio of {device}. Associated MAC: {associated_mac}")
         except Exception as e:
             zi_logger.print_error(f"FAIL: Failed to verify association status for client {client}: {e}")
     zi_logger.print_step("Step 7: Verify negotiated security on clients")
     for client in clients:
-        if initialize.read_from_database(client, "device_present"):
+        if initialize.read_from_database(client,"device_present"):
             try:
-                client_security = initialize.get_client_encryption(client)
-                expected_security = initialize.normalize_security(ssid_akm)               # "dpp" -> "WPA3"
-                actual_security = initialize.normalize_security(client_security)          # "SAE" -> "WPA3"
-                zi_logger.print_step(
-                    f"Comparing security for {client}: "
-                    f"Controller AKM='{ssid_akm}' ({expected_security}) vs "
-                    f"Client negotiated='{client_security}' ({actual_security})"
-                )
+                client_security = initialize.get_client_encryption( client)
+                expected_security = initialize.normalize_security( ssid_akm)
+                actual_security = initialize.normalize_security(client_security)
+                zi_logger.print_step(f"Comparing security for {client}: Controller AKM='{ssid_akm}' ({expected_security}) vs Client negotiated='{client_security}' ({actual_security})")
                 if expected_security == actual_security:
-                    zi_logger.print_success(
-                        f"PASS: {client} negotiated security matches: {client_security} ({actual_security}) "
-                        f"is consistent with controller AKM {ssid_akm} ({expected_security})"
-                    )
+                    zi_logger.print_success(f"PASS: {client} negotiated security matches: {client_security} ({actual_security}) is consistent with controller AKM {ssid_akm} ({expected_security})")
                 else:
-                    zi_logger.print_error(
-                        f"FAIL: {client} negotiated security {client_security} ({actual_security}) "
-                        f"does not match expected {ssid_akm} ({expected_security})"
-                    )
+                    zi_logger.print_error(f"FAIL: Client {client} negotiated security {client_security} ({actual_security}) does not match expected {ssid_akm} ({expected_security})")
             except Exception as e:
                 zi_logger.print_error(f"FAIL: Failed to verify negotiated security for client {client}: {e}")
-            zi_logger.print_step("Step 8: Test connectivity by pinging 8.8.8.8")
+    zi_logger.print_step("Step 8: Test connectivity by pinging 8.8.8.8")
     for client in clients:
-        if initialize.read_from_database(client, "device_present"):
+        if initialize.read_from_database(client,"device_present"):
             try:
-                ping_result = initialize.ping_ipv4(client, "8.8.8.8", "3")
+                ping_result = initialize.ping_ipv4(client,"8.8.8.8","3")
                 if ping_result == 0:
                     zi_logger.print_success(f"PASS: Client {client} can ping 8.8.8.8")
                 else:
@@ -156,7 +168,7 @@ def test_client_association_dhcp_ip_assignment(initialize):
     zi_logger.print_step("--------------EM_Client_Association_DHCP_IP_Assignment------------------------------------------------- ")
     zi_logger.print_step("Step 1: Get DHCP Server is enabled or not")
     try:
-        dhcp_server_enabled = initialize.get_dhcpv4_server_enable("controller", 'de')
+        dhcp_server_enabled = initialize.get_dhcpv4_server_enable("controller",'de')
         if dhcp_server_enabled:
             zi_logger.print_success(f"PASS: DHCP Server is enabled on controller: {dhcp_server_enabled}")
         else:
@@ -166,9 +178,9 @@ def test_client_association_dhcp_ip_assignment(initialize):
         pytest.fail(f"DataElements query failed: {e}")
     zi_logger.print_step("Step 2: Get DHCP Server Pool minimum address from DataElements")
     try:
-        dhcp_pool_min_address = initialize.get_dhcpv4_server_pool_Minaddress("controller", "controller_device_index", 'de')
+        dhcp_pool_min_address = initialize.get_dhcpv4_server_pool_Minaddress("controller","controller_device_index",'de')
         if not dhcp_pool_min_address:
-            zi_logger.print_error(f"FAIL: Failed to get DHCP Server Pool minimum address from DataElements")
+            zi_logger.print_error("FAIL: Failed to get DHCP Server Pool minimum address from DataElements")
         else:
             zi_logger.print_success(f"PASS: DHCP Server Pool minimum address retrieved successfully: {dhcp_pool_min_address}")
     except Exception as e:
@@ -176,80 +188,105 @@ def test_client_association_dhcp_ip_assignment(initialize):
         pytest.fail(f"DataElements query failed: {e}")
     zi_logger.print_step("Step 3: Get DHCP Server Pool maximum address from DataElements")
     try:
-        dhcp_pool_max_address = initialize.get_dhcpv4_server_pool_Maxaddress("controller", "controller_device_index", 'de')
+        dhcp_pool_max_address = initialize.get_dhcpv4_server_pool_Maxaddress("controller","controller_device_index",'de')
         if not dhcp_pool_max_address:
-            zi_logger.print_error(f"FAIL: Failed to get DHCP Server Pool maximum address from DataElements")
+            zi_logger.print_error("FAIL: Failed to get DHCP Server Pool maximum address from DataElements")
         else:
             zi_logger.print_success(f"PASS: DHCP Server Pool maximum address retrieved successfully: {dhcp_pool_max_address}")
     except Exception as e:
         zi_logger.print_error(f"FAIL: Failed to query DHCP Server Pool maximum address from DataElements: {e}")
         pytest.fail(f"DataElements query failed: {e}")
     zi_logger.print_step("Step 4: Perform WiFi scan on each client")
-    ssid = initialize.get_ssid("controller", "controller_device_index", 'de')
+    ssid = initialize.get_ssid("controller","controller_device_index",'de')
     zi_logger.print_step(f"Retrieved SSID: {ssid}")
     clients = initialize.get_enabled_clients()
     for client in clients:
-        if not initialize.read_from_database(client, "device_present"):
+        if not initialize.read_from_database(client,"device_present"):
             continue
         try:
-            output = initialize.get_ap_ssid_visibility(client, ssid, 'cli')
+            output = initialize.get_ap_ssid_visibility(client, ssid,'cli')
             zi_logger.print_success(f"WiFi scan initiated successfully on {client} with SSID: {ssid} and output: {output}")
         except Exception as e:
             zi_logger.print_error(f"FAIL: Failed to initiate WiFi scan on {client}: {e}")
     zi_logger.print_step("Step 5: Connect client with correct credentials and verify the connection status")
-    password = initialize.get_fronthaul_password("controller", "gui")
+    password = initialize.get_fronthaul_password("controller","gui")
     try:
         if not password:
-            zi_logger.print_error(f"FAIL: Failed to get Fronthaul password from GUI")
+            zi_logger.print_error("FAIL: Failed to get Fronthaul password from GUI")
         else:
             zi_logger.print_success(f"PASS: Fronthaul password retrieved successfully: {password}")
     except Exception as e:
         zi_logger.print_error(f"FAIL: Failed to query Fronthaul password from GUI: {e}")
         pytest.fail(f"GUI query failed: {e}")
     for client in clients:
-        if not initialize.read_from_database(client, "device_present"):
+        if not initialize.read_from_database(client,"device_present"):
             continue
         device = client.split("_wlan_client")[0]
         try:
-            device_bssid = initialize.read_from_database(device, "2g_radio_mac")
-            initialize.connect_client_to_ssid(client, ssid, password, device_bssid)
-            zi_logger.print_success(f"Client {client} connected to SSID {ssid} with correct credentials")
+            # Get all available radio MAC addresses
+            radio_macs = {
+                "2G": initialize.read_from_database(device,"2g_radio_mac"),
+                "5G": initialize.read_from_database(device,"5g_radio_mac"),
+                "6G": initialize.read_from_database(device,"6g_radio_mac")}
+            connected = False
+            # Try 2G -> 5G -> 6G
+            for radio, device_bssid in radio_macs.items():
+                if not device_bssid:
+                    zi_logger.print_step(f"{radio} radio MAC is not available for {device}, skipping")
+                    continue
+                zi_logger.print_step(f"Trying to connect client {client} to {radio} radio ({device_bssid})")
+                try:
+                    initialize.connect_client_to_ssid(client,ssid,password,device_bssid)
+                    time.sleep(10)
+                    zi_logger.print_success(f"PASS: Client {client} connected to SSID {ssid} through {radio} radio ({device_bssid})")
+                    connected = True
+                    break
+                except Exception as e:
+                    zi_logger.print_error(f"Client {client} failed to connect through {radio} radio ({device_bssid}): {e}")
+            if not connected:
+                pytest.fail(f"Client {client} could not connect to SSID {ssid} through 2G, 5G or 6G radio")
         except Exception as e:
-            zi_logger.print_error(f"FAIL: Failed to connect client {client} to SSID {ssid} and password {password}: {e}")
+            zi_logger.print_error(f"FAIL: Failed to connect client {client} to SSID {ssid}: {e}")
     zi_logger.print_step("Step 6: Wait for some time for association completion")
     time.sleep(10)
     zi_logger.print_step("Step 7: Verify association status on clients")
     for client in clients:
-        if not initialize.read_from_database(client, "device_present"):
+        if not initialize.read_from_database(client,"device_present"):
             continue
         device = client.split("_wlan_client")[0]
         try:
-            associated_mac = initialize.get_association_status(client, 'cli')
-            device_mac = initialize.read_from_database(device, "2g_radio_mac")
-            if associated_mac == device_mac:
-                zi_logger.print_success(f"PASS:Client {client} is associated with {device}")
+            associated_mac = initialize.get_association_status(client,'cli')
+            # Get all radio MAC addresses
+            radio_macs = {"2G": initialize.read_from_database(device,"2g_radio_mac"),
+                "5G": initialize.read_from_database(device,"5g_radio_mac"),
+                "6G": initialize.read_from_database(device,"6g_radio_mac")}
+            associated_radio = None
+            for radio, radio_mac in radio_macs.items():
+                if radio_mac and associated_mac.lower() == radio_mac.lower():
+                    associated_radio = radio
+                    break
+            zi_logger.print_step(f"Client {client} associated MAC: {associated_mac}")
+            if associated_radio:
+                zi_logger.print_success(f"PASS: Client {client} is associated with {device} {associated_radio} radio ({associated_mac})")
             else:
-                zi_logger.print_error(
-                    f"FAIL:Client {client} is not associated with {device}. "
-                    f"Associated MAC: {associated_mac}, {device} MAC: {device_mac}"
-                )
+                zi_logger.print_error(f"FAIL: Client {client} is not associated with any known radio of {device}. Associated MAC: {associated_mac}")
         except Exception as e:
             zi_logger.print_error(f"FAIL: Failed to verify association status for client {client}: {e}")
-    zi_logger.print_step("Step 8:  Verify DHCP Process and lease time ")
+    zi_logger.print_step("Step 8: Verify DHCP Process and lease time")
     for client in clients:
-        if not initialize.read_from_database(client, "device_present"):
+        if not initialize.read_from_database(client,"device_present"):
             continue
         try:
-            dhcp_process = initialize.verify_dhcp_process(client, 'cli')
+            dhcp_process = initialize.verify_dhcp_process(client,'cli')
             if dhcp_process:
                 zi_logger.print_success(f"PASS: Client {client} DHCP process is successful")
             else:
                 zi_logger.print_error(f"FAIL: Client {client} DHCP process is not successful")
         except Exception as e:
-            zi_logger.print_error(f"FAIL: Failed to verify DHCP process for client {client}: {e}")      
+            zi_logger.print_error(f"FAIL: Failed to verify DHCP process for client {client}: {e}")
     zi_logger.print_step("Step 9: Verify IP address assignment on clients")
     for client in clients:
-        if not initialize.read_from_database(client, "device_present"):
+        if not initialize.read_from_database(client,"device_present"):
             continue
         try:
             ip_address = initialize.get_client_ipv4(client)
@@ -261,24 +298,18 @@ def test_client_association_dhcp_ip_assignment(initialize):
             zi_logger.print_error(f"FAIL: Failed to verify IP address assignment for client {client}: {e}")
     zi_logger.print_step("Step 10: Verify IP Address assignment is within the DHCP pool range")
     for client in clients:
-        if not initialize.read_from_database(client, "device_present"):
+        if not initialize.read_from_database(client,"device_present"):
             zi_logger.print_step(f"FAIL: Client {client} is not present in the database")
             continue
         try:
             ip_address = initialize.get_client_ipv4(client)
             if ip_address:
-                if int(dhcp_pool_min_address.split('.')[-1]) <= int(ip_address.split('.')[-1]) <= int(dhcp_pool_max_address.split('.')[-1]):
-                    zi_logger.print_success(
-                        f"PASS: Client {client} IP address {ip_address} is within the DHCP pool range: "
-                        f"{dhcp_pool_min_address} - {dhcp_pool_max_address}"
-                    )
+                if (int(dhcp_pool_min_address.split('.')[-1]) <= int(ip_address.split('.')[-1])<= int(dhcp_pool_max_address.split('.')[-1])):
+                    zi_logger.print_success(f"PASS: Client {client} IP address {ip_address} is within the DHCP pool range: {dhcp_pool_min_address} - {dhcp_pool_max_address}")
                 else:
-                    zi_logger.print_error(
-                        f"FAIL: Client {client} IP address {ip_address} is NOT within the DHCP pool range: "
-                        f"{dhcp_pool_min_address} - {dhcp_pool_max_address}"
-                    )
+                    zi_logger.print_error(f"FAIL: Client {client} IP address {ip_address} is NOT within the DHCP pool range: {dhcp_pool_min_address} - {dhcp_pool_max_address}")
         except Exception as e:
-            zi_logger.print_error(f"FAIL: Failed to verify IP address assignment for client {client}: {e}")
+            zi_logger.print_error(f"FAIL: Failed to verify IP address assignment "f"for client {client}: {e}")
 
 # ---------------------------------------------------------------------------
 # Test Case-4: EM_Client_Association_Gateway_Reachability

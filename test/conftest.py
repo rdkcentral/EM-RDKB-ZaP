@@ -99,6 +99,32 @@ def test_setup(initialize):
 				pass
 
 
+@pytest.fixture(scope="session", autouse=True)
+def discover_radio_macs(initialize):
+    """
+    Discover 2G, 5G and 6G fronthaul BSSIDs from the controller
+    and store them in the database.
+    """
+    zi_logger.print_step("Discovering controller fronthaul BSSIDs")
+    try:
+        bssids = initialize.get_fronthaul_bssids("controller", "cli")
+        if len(bssids) < 3:
+            raise RuntimeError(f"Expected 3 fronthaul BSSIDs, but found {len(bssids)}: {bssids}")
+        zi_logger.print_step(f"Discovered fronthaul BSSIDs: {bssids}")
+        # 0 -> 2.4 GHz
+        initialize.db_obj.write_into_database("controller","2g_radio_mac",bssids[0])
+        # 1 -> 5 GHz
+        initialize.db_obj.write_into_database("controller","5g_radio_mac",bssids[1])
+        # 2 -> 6 GHz
+        initialize.db_obj.write_into_database("controller","6g_radio_mac",bssids[2])
+        zi_logger.print_success(f"2G radio MAC stored: {bssids[0]}")
+        zi_logger.print_success(f"5G radio MAC stored: {bssids[1]}")
+        zi_logger.print_success(f"6G radio MAC stored: {bssids[2]}")
+    except Exception as e:
+        zi_logger.print_error(f"Failed to discover and store radio MACs: {e}")
+        pytest.fail(f"Radio MAC discovery failed: {e}")
+
+
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_setup(item):
 	report_logger.clear_error_logs()
