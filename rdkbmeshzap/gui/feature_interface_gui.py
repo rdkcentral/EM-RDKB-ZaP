@@ -88,3 +88,50 @@ class FeatureInterfaceGUI(DatabaseModule,
         time.sleep(3)
         self.ui_obj.ui_click_button("#reset-btn")        
         time.sleep(3)
+
+    def set_ap_metrics_reporting_interval(self, device: str, interval: int, apply_scope: str = "all"):
+        """
+        To set the AP Metrics reporting interval from Policy Settings.
+        """
+        zi_logger.print_context()
+        self._create_ui_obj(device)
+        self.ui_obj.ui_navigate_to_home_page(device)
+        time.sleep(3)
+        self.ui_obj.ui_navigate_to_required_page("Policy Settings")
+        time.sleep(3)
+        self.ui_obj.ui_set_dialog_handler()
+        try:
+            page = self.ui_obj._page
+            page.locator(
+                f"input[name='applyScope-ap'][value='{apply_scope}']"
+            ).check()
+            page.fill("#ap-interval", str(interval))
+            page.locator(
+                "button.apply-section[data-section='ap-metrics']"
+            ).click()
+            page.wait_for_timeout(3000)
+            page.locator("#apply-policy-settings").click()
+            page.wait_for_timeout(5000)
+        except Exception as error:
+            zi_logger.log("Failed to set AP Metrics reporting interval")
+            raise RuntimeError(
+                f"Could not set AP Metrics reporting interval: {error}"
+            ) from error
+
+    def get_ap_metrics_reporting_interval(self, device: str) -> str:
+        """
+        To read the AP Metrics reporting interval from Policy Settings.
+        """
+        zi_logger.print_context()
+        self._create_ui_obj(device)
+        self.ui_obj.ui_navigate_to_home_page(device)
+        time.sleep(3)
+        self.ui_obj.ui_navigate_to_required_page("Policy Settings")
+        time.sleep(3)
+        try:
+            return self.ui_obj._page.locator("#ap-interval").input_value()
+        except Exception as error:
+            zi_logger.log("Failed to read AP Metrics reporting interval")
+            raise RuntimeError(
+                f"Could not read AP Metrics reporting interval: {error}"
+            ) from error
