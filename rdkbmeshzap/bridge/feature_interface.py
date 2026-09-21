@@ -168,6 +168,7 @@ class FeatureInterface(FeatureInterfaceModules):
         """
         Verify the status of a device service.
         """
+        zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
         iface_obj.verify_service_status(device, service_name)
 
@@ -176,6 +177,7 @@ class FeatureInterface(FeatureInterfaceModules):
         """
         Return the fronthaul SSID and passphrase.
         """
+        zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.get_fronthaul_credentials(device)
 
@@ -184,5 +186,6 @@ class FeatureInterface(FeatureInterfaceModules):
         """
         Return the fronthaul BSSIDs of a device.
         """
+        zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.get_fronthaul_bssids(device)

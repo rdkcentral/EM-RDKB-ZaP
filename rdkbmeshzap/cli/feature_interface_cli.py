@@ -240,6 +240,7 @@ class FeatureInterfaceCLI(DatabaseModule,
         """
         Return the OneWifiMesh fronthaul SSID and passphrase.
         """
+        zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
@@ -262,6 +263,7 @@ class FeatureInterfaceCLI(DatabaseModule,
         """
         Return fronthaul BSSIDs from the device MLD interface.
         """
+        zi_logger.print_context()
         output = self.get_iw_dev_interface_info(device, "mld0")
         bssids = re.findall(
             r"link\s+ID\s+\d+\s+link\s+addr\s+([0-9a-fA-F:]{17})",
@@ -275,6 +277,7 @@ class FeatureInterfaceCLI(DatabaseModule,
         """
         Verify that a systemd service is active on a device.
         """
+        zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
@@ -283,7 +286,7 @@ class FeatureInterfaceCLI(DatabaseModule,
             command, return_stderr=True
         )
         if error:
-            raise RuntimeError(f"Command execution failed: {command}")
+            raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
         status = str(output).strip()
         if status != "active":
             raise RuntimeError(
