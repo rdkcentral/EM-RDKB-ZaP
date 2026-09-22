@@ -17,6 +17,7 @@
 
 import pytest
 import zaero
+from zaero.utils import zi_logger
 from zaero.utils.database import Database
 from packet_analyzer.protocol_validation import common_protocol_validation
 from rdkbmeshzap.common_utils import report_logger
@@ -89,6 +90,7 @@ def test_setup(request, initialize):
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_setup(item):
 	report_logger.clear_error_logs()
+	zi_logger.clear_error_logs()
 	yield
 
 
@@ -107,7 +109,7 @@ def pytest_runtest_makereport(item, call):
 		)
 		report.connectivity_check = True
 		return
-	errors = report_logger.get_error_logs()
+	errors = report_logger.get_error_logs() + zi_logger.get_error_logs()
 	if errors:
 		report.outcome = "failed"
 		report.longrepr = "Error logs found:\n" + "\n".join(errors)
