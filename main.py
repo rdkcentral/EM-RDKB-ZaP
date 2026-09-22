@@ -32,6 +32,8 @@ if __name__ == "__main__":
     print(f"\n[INFO] Test Run Dir: {run_dir}\n")    
     raise SystemExit(pytest.main([
         "-v",
+        "--capture=tee-sys",
+        f"{BASE_DIR}/test/ref_test/test_report_generation.py",
         f"{BASE_DIR}/test/ref_test/test_plugin_arch.py",
         f"{BASE_DIR}/test/ref_test/test_ssid_config.py",
         f"{BASE_DIR}/test/ref_test/test_ssid_config_packet_capture.py",
@@ -42,5 +44,4 @@ if __name__ == "__main__":
         f"--html={reports_path}/report.html",
         "--self-contained-html",
         "--log-cli-level=INFO",
-        "-s"
     ]))
