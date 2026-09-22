@@ -50,6 +50,7 @@ class FeatureUi(DatabaseModule):
         try:
             if self._playwright:
                 self._playwright.stop()
+                self._playwright = None
         except PlaywrightTimeoutError as e:
             raise Exception(f"Timeout while stopping playwright: {e}")
         except Exception as ERR:
@@ -72,6 +73,7 @@ class FeatureUi(DatabaseModule):
         try:
             if self._browser:
                 self._browser.close()
+                self._browser = None
         except PlaywrightTimeoutError as e:
             self._browser = None
             raise Exception(f"Timeout close browser: {e}")
@@ -94,6 +96,7 @@ class FeatureUi(DatabaseModule):
         try:
             if self._context:
                 self._context.close()
+                self._context = None
         except PlaywrightTimeoutError as e:
             self._context = None
             raise Exception(f"Timeout while close context: {e}")
@@ -118,6 +121,7 @@ class FeatureUi(DatabaseModule):
         try:
             if self._page:
                 self._page.close()
+                self._page = None
         except PlaywrightTimeoutError as e:
             raise Exception(f"Timeout while close page: {e}")
         except Exception as ERR:
