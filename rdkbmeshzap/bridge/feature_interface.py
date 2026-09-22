@@ -328,3 +328,152 @@ class FeatureInterface(FeatureInterfaceModules):
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.set_fronthaul_network_state(device, profile_identifier, enable)
+    
+    def get_fronthaul_password(self,
+        device: str) -> str:
+        """
+        Get the fronthaul password for a given device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object('gui')
+        return iface_obj.get_fronthaul_password(device)
+
+    def get_device_number_of_entries(self, device: str) -> int:
+        """
+        Get the number of entries for a given device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object('gui')
+        return iface_obj.get_device_number_of_entries(device)
+
+    def get_device_id(self, 
+                           device: str, index: str) -> str:
+        """
+        Get the device ID for a given device and index.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object('gui')
+        return iface_obj.get_device_id(device, index)
+
+    def get_ap_ssid_visibility(self, device:str, ssid:str) -> str:
+        """
+        Get the visibility of the given SSID for a specific device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object('gui')
+        return iface_obj.get_ap_ssid_visibility(device, ssid)
+
+    def get_association_status(self, device:str) -> str:
+        """
+        Get the association status of the device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object('gui')
+        return iface_obj.get_association_status(device)
+
+    def get_ssid_AKMAllowed(self, device: str, index: str) -> str:
+        """
+        Get the AKM allowed for the given SSID and index of a specific device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object('gui')
+        return iface_obj.get_ssid_AKMAllowed(device, index)
+
+    def get_ssid_MFPConfig(self, device: str, index: str) -> str:
+        """
+        Get the MFP config for the given SSID and index of a specific device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object('gui')
+        return iface_obj.get_ssid_MFPConfig(device, index)
+
+    def get_dhcpv4_server_enable(self, device: str) -> str:
+        """
+        Get the DHCPv4 server enable status for a specific device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object('gui')
+        return iface_obj.get_dhcpv4_server_enable(device)
+
+    def get_dhcpv4_server_pool_Minaddress(self, device: str, index: str) -> str:
+        """
+        Get the DHCPv4 server pool minimum address for a given device and index.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object('gui')
+        return iface_obj.get_dhcpv4_server_pool_Minaddress(device, index)
+
+    def get_dhcpv4_server_pool_Maxaddress(self, device: str, index: str) -> str:
+        """
+        Get the DHCPv4 server pool maximum address for a given device and index.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object('gui')
+        return iface_obj.get_dhcpv4_server_pool_Maxaddress(device, index)
+
+    def get_dhcpv4_server_pool_client_Chaddr(self, device: str, index: str, sta_index: str) -> str:
+        """
+        Get the DHCPv4 server pool client Chaddr for a given device, index, and sta_index.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object('gui')
+        return iface_obj.get_dhcpv4_server_pool_client_Chaddr(device, index, sta_index)
+
+    def get_dhcpv4_server_pool_clientNumberOfEntries(self, device: str, index: str) -> str:
+        """
+        Get the number of entries in the DHCPv4 server pool for a given device and index.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object('gui')
+        return iface_obj.get_dhcpv4_server_pool_clientNumberOfEntries(device, index)
+
+    def get_IP_Interface_Enable(self, device: str, index: str) -> str:
+        """
+        Get the enable status of the IP interface for a given device and index.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object('gui')
+        return iface_obj.get_IP_Interface_Enable(device, index)
+
+    def get_IP_Interface_IPv4Address_IPAddress(self, device: str, index: str, ip_index: str) -> str:
+        """
+        Get the IPv4 address of the IP interface for a given device, index, and ip_index.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object('gui')
+        return iface_obj.get_IP_Interface_IPv4Address_IPAddress(device, index, ip_index)
+
+    def get_DHCPv4_Server_Pool_Client_IPv4Address_IPAddress(self, device: str, index: str, sta_index: str, ip_index: str) -> str:
+        """
+        Get the IPv4 address of the DHCPv4 server pool client for a given device, index, sta_index, and ip_index.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object('gui')
+        return iface_obj.get_DHCPv4_Server_Pool_Client_IPv4Address_IPAddress(device, index, sta_index, ip_index)
+
+    def get_radioNumberofentries(self, device: str, index: str, method='gui') -> str:
+        """
+        Get the number of radio entries for a given device and index.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_radioNumberofentries(device, index)
+
+    def verify_dhcp_process(self, device: str, method='gui') -> str:
+        """
+        Verify the DHCP process for a specific device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.verify_dhcp_process(device)
+
+    def get_default_route(self, device: str, method='gui') -> str:
+        """
+        Get the default route of the device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_default_route(device)
+
+
+

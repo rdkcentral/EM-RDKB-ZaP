@@ -487,3 +487,79 @@ class FeatureInterfaceCLI(DatabaseModule,
                 f"Command execution failed: {command}. stderr: {error.strip()}"
             )
         return True
+
+    def get_ap_ssid_visibility(self, device:str, ssid:str) -> str:
+        """
+        To get the SSID visibility of the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        wlan_iface = self.db_obj.read_from_database(device, 'data_iface')
+        cmd = f"iw dev {wlan_iface} scan  | grep -B100 {ssid} | grep -E [[:space:]]*freq:"
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+        if 'freq:' not in output:
+            raise RuntimeError(f"Command execution failed : {output}")
+        
+        return [line.split(':')[1].strip() for line in output.splitlines()]
+
+    def get_association_status(self, device:str) -> str:
+        """
+        To get the association status of the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        wlan_iface = self.db_obj.read_from_database(device, 'data_iface')
+        cmd = f"iw dev {wlan_iface} link | grep 'Connected to' | awk '{{print $3}}'"
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+        output = output.strip()
+
+        if not output:
+            raise RuntimeError(f"Command execution failed : client not associated")
+
+        return output
+
+    def verify_dhcp_process(self, device: str) -> str:
+        """
+        To verify the DHCP process of the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        wlan_iface = self.db_obj.read_from_database(device, 'data_iface')
+        cmd = f"dhclient -v {wlan_iface}"
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+
+        # dhclient -v writes its verbose transaction log to stderr, not stdout
+        combined_output = f"{output}\n{error}"
+
+        full_dora = ['DHCPDISCOVER', 'DHCPOFFER', 'DHCPREQUEST', 'DHCPACK']
+        renewal = ['DHCPREQUEST', 'DHCPACK']
+
+        got_full_dora = all(msg in combined_output for msg in full_dora)
+        got_renewal = all(msg in combined_output for msg in renewal)
+        got_lease = 'bound to' in combined_output
+
+        if (got_full_dora or got_renewal) and got_lease:
+            return combined_output
+
+        raise RuntimeError(f"DHCP process verification failed : {combined_output}")
+
+    def get_default_route(self, device: str) -> str:
+        """
+        To get the default route of the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        cmd = "ip route show | grep -m 1 default"
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+        if 'default via' not in output:
+            raise RuntimeError(f"Command execution failed : {output}")
+        
+        return output.split()[2]
