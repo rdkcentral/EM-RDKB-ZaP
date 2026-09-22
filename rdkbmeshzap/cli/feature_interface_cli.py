@@ -412,6 +412,7 @@ class FeatureInterfaceCLI(DatabaseModule,
                                               return_stderr=True)
         if error != '':
             raise RuntimeError(f"Command execution failed : {command}. stderr: {error.strip()}")
+        return True
 
     def start_service(self,
                     device: str,
