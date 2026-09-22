@@ -346,3 +346,145 @@ class FeatureInterfaceCLI(DatabaseModule,
             return None
         entries = [entry for entry in output.splitlines() if entry]
         return entries if entries else None
+
+    def get_wireless_backhaul_connection_status(self, iw_dev_link_info) -> bool:
+        """
+        To check the backhaul connection status of the device.
+        """
+        zi_logger.print_context()
+        return 'Connected to' in iw_dev_link_info
+
+    def get_mld_status(self, iw_dev_interfce_info) -> bool:
+        """
+        To check the MLD status of the device.
+        """
+        zi_logger.print_context()
+        return 'MLD with links:' in iw_dev_interfce_info
+
+    def get_operating_channel(self,
+                            device: str,
+                            band: str) -> int:
+        """
+        Get the operating channel for the specified band.
+
+        Args:
+            device: Device name.
+            band: '2.4', '5', or '6'
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        band_filters = {
+            "2.4": "$4 >= 2400 && $4 <= 2483.5",
+            "5": "$4 >= 5000 && $4 <= 5900",
+            "6": "$4 >= 5925 && $4 <= 7125"
+        }
+        if band not in band_filters:
+            raise ValueError(f"Unsupported band: {band}")
+        command = (
+            f"iw dev mld0 info | "
+            f"awk -F'[ ()]+' '/channel/ && {band_filters[band]} {{print $3}}'"
+        )
+        output, error = connection_obj.execute_command(
+            command,
+            return_stderr=True
+        )
+        if error:
+            raise RuntimeError(
+                f"Command execution failed: {command}. stderr: {error.strip()}"
+            )
+        return int(output.strip())
+
+    def copy_file_to_remote(self,
+                            device: str,
+                            remote_device_ip: str,
+                            user: str,
+                            local_file_path: str,
+                            remote_file_path: str):
+        """
+        To copy a file from the local system to the remote device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        command = f"scp {local_file_path} {user}@{remote_device_ip}:{remote_file_path}"
+        _, error = connection_obj.execute_command(command,
+                                              return_stderr=True)
+        if error != '':
+            raise RuntimeError(f"Command execution failed : {command}. stderr: {error.strip()}")
+
+    def start_service(self,
+                    device: str,
+                    service_name: str) -> bool:
+        """
+        Start and enable the specified service on the device.
+        """
+        zi_logger.print_context()
+
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+
+        commands = [
+            "systemctl daemon-reload",
+            f"systemctl enable {service_name}",
+            f"systemctl start {service_name}",
+        ]
+
+        for command in commands:
+            _, error = connection_obj.execute_command(
+                command,
+                return_stderr=True
+            )
+            if error:
+                raise RuntimeError(
+                    f"Command execution failed: {command}. stderr: {error.strip()}"
+                )
+
+        command = f"systemctl status {service_name}"
+        _, error = connection_obj.execute_command(
+            command,
+            return_stderr=True
+        )
+        if error:
+            raise RuntimeError(
+                f"Command execution failed: {command}. stderr: {error.strip()}"
+            )
+
+        return True
+
+
+    def stop_service(self,
+                    device: str,
+                    service_name: str) -> bool:
+        """
+        Stop the specified service on the device.
+        """
+        zi_logger.print_context()
+
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+
+        command = f"systemctl stop {service_name}"
+
+        _, error = connection_obj.execute_command(
+            command,
+            return_stderr=True
+        )
+        if error:
+            raise RuntimeError(
+                f"Command execution failed: {command}. stderr: {error.strip()}"
+            )
+        command = f"systemctl status {service_name}"
+        _, error = connection_obj.execute_command(
+            command,
+            return_stderr=True
+        )
+        if error:
+            raise RuntimeError(
+                f"Command execution failed: {command}. stderr: {error.strip()}"
+            )
+        return True

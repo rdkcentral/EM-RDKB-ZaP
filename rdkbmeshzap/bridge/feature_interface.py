@@ -218,3 +218,113 @@ class FeatureInterface(FeatureInterfaceModules):
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.get_file_list(device, directory_path)
+
+    def get_wireless_backhaul_connection_status(self,
+                                 device: str,
+                                 interface: str = 'wifi1.3',
+                                 method = 'cli') -> bool:
+        """
+        To check the backhaul connection status of the device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        iw_dev_link_info = self.get_iw_dev_link_info(device, interface=interface)
+        return iface_obj.get_wireless_backhaul_connection_status(iw_dev_link_info)
+
+    def get_mld_status(self,
+                       device: str,
+                       interface: str = 'mld0',
+                       method = 'cli') -> bool:
+        """
+        To check the MLD status of the device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        iw_dev_interfce_info = self.get_iw_dev_interface_info(device, interface=interface)
+        return iface_obj.get_mld_status(iw_dev_interfce_info)
+
+    def get_operating_channel(self,
+                            device: str,
+                            band: str,
+                            method: str = 'cli') -> int:
+        """
+        Get the operating channel for the specified band.
+
+        Args:
+            device: Device name.
+            band: '2.4', '5', or '6'
+            method: Interface method (default: cli)
+
+        Returns:
+            Operating channel number.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_operating_channel(device, band)
+
+    def copy_file_to_remote(self,
+                            device: str,
+                            remote_device_ip: str,
+                            user: str,
+                            local_file_path: str,
+                            remote_file_path: str,
+                            method = 'cli') -> bool:
+        """
+        To copy a file from the local system to the remote device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.copy_file_to_remote(device, remote_device_ip, user, local_file_path, remote_file_path)
+
+    def start_service(self,
+                    device: str,
+                    service_name: str,
+                    method: str = 'cli') -> bool:
+        """
+        Start the specified service on the device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.start_service(device, service_name)
+
+
+    def stop_service(self,
+                    device: str,
+                    service_name: str,
+                    method: str = 'cli') -> bool:
+        """
+        Stop the specified service on the device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.stop_service(device, service_name)
+
+    def set_channel_preference_for_2_4_band(self, device: str, uncheck_channel: int, check_channel: int, priority: int):
+        """
+        Set the channel preference on the device.
+
+        Args:
+            device: Device name.
+            uncheck_channel: Channel to uncheck.
+            check_channel: Channel to check.
+            priority: Priority of the channel preference.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object('gui')
+        iface_obj.set_channel_preference_for_2_4_band(device, uncheck_channel, check_channel, priority)
+
+    def set_fronthaul_network_state(self,
+                               device: str,
+                               profile_identifier,
+                               enable: bool,
+                               method: str = 'gui') -> bool:
+        """
+        Enable or disable a fronthaul network profile on the device.
+
+        - `profile_identifier` can be a profile name or index depending on the UI implementation.
+        - `enable` True to enable, False to disable.
+        Returns boolean success as returned by the underlying interface.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.set_fronthaul_network_state(device, profile_identifier, enable)
