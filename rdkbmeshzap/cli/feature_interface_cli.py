@@ -303,7 +303,7 @@ class FeatureInterfaceCLI(DatabaseModule,
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
-        command = f"python3 -c \"import os; print(os.path.exists('{file_path}'))\""
+        command = f"python3 -c \"import os, sys; print(os.path.exists(sys.argv[1]))\" {shlex.quote(file_path)}"
         output, error = connection_obj.execute_command(command,
                                                    return_stderr=True)
         if error != '':
@@ -337,15 +337,13 @@ class FeatureInterfaceCLI(DatabaseModule,
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
-        command = f"ls {directory_path}"
+        command = f"ls {shlex.quote(directory_path)}"
         output, error = connection_obj.execute_command(command,
                                                    return_stderr=True)
         if error != '':
             raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
-        if not output:
-            return None
-        entries = [entry for entry in output.splitlines() if entry]
-        return entries if entries else None
+        entries = [entry for entry in (output or "").splitlines() if entry]
+        return entries
 
     def get_wireless_backhaul_connection_status(self, iw_dev_link_info) -> bool:
         """
@@ -409,7 +407,7 @@ class FeatureInterfaceCLI(DatabaseModule,
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
-        command = f"scp {local_file_path} {user}@{remote_device_ip}:{remote_file_path}"
+        command = f"scp {shlex.quote(local_file_path)} {shlex.quote('{}@{}:{}'.format(user, remote_device_ip, remote_file_path))}"
         _, error = connection_obj.execute_command(command,
                                               return_stderr=True)
         if error != '':
@@ -429,8 +427,8 @@ class FeatureInterfaceCLI(DatabaseModule,
 
         commands = [
             "systemctl daemon-reload",
-            f"systemctl enable {service_name}",
-            f"systemctl start {service_name}",
+            f"systemctl enable {shlex.quote(service_name)}",
+            f"systemctl start {shlex.quote(service_name)}",
         ]
 
         for command in commands:

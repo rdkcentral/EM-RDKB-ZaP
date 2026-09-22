@@ -228,7 +228,7 @@ class FeatureInterface(FeatureInterfaceModules):
         """
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
-        iw_dev_link_info = self.get_iw_dev_link_info(device, interface=interface)
+        iw_dev_link_info = self.get_iw_dev_link_info(device, iface=interface)
         return iface_obj.get_wireless_backhaul_connection_status(iw_dev_link_info)
 
     def get_mld_status(self,
@@ -240,7 +240,7 @@ class FeatureInterface(FeatureInterfaceModules):
         """
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
-        iw_dev_interfce_info = self.get_iw_dev_interface_info(device, interface=interface)
+        iw_dev_interfce_info = self.get_iw_dev_interface_info(device, iface=interface)
         return iface_obj.get_mld_status(iw_dev_interfce_info)
 
     def get_operating_channel(self,

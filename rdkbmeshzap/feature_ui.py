@@ -216,9 +216,10 @@ class FeatureUi(DatabaseModule):
 
             # check desired channel
             check_sel = f"div.list-row[data-channel=\"{check_channel}\"] input.ch-check"
-            if self._page.locator(check_sel).count() > 0:
-                if not self._page.locator(check_sel).is_checked():
-                    self._page.locator(check_sel).click()
+            if self._page.locator(check_sel).count() == 0:
+                raise Exception(f"Channel not found: {check_channel}")
+            if not self._page.locator(check_sel).is_checked():
+                self._page.locator(check_sel).click()
             # set preference dropdown for checked channel
             # the select is inside the same row with class pref-inline-dd
             pref_select = f"div.list-row[data-channel=\"{check_channel}\"] select.pref-inline-dd"
@@ -357,6 +358,7 @@ class FeatureUi(DatabaseModule):
                         self._page.locator("#save-profile-settings").click()
                     except Exception:
                         zi_logger.log("Could not click save-profile-settings")
+                        raise Exception("Failed to click save-profile-settings")
 
             # Wait for the checkbox state to reflect desired value, poll until timeout
             desired = bool(enable)
