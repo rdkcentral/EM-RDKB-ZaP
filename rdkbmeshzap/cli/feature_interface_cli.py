@@ -442,7 +442,7 @@ class FeatureInterfaceCLI(DatabaseModule,
                     f"Command execution failed: {command}. stderr: {error.strip()}"
                 )
 
-        command = f"systemctl status {service_name}"
+        command = f"systemctl status {shlex.quote(service_name)}"
         _, error = connection_obj.execute_command(
             command,
             return_stderr=True
@@ -467,7 +467,7 @@ class FeatureInterfaceCLI(DatabaseModule,
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
 
-        command = f"systemctl stop {service_name}"
+        command = f"systemctl stop {shlex.quote(service_name)}"
 
         _, error = connection_obj.execute_command(
             command,
@@ -477,7 +477,7 @@ class FeatureInterfaceCLI(DatabaseModule,
             raise RuntimeError(
                 f"Command execution failed: {command}. stderr: {error.strip()}"
             )
-        command = f"systemctl status {service_name}"
+        command = f"systemctl status {shlex.quote(service_name)}"
         _, error = connection_obj.execute_command(
             command,
             return_stderr=True
