@@ -17,11 +17,12 @@
 
 import pytest
 from rdkbmeshzap.common_utils import report_logger
-pytest_plugins = ("test.conftest",)
 
 @pytest.mark.connectivity_check
 def test_setup_accessibility(initialize):
-    """Validate SSH accessibility for every configured testbed device."""
+    """
+    Validate SSH accessibility for every configured testbed device.
+    """
     report_logger.print_test("Entering Setup Accessibility Validation")
     devices = initialize.get_testbed_devices()
     failures = []
