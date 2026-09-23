@@ -15,8 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from importlib.resources import path
 import re
 import shlex
+from paramiko import file
 from zaero.bridge.database_module import DatabaseModule
 from zaero.bridge.connection_modules import ConnectionModules
 from zaero.bridge.ui_modules import UiModules
@@ -303,7 +305,8 @@ class FeatureInterfaceCLI(DatabaseModule,
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
-        command = f"python3 -c \"import os, sys; print(os.path.exists(sys.argv[1]))\" {shlex.quote(file_path)}"
+        command = f"ls {file_path} >/dev/null 2>&1 && echo True || echo False"
+        # command = f"python3 -c \"import os, sys; print(os.path.exists(sys.argv[1]))\" {shlex.quote(file_path)}"
         output, error = connection_obj.execute_command(command,
                                                    return_stderr=True)
         if error != '':
