@@ -165,3 +165,16 @@ class FeatureInterfaceGUI(DatabaseModule,
         time.sleep(3)
         self.ui_obj.set_fronthaul_network_state(profile, enable)
         time.sleep(3)
+
+    def get_fronthaul_password(self,
+            device: str) -> str:
+        """
+        To get fronthaul password in the GUI Application
+        """
+        zi_logger.print_context()
+        self._create_ui_obj(device)
+        self.ui_obj.ui_navigate_to_home_page(device)
+        time.sleep(3)
+        self.ui_obj.ui_navigate_to_required_page( "Wireless Settings")
+        time.sleep(3)
+        return self.ui_obj.ui_get_input_value("Fronthaul", "#profile-passphrase")
