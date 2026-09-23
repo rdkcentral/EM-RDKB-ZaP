@@ -125,7 +125,7 @@ class FeatureInterfaceDE(DatabaseModule,
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output}")
         
-        return output.partition('Value')[2].lstrip(' :').split()[0]
+        return int(output.partition('Value')[2].lstrip(' :').split()[0])
 
     def get_device_id(self, 
                            device: str, index: str) -> str:
@@ -155,7 +155,7 @@ class FeatureInterfaceDE(DatabaseModule,
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
         index = self.db_obj.read_from_database(device, index)
-        cmd = f"rbuscli get Device.WiFi.DataElements.Network.SSID.{index}.AKMAllowed"
+        cmd = f"rbuscli get Device.WiFi.DataElements.Network.SSID.{index}.AKMsAllowed"
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output.strip()}")
