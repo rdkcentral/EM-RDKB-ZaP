@@ -1,0 +1,165 @@
+# Packet Analyzer Usage Guide
+
+This packet analyzer filters and analyzes messages exchanged in an Easymesh network.
+
+# Packet Analyzer Usage
+
+## Import Required Modules
+
+```python
+from packet_analyzer.packet_dissector import *
+from packet_analyzer.message_verify import *
+from packet_analyzer.ieee1905_utils import *
+```
+
+## Common Utility to Validate the Entire Capture File
+
+```python
+packet_analyzer(pcap_local_path, controller_almac, extender_almac)
+```
+
+Analyzes the complete PCAP capture and validates all IEEE 1905 messages exchanged between the specified Controller and Extender.
+
+The utility automatically determines the Multi-AP Profile by analyzing the IEEE 1905 message exchange between the specified Controller and Extender. Based on the detected profile, each message is validated against the expected specification requirements.
+
+The following validations are performed:
+
+- Mandatory TLV presence validation
+- Optional TLV presence validation
+- Unwanted or unsupported TLV presence validation
+- TLV length verification
+
+### Parameters
+
+- `pcap_local_path` : Path to the PCAP file.
+- `controller_almac` : AL MAC address of the Controller.
+- `extender_almac` : AL MAC address of the Extender device for which message validation is required.
+
+### Returns
+
+- `None`
+
+> **Note:** This utility is intended to serve as a common validation framework for EasyMesh test cases. In the future, it can be integrated across all tests and executed only when explicitly enabled by the user.
+
+## Reassemble Packets
+
+```python
+reassembled_packets = reassemble_packets("path/to/pcap/file.pcap")
+```
+
+Reassembles IEEE 1905.1 packets from the specified PCAP file and returns a list of reassembled packets.
+
+### Parameters
+
+- `pcap_file` : Path to the PCAP file.
+
+### Returns
+
+- A list of reassembled packets.
+
+---
+
+## Verify Message Presence
+
+```python
+payloads = check_message_presence(
+    reassembled_packet,
+    message_type,
+    src_mac=None,
+    dst_mac=None
+)
+```
+
+Checks whether a specific IEEE 1905.1 message type is present in the reassembled packets.
+
+### Parameters
+
+- `reassembled_packet` : Output returned by `reassemble_packets()`.
+- `message_type` : Message type to verify.
+- `src_mac` *(Optional)* : Source MAC address used for filtering.
+- `dst_mac` *(Optional)* : Destination MAC address used for filtering.
+
+### Filtering Options
+
+You may use:
+
+- Both `src_mac` and `dst_mac`
+- Only `src_mac`
+- Only `dst_mac`
+- Neither parameter
+
+Message filtering is performed based on the provided MAC address(es).
+
+### Returns
+
+- A list containing payloads of all matching messages.
+- Returns `None` if no matching messages are found.
+
+---
+
+## Verify TLV Presence
+
+```python
+tlvs = check_tlv_presence(payload, tlv_type)
+```
+
+Checks whether a specific TLV is present in a message payload.
+
+### Parameters
+
+- `payload` : An item from the list returned by `check_message_presence()`.
+- `tlv_type` : TLV type to verify.
+
+### Returns
+
+- A list containing all matching TLVs.
+- Returns `None` if the specified TLV is not present.
+
+---
+
+## Example
+
+```python
+from packet_analyzer.packet_dissector import *
+from packet_analyzer.message_verify import *
+from packet_analyzer.ieee1905_utils import *
+
+# Reassemble packets from a PCAP file
+reassembled_packets = reassemble_packets("capture.pcap")
+
+# Verify the presence of a specific message
+payloads = check_message_presence(
+    reassembled_packets,
+    MSG_TYPE_AP_TOPOLOGY_RESPONSE,
+    src_mac="AA:BB:CC:DD:EE:FF",
+    dst_mac="11:22:33:44:55:66"
+)
+
+if payloads:
+    for payload in payloads:
+
+        # Verify the presence of a TLV
+        tlvs = check_tlv_presence(
+            payload,
+            TLV_TYPE_AP_OPERATIONAL_BSS
+        )
+
+        if tlvs:
+            print("TLV found")
+        else:
+            print("TLV not found")
+else:
+    print("Message not found")
+```
+
+## Typical Workflow
+
+1. Reassemble packets from the PCAP file using `reassemble_packets()`.
+2. Filter and verify the required message type using `check_message_presence()`.
+3. Extract the payload returned by the message verification API.
+4. Verify the required TLV using `check_tlv_presence()`.
+
+> **Note:** For a complete working example demonstrating packet reassembly, message verification, and TLV verification, refer to:
+>
+> [`test/ref_test/test_ssid_config_packet_analyzer_usage.py`]
+

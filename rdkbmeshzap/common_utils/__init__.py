@@ -1,7 +1,7 @@
 # If not stated otherwise in this file or this component LICENSE file the
 # following copyright and licenses apply:
 #
-# Copyright 2026 Zilogic Systems
+# Copyright 2026 RDK Management
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,12 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from rdkbmeshzap.bridge.feature_interface import FeatureInterface
-import zaero.utils.zi_logger as zi_logger
+from . import test_report_utils as report_logger
 
-class rdkbmeshzap(FeatureInterface):
-    
-    def __init__(self):
-        zi_logger.print_context()
-        FeatureInterface.__init__(self)
-        zi_logger.log("Rdkb __init__ : END")
+__all__ = ["report_logger"]

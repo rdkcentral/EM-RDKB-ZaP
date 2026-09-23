@@ -17,33 +17,31 @@
 
 import pytest
 import time
-import os
 from zaero.utils import zi_logger
 
-def test_config_ssid_with_packet_capture(initialize):
+from packet_analyzer.packet_dissector import *
+from packet_analyzer.message_verify import *
+from packet_analyzer.ieee1905_utils import *
+from packet_analyzer.protocol_validation import *
+
+
+def test_config_ssid(initialize,protocol_validation,request):
     ssid = initialize.get_random_ssid()
-
-    backhaul_iface = initialize.read_from_database("controller", "backhaul_capture_iface")
-    frame_filter = initialize.read_from_database("controller", "filter_1905")
-
-    zi_logger.log(f"Starting packet capture on controller for interface {backhaul_iface} with filter {frame_filter}")
-    initialize.start_frame_capture("controller", backhaul_iface, frame_filter, "ssid_packet.pcap")
     initialize.set_ssid("controller", "mld_iface_index", ssid, 'gui')
     for i in range(1, 31):
         try:
-            initialize.check_ssid("controller", "mld_iface_index", ssid, 'cli')
+            curr_ssid = initialize.get_ssid("controller", "2g_ssid_index", 'de')
+            if curr_ssid != ssid:
+                raise Exception(f"Both SSIDs are not matched {ssid} : {curr_ssid}")
+            # initialize.check_ssid("controller", "mld_iface_index", ssid, 'cli')
         except Exception as ERR:
             zi_logger.print_step(f"{ERR}")
         else:
-            zi_logger.print_success(f"SSID matched {ssid} on controller")
+            zi_logger.print_success("SSID matched successfully")
             break
         time.sleep(5)
     else:
         pytest.fail("SSID is not changed in DUT by checking with iw command")
+    time.sleep(5)
 
-        
-    initialize.stop_frame_capture("controller")
-    initialize.download_captured_pcap("controller", "ssid_packet.pcap")
-    initialize.delete_captured_pcap("controller", "ssid_packet.pcap")
-    time.sleep(10)
-
+    request.node.protocol_specific_function = analyse_ssid_packets

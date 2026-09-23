@@ -15,33 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[build-system]
-requires = ["setuptools>=61", "wheel"]
-build-backend = "setuptools.build_meta"
+from zaero.utils import zi_logger
 
-[project]
-name = "rdkbmeshzap"
-version = "1.0.0"
-description = "RDKB Mesh plugin for Zaero"
-requires-python = ">=3.10"
-dependencies = [
-    "paramiko==5.0.0",
-    "PyYAML==6.0.1",
-    "robotframework==7.3.2",
-    "scp==0.15.0",
-    "scapy>=2.7.0",
-    "playwright==1.60.0",
-    "pytest==8.4.1",
-    "pyserial==3.5",
-    "pytest-html>=4.0.0"    
-]
-
-[tool.pytest.ini_options]
-addopts = "test/test_setup_accessibility.py"
-markers = [
-    "connectivity_check: validate SSH connectivity to configured devices",
-]
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["rdkbmeshzap*"]
+def common_protocol_validation(pcap_file):
+    zi_logger.log(f"Executing COMMON PROTOCOL validation : {pcap_file}")
+ 
+def analyse_ssid_packets(pcap_file):
+    zi_logger.log(f"Executing PROTOCOL SPECIFIC validation - analyse_ssid : {pcap_file}")
