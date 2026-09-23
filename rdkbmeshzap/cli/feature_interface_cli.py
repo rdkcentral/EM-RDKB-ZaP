@@ -504,23 +504,20 @@ class FeatureInterfaceCLI(DatabaseModule,
         
         return [line.split(':')[1].strip() for line in output.splitlines()]
 
-    def get_association_status(self, device:str) -> str:
+    def get_association_status(self, device: str) -> str:
         """
         To get the association status of the device.
         """
         zi_logger.print_context()
-        connection = self.db_obj.read_from_database(device, 'connection')
-        connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
+
         wlan_iface = self.db_obj.read_from_database(device, 'data_iface')
-        cmd = f"iw dev {wlan_iface} link | grep 'Connected to' | awk '{{print $3}}'"
-        output, error = connection_obj.execute_command(cmd, return_stderr=True)
-        output = output.strip()
+        link_info = self.get_iw_dev_link_info(device, wlan_iface)
 
-        if not output:
-            raise RuntimeError(f"Command execution failed : client not associated")
+        for line in link_info.splitlines():
+            if "Connected to" in line:
+                return line.split()[2]
 
-        return output
+        raise RuntimeError("Command execution failed: client not associated")
 
     def verify_dhcp_process(self, device: str) -> str:
         """
