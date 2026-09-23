@@ -37,7 +37,7 @@ dependencies = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "rdkbmeshzap/common_utils/setup_accessibility.py"
+addopts = "test/test_setup_accessibility.py"
 markers = [
     "connectivity_check: validate SSH connectivity to configured devices",
 ]
