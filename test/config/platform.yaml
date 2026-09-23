@@ -34,6 +34,7 @@ controller:
     controller_device_index: 1                              # Controller Device index
     extender1_device_index: 2                               # Extender 1 Device index
     extender2_device_index: 3                               # Extender 2 Device index
+    2g_ssid_index: 1                                        # 2.4 GHz ssid index
     2g_radio_index: 1                                       # 2.4 GHz Radio index
     5g_radio_index: 2                                       # 5 GHz Radio index
     6g_radio_index: 3                                       # 6 GHz Radio index
@@ -49,52 +50,47 @@ controller:
     6g_radio_vap2_bss_index: 10                             # Dynamically discovered BSS index for 6g_radio_vap2_mac
     mld_iface_index: 0                                      # MLD interface index
     gateway_ip_index: 4                                     # Gateway IP index
-    sta_index: 1                                             # Station index
-    ip_index: 1                                              # IP index
-    2g_radio_mac: aa:bb:cc:dd:ee:ff                         # Expected 2.4 GHz radio MAC address
-    5g_radio_mac: aa:bb:cc:dd:ee:ff                         # Expected 5 GHz radio MAC address
-    6g_radio_mac: aa:bb:cc:dd:ee:ff                          # Expected 6 GHz radio MAC address
-
-     
+    sta_index: 1                                            # Station index
+    ip_index: 1                                             # IP index
+    2g_radio_mac: aa:bb:cc:dd:ee:ff                         # Dynamically discovered 2.4 GHz radio MAC address
+    5g_radio_mac: aa:bb:cc:dd:ee:ff                         # Dynamically discovered 5 GHz radio MAC address
+    6g_radio_mac: aa:bb:cc:dd:ee:ff                         # Dynamically discovered 6 GHz radio MAC address
+         
 extender1:
     bridge_iface: 'brlan0'                                  # LAN bridge interface used by Extender 1
-    bridge_ip: <ip_address>                                  # IP address of Extender 1 bridge interface
+    bridge_ip: <ip_address>                                 # IP address of Extender 1 bridge interface
     wifi_ifname: 'wifi'                                     # Base Wi-Fi interface name on Extender 1
-    backhaul_iface_index: wifi1.1.sta65                     # Backhaul interface index
+    backhaul_iface_index: <wifi.1.1.sta(n)>                 # Backhaul interface index
     mld_ifname: 'mld'                                       # MLD interface name on Extender 1
     mld_iface_index: 0                                      # MLD interface index on Extender 1
     iperf_version: 3                                        # iperf version used by Extender 1
-    2g_radio_mac: aa:bb:cc:dd:ee:ff                         # Expected 2.4 GHz radio MAC address
-    5g_radio_mac: aa:bb:cc:dd:ee:ff                         # Expected 5 GHz radio MAC address
-    6g_radio_mac: aa:bb:cc:dd:ee:ff                          # Expected 6 GHz radio MAC address
-
- 
-    
+    2g_radio_mac: aa:bb:cc:dd:ee:ff                         # Dynamically discovered 2.4 GHz radio MAC address
+    5g_radio_mac: aa:bb:cc:dd:ee:ff                         # Dynamically discovered 5 GHz radio MAC address
+    6g_radio_mac: aa:bb:cc:dd:ee:ff                         # Dynamically discovered 6 GHz radio MAC address
+        
 extender2:    
     bridge_iface: 'brlan0'                                  # LAN bridge interface used by Extender 2
-    bridge_ip: <ip_address>                                  # IP address of Extender 2 bridge interface
+    bridge_ip: <ip_address>                                 # IP address of Extender 2 bridge interface
     wifi_ifname: 'wifi'                                     # Base Wi-Fi interface name on Extender 2
-    backhaul_iface_index2: wifi1.1.sta66                    # Backhaul interface index
+    backhaul_iface_index2: <wifi.1.1.sta(n)>                # Backhaul interface index
     mld_ifname: 'mld'                                       # MLD interface name on Extender 2
     mld_iface_index: 0                                      # MLD interface index on Extender 2
     iperf_version: 3                                        # iperf version used by Extender 2
-    2g_radio_mac: aa:bb:cc:dd:ee:ff                         # Expected 2.4 GHz radio MAC address
-    5g_radio_mac: aa:bb:cc:dd:ee:ff                         # Expected 5 GHz radio MAC address
-    6g_radio_mac: aa:bb:cc:dd:ee:ff                          # Expected 6 GHz radio MAC address
-
-    
+    2g_radio_mac: aa:bb:cc:dd:ee:ff                         # Dynamically discovered 2.4 GHz radio MAC address
+    5g_radio_mac: aa:bb:cc:dd:ee:ff                         # Dynamically discovered 5 GHz radio MAC address
+    6g_radio_mac: aa:bb:cc:dd:ee:ff                          # Dynamically discovered 6 GHz radio MAC address  
+     
 extender3:    
     bridge_iface: 'brlan0'                                  # LAN bridge interface used by Extender 3
     bridge_ip: <ip_address>                                  # IP address of Extender 3 bridge interface
     wifi_ifname: 'wifi'                                     # Base Wi-Fi interface name on Extender 3
-    backhaul_iface_index3: wifi1.1.sta67                    # Backhaul interface index
+    backhaul_iface_index3: <wifi.1.1.sta(n)>                # Backhaul interface index
     mld_ifname: 'mld'                                       # MLD interface name on Extender 3
     mld_iface_index: 0                                      # MLD interface index on Extender 3
     iperf_version: 3                                        # iperf version used by Extender 3
-    2g_radio_mac: aa:bb:cc:dd:ee:ff                         # Expected 2.4 GHz radio MAC address
-    5g_radio_mac: aa:bb:cc:dd:ee:ff                         # Expected 5 GHz radio MAC address
-    6g_radio_mac: aa:bb:cc:dd:ee:ff                          # Expected 6 GHz radio MAC address
-
-
+    2g_radio_mac: aa:bb:cc:dd:ee:ff                         # Dynamically discovered 2.4 GHz radio MAC address
+    5g_radio_mac: aa:bb:cc:dd:ee:ff                         # Dynamically discovered 5 GHz radio MAC address
+    6g_radio_mac: aa:bb:cc:dd:ee:ff                         # Dynamically discovered 6 GHz radio MAC address
+    
 protocol:
     common_protocol_validation: True                        # Enable/Disable common protocol validation for verifying protocol-level behavior and message exchanges                      
