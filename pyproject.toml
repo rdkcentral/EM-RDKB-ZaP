@@ -36,6 +36,12 @@ dependencies = [
     "pytest-html>=4.0.0"    
 ]
 
+[tool.pytest.ini_options]
+addopts = "test/test_setup_accessibility.py"
+markers = [
+    "connectivity_check: validate SSH connectivity to configured devices",
+]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["rdkbmeshzap*"]

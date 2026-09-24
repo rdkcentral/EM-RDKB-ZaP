@@ -111,3 +111,203 @@ class FeatureInterfaceDE(DatabaseModule,
             raise RuntimeError(f"Command execution failed : {command}")
         if output != ssid:
             raise RuntimeError(f"Expected ssid {ssid} is not matched with {output}")
+
+    def get_device_number_of_entries(self, device: str) -> int:
+        """
+        Get the number of entries for a given device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        cmd = f"rbuscli get Device.WiFi.DataElements.Network.DeviceNumberOfEntries"
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+        if 'Value :' not in output:
+            raise RuntimeError(f"Command execution failed : {output}")
+        
+        return int(output.partition('Value')[2].lstrip(' :').split()[0])
+
+    def get_device_id(self, 
+                           device: str, index: str) -> str:
+        """
+        Get the device ID for a given device index.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        # index = self.db_obj.read_from_database(device, index)
+        cmd = f"rbuscli get Device.WiFi.DataElements.Network.Device.{index}.ID"
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+
+        if 'Value :' not in output:
+            raise RuntimeError(f"Command execution failed : {output}")
+        
+        return output.partition('Value')[2].lstrip(' :').split()[0]
+
+
+    def get_ssid_AKMAllowed(self, device: str, index: str) -> str:
+        """
+        Get the SSID AKM Allowed for the specific interface.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        index = self.db_obj.read_from_database(device, index)
+        cmd = f"rbuscli get Device.WiFi.DataElements.Network.SSID.{index}.AKMsAllowed"
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+        if 'Value :' not in output:
+            raise RuntimeError(f"Command execution failed : {output.strip()}")
+
+        return output.partition('Value')[2].lstrip(' :').split()[0]
+
+    def get_ssid_MFPConfig(self, device: str, index: str) -> str:
+        """
+        Get the SSID MFP Config for the specific interface.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        index = self.db_obj.read_from_database(device, index)
+        cmd = f"rbuscli get Device.WiFi.DataElements.Network.SSID.{index}.MFPConfig"
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+
+        if 'Value :' not in output:
+            raise RuntimeError(f"Command execution failed : {output.strip()}")
+        return output.partition('Value')[2].lstrip(' :').split()[0]
+
+    def get_dhcpv4_server_enable(self, device: str) -> str:
+        """
+        Get the DHCPv4 Server Enable status for the specific interface.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        cmd = f"rbuscli get Device.DHCPv4.Server.Enable"
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+
+        if 'Value :' not in output:
+            raise RuntimeError(f"Command execution failed : {output.strip()}")
+        return output.partition('Value')[2].lstrip(' :').split()[0]
+
+    def get_dhcpv4_server_pool_Minaddress(self, device: str, index: str) -> str:
+        """
+        Get the DHCPv4 Server Pool Min Address for the specific interface.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        index = self.db_obj.read_from_database(device, index)
+        cmd = f"rbuscli get Device.DHCPv4.Server.Pool.{index}.MinAddress"
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+
+        if 'Value :' not in output:
+            raise RuntimeError(f"Command execution failed : {output.strip()}")
+        
+        return output.partition('Value')[2].lstrip(' :').split()[0]
+
+    def get_dhcpv4_server_pool_Maxaddress(self, device: str, index: str) -> str:
+        """
+        Get the DHCPv4 Server Pool Max Address for the specific interface.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        index = self.db_obj.read_from_database(device, index)
+        cmd = f"rbuscli get Device.DHCPv4.Server.Pool.{index}.MaxAddress"
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+
+        if 'Value :' not in output:
+            raise RuntimeError(f"Command execution failed : {output.strip()}")
+        
+        return output.partition('Value')[2].lstrip(' :').split()[0]
+
+    def get_dhcpv4_server_pool_client_Chaddr(self, device: str, index: str, sta_index: str) -> str:
+        """
+        Get the DHCPv4 Server Pool Client Chaddr for the specific interface.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        index = self.db_obj.read_from_database(device, index)
+        sta_index = self.db_obj.read_from_database(device, sta_index)
+        cmd = f"rbuscli get Device.DHCPv4.Server.Pool.{index}.Client.{sta_index}.Chaddr"
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+
+        if 'Value :' not in output:
+            raise RuntimeError(f"Command execution failed : {output.strip()}")
+        return output.partition('Value')[2].lstrip(' :').split()[0]
+
+    def get_dhcpv4_server_pool_clientNumberOfEntries(self, device: str, index: str) -> str:
+        """
+        Get the DHCPv4 Server Pool Client Number of Entries for the specific interface.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        index = self.db_obj.read_from_database(device, index)
+        cmd = f"rbuscli get Device.DHCPv4.Server.Pool.{index}.ClientNumberOfEntries"
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+
+        if 'Value :' not in output:
+            raise RuntimeError(f"Command execution failed : {output.strip()}")
+        return output.partition('Value')[2].lstrip(' :').split()[0]
+
+
+    def get_IP_Interface_Enable(self, device: str, index: str) -> str:
+        """
+        Get the IP Interface Enable status for the specific interface.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        index = self.db_obj.read_from_database(device, index)
+        cmd = f"rbuscli get Device.IP.Interface.{index}.Enable"
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+
+        if 'Value :' not in output:
+            raise RuntimeError(f"Command execution failed : {output.strip()}")
+        return output.partition('Value')[2].lstrip(' :').split()[0]
+
+    def get_IP_Interface_IPv4Address_IPAddress(self, device: str, index: str, ip_index: str) -> str:
+        """
+        Get the IP Interface IPv4 Address for the specific interface.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        index = self.db_obj.read_from_database(device, index)
+        ip_index = self.db_obj.read_from_database(device, ip_index)
+        cmd = f"rbuscli get Device.IP.Interface.{index}.IPv4Address.{ip_index}.IPAddress"
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+
+        if 'Value :' not in output:
+            raise RuntimeError(f"Command execution failed : {output.strip()}")
+        return output.partition('Value')[2].lstrip(' :').split()[0]
+
+    def get_DHCPv4_Server_Pool_Client_IPv4Address_IPAddress(self, device: str, index: str, sta_index: str, ip_index: str) -> str:
+        """
+        Get the DHCPv4 Server Pool Client IPv4 Address for the specific interface.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        index = self.db_obj.read_from_database(device, index)
+        sta_index = self.db_obj.read_from_database(device, sta_index)
+        ip_index = self.db_obj.read_from_database(device, ip_index)
+        cmd = f"rbuscli get Device.DHCPv4.Server.Pool.{index}.Client.{sta_index}.IPv4Address.{ip_index}.IPAddress"
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+
+        if 'Value :' not in output:
+            raise RuntimeError(f"Command execution failed : {output.strip()}")
+        return output.partition('Value')[2].lstrip(' :').split()[0]

@@ -89,9 +89,7 @@ class FeatureInterfaceGUI(DatabaseModule,
         self.ui_obj.ui_click_button("#reset-btn")        
         time.sleep(3)
 
-    def set_ap_metrics_reporting_interval(
-        self, device: str, interval: int, apply_scope: str = "all"
-    ):
+    def set_ap_metrics_reporting_interval(self, device: str, interval: int, apply_scope: str = "all"):
         """
         To set the AP Metrics reporting interval from Policy Settings.
         """
@@ -126,6 +124,10 @@ class FeatureInterfaceGUI(DatabaseModule,
         """
         zi_logger.print_context()
         self._create_ui_obj(device)
+        self.ui_obj.ui_navigate_to_home_page(device)
+        time.sleep(3)
+        self.ui_obj.ui_navigate_to_required_page("Policy Settings")
+        time.sleep(3)
         try:
             return self.ui_obj._page.locator("#ap-interval").input_value()
         except Exception as error:
@@ -133,3 +135,46 @@ class FeatureInterfaceGUI(DatabaseModule,
             raise RuntimeError(
                 f"Could not read AP Metrics reporting interval: {error}"
             ) from error
+
+    def set_channel_preference_for_2_4_band(self, device: str, uncheck_channel: int, check_channel: int, priority: int):
+        """
+        Set the channel preference on the device via the GUI.
+        """
+        zi_logger.print_context()
+        zi_logger.print_context()
+        self._create_ui_obj(device)
+        self.ui_obj.ui_navigate_to_home_page(device)
+        time.sleep(3)
+        self.ui_obj.ui_navigate_to_required_page( "Wireless Settings")
+        time.sleep(3)
+        self.ui_obj.set_channel_preference_for_2_4_band(uncheck_channel, check_channel, priority)
+        time.sleep(3)
+
+    def set_fronthaul_network_state(self,
+                                    device: str,
+                                    profile: str,
+                                    enable: bool):
+        """
+        To toggle network profile in the GUI Application
+        """
+        zi_logger.print_context()
+        self._create_ui_obj(device)
+        self.ui_obj.ui_navigate_to_home_page(device)
+        time.sleep(3)
+        self.ui_obj.ui_navigate_to_required_page("Wireless Settings")
+        time.sleep(3)
+        self.ui_obj.set_fronthaul_network_state(profile, enable)
+        time.sleep(3)
+
+    def get_fronthaul_password(self,
+            device: str) -> str:
+        """
+        To get fronthaul password in the GUI Application
+        """
+        zi_logger.print_context()
+        self._create_ui_obj(device)
+        self.ui_obj.ui_navigate_to_home_page(device)
+        time.sleep(3)
+        self.ui_obj.ui_navigate_to_required_page( "Wireless Settings")
+        time.sleep(3)
+        return self.ui_obj.ui_get_input_value("Fronthaul", "#profile-passphrase")
