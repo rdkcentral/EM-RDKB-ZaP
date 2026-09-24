@@ -93,4 +93,6 @@ extender3:
     6g_radio_mac: aa:bb:cc:dd:ee:ff                         # Dynamically discovered 6 GHz radio MAC address
     
 protocol:
-    common_protocol_validation: True                        # Enable/Disable common protocol validation for verifying protocol-level behavior and message exchanges                      
+    common_protocol_validation: True                        # Enable/Disable common protocol validation for verifying protocol-level behavior and message exchanges
+test_parameters:
+    controller_recovery_kpi_seconds: 300                    # Controller Recovery KPI threshold in seconds

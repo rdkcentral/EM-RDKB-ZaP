@@ -1,14 +1,28 @@
-"""Shared client Wi-Fi helpers for Controller Recovery tests."""
+# If not stated otherwise in this file or this component LICENSE file the
+# following copyright and licenses apply:
+#
+# Copyright 2026 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import os
 import re
 import shlex
 import time
 from pathlib import Path
-
 from rdkbmeshzap.common_utils import report_logger
 
-def get_client_bssids(initialize, client, ssid, ssh):
+def get_client_wifi_scannned_bssids(client, ssid, ssh):
     """
     Return scan results matching the requested SSID.
     """
@@ -38,19 +52,20 @@ def get_connected_client_bssid(initialize, client, ssh):
     )
     return match.group(1).lower() if match else None
 
+# This API is temporarily used to resolve the sudo access issue.
 def connect_client_to_bssid(initialize, client, ssid, passphrase, bssid, ssh):
     """
     Connect a client Wi-Fi interface to a specific BSSID.
     """
     client_password = initialize.read_from_database(client, "password")
     wifi_interface = initialize.read_from_database(client, "data_iface")
-    ssh.switch_connection(client)
     command = (
         f"printf '%s\\n' {shlex.quote(client_password)} | "
         f"sudo -S -p '' nmcli device wifi connect {shlex.quote(ssid)} "
         f"password {shlex.quote(passphrase)} bssid {shlex.quote(bssid.upper())} "
         f"ifname {shlex.quote(wifi_interface)}"
     )
+    ssh.switch_connection(client)
     output = ssh.execute_command(command)
     if "successfully activated" not in output.lower():
         raise RuntimeError(f"Failed to connect {client} to BSSID {bssid}: {output}")
@@ -85,15 +100,25 @@ def connect_clients_to_extender(initialize, client_devices, extender):
                 f"printf '%s\\n' {shlex.quote(password)} | "
                 f"sudo -S -p '' nmcli device disconnect {shlex.quote(interface)}"
             )
-        except Exception:
-            report_logger.print_step(f"{client}: Wi-Fi interface already disconnected")
+        except Exception as error:
+            report_logger.print_info(
+                f"INFO: Could not disconnect {client} interface {interface} "
+                f"before reassociation; continuing with nmcli connect: {error}"
+            )
         time.sleep(2)
         for attempt in range(3):
             try:
                 initialize.check_ap_ssid_visibility(client, ssid)
-                visible_bssids = get_client_bssids(initialize, client, ssid, ssh)
+                visible_bssids = get_client_wifi_scannned_bssids(client, ssid, ssh)
+                normalized_extender_bssids = {
+                    bssid.lower() for bssid in extender_bssids
+                }
                 target_bssid = next(
-                    (bssid for bssid in extender_bssids if bssid in visible_bssids),
+                    (
+                        bssid
+                        for bssid in visible_bssids
+                        if bssid in normalized_extender_bssids
+                    ),
                     None,
                 )
                 if not target_bssid:
@@ -124,7 +149,10 @@ def validate_ping_recovery(ping_output, client):
         )
         return False
     last_outage = outage_indexes[-1]
-    if not any("bytes from" in line for line in lines[last_outage + 1:]):
+    if not any(
+        re.search(r"\b\d+\s+bytes from\s+", line, re.IGNORECASE)
+        for line in lines[last_outage + 1:]
+    ):
         report_logger.print_error(
             f"{client}: ping produced no successful replies after the outage:\n"
             f"{ping_output}"
@@ -143,9 +171,13 @@ def download_client_pings(initialize, clients, extender):
     outputs = {}
     for client in clients:
         ssh.switch_connection(client)
-        ssh.execute_command("killall ping", return_stdout=False, return_stderr=True)
-        output = ssh.execute_command(f"cat {shlex.quote(remote_path)}")
-        local_path = local_directory / f"{extender}_{client}_ping.txt"
+        ssh.execute_command(
+            "killall ping",
+        )
+        output = ssh.execute_command(f"cat {shlex.quote(remote_path)}") or ""
+        safe_extender = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(extender)).strip("._")
+        safe_client = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(client)).strip("._")
+        local_path = local_directory / f"{safe_extender or 'unknown'}_{safe_client or 'unknown'}_ping.txt"
         local_path.write_text(output, encoding="utf-8")
         outputs[client] = output
         report_logger.print_step(f"{client}: ping output stored at {local_path}")
