@@ -184,10 +184,9 @@ def test_controller_recovery_extender_reconnection(initialize):
                     packets, extender, extender_al_macs[extender]
                 )
             except Exception as error:
-                validation_errors.append(f"{extender}: {error}")
-
-        for error in validation_errors:
-            report_logger.print_error(error)
+                error_message = f"{extender}: {error}"
+                validation_errors.append(error_message)
+                report_logger.print_error(error_message)
 
         report_logger.print_step(
             "STEP 10: Verify each parent device of recovered extenders after Controller reboot"

@@ -20,7 +20,7 @@ import re
 from packet_analyzer.ieee1905_utils import *
 from packet_analyzer.packet_dissector import *
 from rdkbmeshzap.common_utils import report_logger
-from rdkbmeshzap.common_utils import client_utils, device_utils
+from rdkbmeshzap.common_utils import device_utils
 
 REBOOT_CYCLES = 5
 RETRY_INTERVAL_SECONDS = 5
@@ -86,20 +86,9 @@ def recover_device(initialize, device, started_at, results, step):
         results[device] = recovery_time
         report_logger.print_success(f"PASS: {device} connection restored in {recovery_time:.1f}s")
         return recovery_time
-    except BaseException as error:
+    except Exception as error:
         results[device] = error
         return error
-
-def stop_collect_reassemble_and_validate_topology_capture(initialize, extender, capture_name, step, extender_al_mac=None):
-    """
-    Collect a capture, reassemble packets, and validate topology traffic.
-    """
-    local_path = device_utils.stop_and_collect_capture(
-        initialize, extender, capture_name
-    )
-    packets = reassemble_packets(local_path)
-    validate_topology_capture(packets, extender, extender_al_mac)
-    return local_path
 
 def validate_topology_capture(packets, extender, extender_al_mac=None):
     """
@@ -125,9 +114,9 @@ def validate_topology_capture(packets, extender, extender_al_mac=None):
                 f"PASS: {message_name} was found in the recovery capture for {extender}"
             )
 
-def get_parent_device_by_bssid(initialize, devices, bssid):
+def get_parent_device_by_backhaul_bssid(initialize, devices, bssid):
     """
-    Return the device whose parent backhaul interface wifi1.1 owns the BSSID.
+    Return the device whose wifi1.1 interface owns the BSSID.
     """
     normalized_bssid = (bssid or "").lower()
     for device in devices:
@@ -154,50 +143,4 @@ def get_extender_parent(initialize, extender, devices):
     if not match:
         return None, None
     bssid = match.group(1).lower()
-    return get_parent_device_by_bssid(initialize, devices, bssid), bssid
-
-def recover_extender_and_client(
-    initialize,
-    extender,
-    clients,
-    capture_name,
-    started_at,
-    allowed_bssids,
-    results,
-    step,
-    ):
-    """Recover an extender, collect its capture, and validate client access."""
-    try:
-        recovery_result = recover_device(
-            initialize, extender, started_at, results, step
-        )
-        if isinstance(recovery_result, Exception):
-            raise recovery_result
-        results[extender] = {
-            "recovery_time": recovery_result,
-            "clients": clients,
-        }
-        time.sleep(20)
-        local_path = device_utils.stop_and_collect_capture(
-            initialize, extender, capture_name
-        )
-        results[extender]["capture_path"] = local_path
-        for client in clients:
-            reconnect_device(initialize, client, step=step)
-        results[extender]["client_accessible"] = all(
-            initialize.is_device_alive(client) for client in clients
-        )
-        ssh = initialize.get_connection_module_object("ssh")
-        results[extender]["client_bssids"] = {
-            client: client_utils.get_connected_client_bssid(initialize, client, ssh)
-            for client in clients
-        }
-        results[extender]["bssid_matches"] = {
-            client: bssid in allowed_bssids
-            for client, bssid in results[extender]["client_bssids"].items()
-        }
-        results[extender]["ping_outputs"] = client_utils.download_client_pings(
-            initialize, clients, extender
-        )
-    except Exception as error:
-        results[extender] = {"error": error}
+    return get_parent_device_by_backhaul_bssid(initialize, devices, bssid), bssid

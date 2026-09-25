@@ -21,7 +21,8 @@ from rdkbmeshzap.common_utils import report_logger
 
 def get_enabled_extenders(initialize):
     """
-    Return enabled extender devices from the configured testbed."""
+    Return enabled extender devices from the configured testbed.
+    """
     return [
         device
         for device in initialize.get_testbed_devices()

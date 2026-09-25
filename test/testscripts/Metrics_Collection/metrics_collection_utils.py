@@ -90,11 +90,9 @@ def validate_periodic_ap_metrics_capture(packets, expected_device_macs, step):
         if source in expected_sources
     }
 
-    interval_failures = []
     for device, source in expected_device_macs.items():
         response_times = response_times_by_source.get(source)
         if response_times is None:
-            interval_failures.append(f"{device}: no AP Metrics Responses")
             report_logger.print_error(
                 f"FAIL: No AP Metrics Responses were captured for {device}"
             )
@@ -103,15 +101,17 @@ def validate_periodic_ap_metrics_capture(packets, expected_device_macs, step):
             later - earlier
             for earlier, later in zip(response_times, response_times[1:])
         ]
+        if len(response_times) < 2:
+            report_logger.print_error(
+                f"FAIL: Fewer than two AP Metrics Responses were captured for {device}"
+            )
+            continue
         invalid_intervals = [
             round(interval, 2)
             for interval in intervals
             if abs(interval - REPORTING_INTERVAL) > INTERVAL_TOLERANCE
         ]
         if invalid_intervals:
-            interval_failures.append(
-                f"{device}: {invalid_intervals}"
-            )
             report_logger.print_error(
                 f"FAIL: AP Metrics Response intervals for {device} exceeded the "
                 f"allowed range of {REPORTING_INTERVAL}+/-{INTERVAL_TOLERANCE}s. "
