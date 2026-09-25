@@ -139,7 +139,10 @@ def pytest_html_results_table_html(report, data):
 		return
 	new_data = []
 	if report.failed and hasattr(report, "longrepr"):
-		new_data.append(f"<div>{escape(str(report.longrepr))}</div>")
+		new_data.append(
+			'<div><span style="color:red; font-weight:bold; '
+			f'white-space:pre-wrap;">{escape(str(report.longrepr))}</span></div>'
+		)
 	call_output = "\n".join(
 		content
 		for section_name, content in getattr(report, "sections", [])
