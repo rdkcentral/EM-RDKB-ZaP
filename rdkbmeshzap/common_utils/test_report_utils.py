@@ -47,7 +47,11 @@ def format_report_line(line):
         color, weight = "#8a5a00", "bold"
     elif "PASS:" in plain_line or plain_line.lstrip().startswith("Pass:"):
         color, weight = "green", "bold"
-    elif "FAIL:" in plain_line or "ERROR" in plain_line:
+    elif (
+        "FAIL:" in plain_line
+        or "ERROR" in plain_line
+        or any(error in plain_line for error in _error_logs)
+    ):
         color, weight = "red", "bold"
     else:
         color, weight = "black", "normal"
@@ -113,10 +117,13 @@ def print_error(message, log_error=True):
     """
     Print and optionally store a failing report message.
     """
-    print(f"\033[91m{message}\033[0m")
+    formatted_message = (
+        message if message.lstrip().startswith("FAIL:") else f"FAIL: {message}"
+    )
+    print(f"\033[91m{formatted_message}\033[0m")
     if log_error:
-        _error_logs.append(message)
-    return f'<span style="color:red; font-weight:bold;">{message}</span>'
+        _error_logs.append(formatted_message)
+    return f'<span style="color:red; font-weight:bold;">{formatted_message}</span>'
 
 def get_error_logs():
     """

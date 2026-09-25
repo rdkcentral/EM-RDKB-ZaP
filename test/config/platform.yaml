@@ -59,6 +59,10 @@ controller:
 extender1:
     bridge_iface: 'brlan0'                                  # LAN bridge interface used by Extender 1
     bridge_ip: <ip_address>                                 # IP address of Extender 1 bridge interface
+    backhaul_capture_iface: 'eth1_virt_peer'                # Interface used for capturing backhaul traffic
+    filter_1905: 'ether proto 0x893a'                       # Packet capture filter for IEEE 1905 traffic
+    pcap_remote_dir: '/home/root/pcap_logs'                # Directory where packet captures are stored
+    pcap_local_dir: '/home/testing/pcap_logs'               # Local capture directory
     wifi_ifname: 'wifi'                                     # Base Wi-Fi interface name on Extender 1
     backhaul_iface_index: <wifi.1.1.sta(n)>                 # Backhaul interface index
     mld_ifname: 'mld'                                       # MLD interface name on Extender 1
@@ -72,6 +76,10 @@ extender2:
     bridge_iface: 'brlan0'                                  # LAN bridge interface used by Extender 2
     bridge_ip: <ip_address>                                 # IP address of Extender 2 bridge interface
     wifi_ifname: 'wifi'                                     # Base Wi-Fi interface name on Extender 2
+    backhaul_capture_iface: 'eth1_virt_peer'                # Interface used for capturing backhaul traffic
+    filter_1905: 'ether proto 0x893a'                       # Packet capture filter for IEEE 1905 traffic
+    pcap_remote_dir: '/home/root/pcap_logs'                # Directory where packet captures are stored
+    pcap_local_dir: '/home/testing/pcap_logs'               # Local capture directory
     backhaul_iface_index2: <wifi.1.1.sta(n)>                # Backhaul interface index
     mld_ifname: 'mld'                                       # MLD interface name on Extender 2
     mld_iface_index: 0                                      # MLD interface index on Extender 2
@@ -83,6 +91,10 @@ extender2:
 extender3:    
     bridge_iface: 'brlan0'                                  # LAN bridge interface used by Extender 3
     bridge_ip: <ip_address>                                  # IP address of Extender 3 bridge interface
+    backhaul_capture_iface: 'eth1_virt_peer'                # Interface used for capturing backhaul traffic
+    filter_1905: 'ether proto 0x893a'                       # Packet capture filter for IEEE 1905 traffic
+    pcap_remote_dir: '/home/root/pcap_logs'                # Directory where packet captures are stored
+    pcap_local_dir: '/home/testing/pcap_logs'               # Local capture directory
     wifi_ifname: 'wifi'                                     # Base Wi-Fi interface name on Extender 3
     backhaul_iface_index3: <wifi.1.1.sta(n)>                # Backhaul interface index
     mld_ifname: 'mld'                                       # MLD interface name on Extender 3
