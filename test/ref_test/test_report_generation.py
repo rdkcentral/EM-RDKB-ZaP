@@ -54,7 +54,7 @@ def test_report_generation(initialize):
         time.sleep(5)
     else:
         report_logger.print_error(
-            "ERROR: SSID was not updated on the device after 30 attempts"
+            "SSID was not updated on the device after 30 attempts"
         )
         pytest.fail("SSID was not updated on the device")
 
