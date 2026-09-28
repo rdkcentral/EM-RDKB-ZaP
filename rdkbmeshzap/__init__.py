@@ -16,7 +16,7 @@
 # limitations under the License.
 
 from rdkbmeshzap.bridge.feature_interface import FeatureInterface
-from rdkbmeshzap.utils import Utils
+from rdkbmeshzap.common_utils.client_association_utils import Utils
 import zaero.utils.zi_logger as zi_logger
 
 class rdkbmeshzap(FeatureInterface,Utils):

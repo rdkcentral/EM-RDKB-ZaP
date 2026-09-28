@@ -51,5 +51,5 @@ if __name__ == "__main__":
         f"{BASE_DIR}/test/client_association/test_client_connectivity.py",
         f"--html={reports_path}/report.html",
         "--self-contained-html",
-        "--log-cli-level=INFO",
+        "--log-cli-level=INFO"
     ]))

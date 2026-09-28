@@ -331,7 +331,7 @@ class FeatureInterface(FeatureInterfaceModules):
     
     def get_fronthaul_password(self,
         device: str,
-        index: str) -> str:
+        method = 'gui') -> str:
         """
         Get the fronthaul password for a given device.
         """
