@@ -62,7 +62,6 @@ def test_multi_agent_onboarding_topology_device_count(initialize):
         else:
             device_ids[device] = ids
             report_logger.print_success(f"PASS: Device ID for {device} retrieved successfully: {ids}")
-    print(device_ids)
     report_logger.print_step(f"STEP 3: Cross-reference each returned AL MAC against the known MAC addresses for controller and 3 extenders from DataElements")
     for device in devices:
         if initialize.read_from_database(device, "device_present"):
@@ -79,7 +78,7 @@ def test_multi_agent_onboarding_topology_device_count(initialize):
     for extender in devices[1:]:  # Skip the controller
         if initialize.read_from_database(extender, "device_present"):
             try:
-                radio_count = initialize.get_radioNumberofentries("controller", f"{extender}_device_index","de")
+                radio_count = initialize.get_radio_Number_of_entries("controller", f"{extender}_device_index","de")
                 radio_counts[extender] = radio_count
                 if not radio_count:
                     report_logger.print_error(f"FAIL: Failed to get device radio count for {extender} from DataElements")
@@ -103,7 +102,7 @@ def test_multi_agent_onboarding_topology_device_count(initialize):
 # ---------------------------------------------------------------------------
 
 def test_multi_agent_onborading_no_duplicate_entries(initialize):
-    report_logger.print_test("EM Multi-Agent Onboarding No Duplicate Entries")
+    report_logger.print_test("Entering EM Multi-Agent Onboarding No Duplicate Entries")
     report_logger.print_step("STEP 1: Get device-IDs of controller and all extenders from DataElements")
     present_devices = []
     index = []
@@ -179,8 +178,6 @@ def test_multi_agent_onborading_no_duplicate_entries(initialize):
             else:
                 device_ids[device] = ids
                 report_logger.print_success(f"Device IDs for controller and extenders retrieved successfully: {device_ids}")
-
-            print(device_ids)
     if len(all_device_ids) == len(unique_device_ids):
             report_logger.print_success(f"PASS: No duplicate AL MAC addresses found. "f"Total devices: {len(all_device_ids)}, "f"Unique AL MAC addresses: {len(unique_device_ids)}")
     else:

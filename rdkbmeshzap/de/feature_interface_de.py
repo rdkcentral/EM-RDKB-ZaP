@@ -112,7 +112,7 @@ class FeatureInterfaceDE(DatabaseModule,
         if output != ssid:
             raise RuntimeError(f"Expected ssid {ssid} is not matched with {output}")
 
-    def get_radioNumberofentries(self, device: str, index: str) -> str:
+    def get_radio_Number_of_entries(self, device: str, index: str) -> str:
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
@@ -121,8 +121,7 @@ class FeatureInterfaceDE(DatabaseModule,
         cmd = f"rbuscli get Device.WiFi.DataElements.Network.Device.{index}.RadioNumberOfEntries"
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
         if 'Value :' not in output:
-            raise RuntimeError(f"Command execution failed : {output}")
-        
+            raise RuntimeError(f"Command execution failed : {output}")        
         return output.partition('Value')[2].lstrip(' :').split()[0]
 
     def get_device_number_of_entries(self, device: str) -> int:

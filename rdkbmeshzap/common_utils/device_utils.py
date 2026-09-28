@@ -62,7 +62,7 @@ def get_enabled_clients(initialize):
         if "_wlan_client_" in device
     ]
 
-def normalize_security(self, value: str) -> str:
+def normalize_security( value: str) -> str:
     """
     Syntax: normalize_security(value)
     Description: Normalize AKM/key management values from DataElements or wpa_cli

@@ -444,14 +444,6 @@ class FeatureInterface(FeatureInterfaceModules):
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.get_IP_Interface_IPv4Address_IPAddress(device, index, ip_index)
 
-    def get_Router_Enable(self, device: str, index: str, method='gui') -> str:
-        """
-        Get the enable status of the router for a given device and index.
-        """
-        zi_logger.print_context()
-        iface_obj = self.get_feature_interface_module_object(method)
-        return iface_obj.get_Router_Enable(device, index)
-
     def get_DHCPv4_Server_Pool_Client_IPv4Address_IPAddress(self, device: str, index: str, sta_index: str, ip_index: str, method='gui') -> str:
         """
         Get the IPv4 address of the DHCPv4 server pool client for a given device, index, sta_index, and ip_index.
@@ -460,13 +452,13 @@ class FeatureInterface(FeatureInterfaceModules):
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.get_DHCPv4_Server_Pool_Client_IPv4Address_IPAddress(device, index, sta_index, ip_index)
 
-    def get_radioNumberofentries(self, device: str, index: str, method='gui') -> str:
+    def get_radio_Number_of_entries(self, device: str, index: str, method='gui') -> str:
         """
         Get the number of radio entries for a given device and index.
         """
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
-        return iface_obj.get_radioNumberofentries(device, index)
+        return iface_obj.get_radio_Number_of_entries(device, index)
 
     def verify_dhcp_process(self, device: str, method='gui') -> str:
         """

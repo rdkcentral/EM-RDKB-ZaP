@@ -16,9 +16,6 @@
 # limitations under the License.
 
 import pytest
-import zaero
-from zaero.utils.database import Database
-import time
 from pathlib import Path
 from rdkbmeshzap.common_utils import report_logger
 
