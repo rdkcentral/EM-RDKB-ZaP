@@ -27,7 +27,11 @@ DRAIN_SECONDS = 10
 
 def extract_message_times_by_source(packets, message_type):
     """
-    Group timestamps for a 1905 message type by source MAC.
+    Syntax: extract_message_times_by_source(packets, message_type)
+    Description: Group timestamps for a 1905 message type by source MAC.
+    Parameters: packets - Decoded packets; message_type - IEEE 1905 message type.
+    Return Value: A source-MAC-to-sorted-timestamps dictionary.
+    Example: extract_message_times_by_source(packets, MSG_TYPE_AP_METRICS_RESPONSE)
     """
     times_by_source = {}
     for packet in packets:
@@ -44,7 +48,11 @@ def extract_message_times_by_source(packets, message_type):
 
 def validate_periodic_ap_metrics_capture(packets, expected_device_macs, step):
     """
-    Validate AP Metrics Responses and their AP Metrics TLVs.
+    Syntax: validate_periodic_ap_metrics_capture(packets, expected_device_macs, step)
+    Description: Validate AP Metrics Responses and their AP Metrics TLVs and intervals.
+    Parameters: packets - Decoded packets; expected_device_macs - Expected device MACs; step - Report step.
+    Return Value: None; reports validation results.
+    Example: validate_periodic_ap_metrics_capture(packets, device_macs, 1)
     """
     report_logger.print_step(
         f"Step {step}: Validate AP Metrics Response presence and AP Metrics TLVs"
@@ -127,7 +135,11 @@ def validate_disabled_ap_metrics_capture(
     packets, disabled_at, drain_seconds, expected_device_macs, step
 ):
     """
-    Validate that no AP Metrics Responses occur after reporting is disabled.
+    Syntax: validate_disabled_ap_metrics_capture(packets, disabled_at, drain_seconds, expected_device_macs, step)
+    Description: Validate that no AP Metrics Responses occur after reporting is disabled.
+    Parameters: packets - Decoded packets; disabled_at - Disable timestamp; drain_seconds - Grace period; expected_device_macs - Expected MACs; step - Report step.
+    Return Value: None; reports validation results.
+    Example: validate_disabled_ap_metrics_capture(packets, disabled_at, 10, device_macs, 1)
     """
     report_logger.print_step(
         f"Step {step}: Validate that no AP Metrics responses were reported "

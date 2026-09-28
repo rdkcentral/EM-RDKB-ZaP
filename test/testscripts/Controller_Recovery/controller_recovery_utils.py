@@ -27,7 +27,11 @@ RETRY_INTERVAL_SECONDS = 5
 
 def get_controller_recovery_kpi(initialize):
     """
-    Return the controller recovery KPI configured in YAML.
+    Syntax: get_controller_recovery_kpi(initialize)
+    Description: Return the controller recovery KPI configured in YAML.
+    Parameters: initialize - Testbed initialization and database interface.
+    Return Value: Recovery KPI in seconds as an integer.
+    Example: get_controller_recovery_kpi(initialize)
     """
     return int(
         initialize.read_from_database(
@@ -37,7 +41,11 @@ def get_controller_recovery_kpi(initialize):
 
 def reconnect_device(initialize, device, step, started_at=None):
     """
-    Reconnect a device within the configured recovery KPI window.
+    Syntax: reconnect_device(initialize, device, step, started_at=None)
+    Description: Reconnect a device within the configured recovery KPI window.
+    Parameters: initialize - Testbed interface; device - Device name; step - Report step; started_at - Optional recovery start time.
+    Return Value: None on success; raises RuntimeError when recovery times out.
+    Example: reconnect_device(initialize, "controller", 1)
     """
     report_logger.print_step(f"STEP {step}: Wait for {device} SSH recovery")
     recovery_kpi = get_controller_recovery_kpi(initialize)
@@ -68,7 +76,11 @@ def reconnect_device(initialize, device, step, started_at=None):
 
 def recover_device(initialize, device, started_at, results, step):
     """
-    Reconnect a device, verify services, and record recovery time.
+    Syntax: recover_device(initialize, device, started_at, results, step)
+    Description: Reconnect a device, verify services, and record recovery time.
+    Parameters: initialize - Testbed interface; device - Device name; started_at - Recovery start time; results - Result dictionary; step - Report step.
+    Return Value: Recovery time in seconds or the captured exception.
+    Example: recover_device(initialize, "controller", started_at, results, 1)
     """
     try:
         reconnect_device(initialize, device, step=step, started_at=started_at)
@@ -92,7 +104,11 @@ def recover_device(initialize, device, started_at, results, step):
 
 def validate_topology_capture(packets, extender, extender_al_mac=None):
     """
-    Require topology query and response messages in a recovery capture.
+    Syntax: validate_topology_capture(packets, extender, extender_al_mac=None)
+    Description: Require topology query and response messages in a recovery capture.
+    Parameters: packets - Decoded packets; extender - Extender name; extender_al_mac - Optional AL MAC filter.
+    Return Value: None; reports missing or present topology messages.
+    Example: validate_topology_capture(packets, "extender1")
     """
     for message_type, message_name in (
         (MSG_TYPE_AP_TOPOLOGY_QUERY, "Topology Query"),
@@ -116,7 +132,11 @@ def validate_topology_capture(packets, extender, extender_al_mac=None):
 
 def get_parent_device_by_backhaul_bssid(initialize, devices, bssid):
     """
-    Return the device whose wifi1.1 interface owns the BSSID.
+    Syntax: get_parent_device_by_backhaul_bssid(initialize, devices, bssid)
+    Description: Return the device whose backhaul interface owns the BSSID.
+    Parameters: initialize - Testbed interface; devices - Devices to inspect; bssid - Backhaul BSSID.
+    Return Value: Matching device name, or None.
+    Example: get_parent_device_by_backhaul_bssid(initialize, devices, bssid)
     """
     normalized_bssid = (bssid or "").lower()
     for device in devices:
@@ -134,7 +154,11 @@ def get_parent_device_by_backhaul_bssid(initialize, devices, bssid):
 
 def get_extender_parent(initialize, extender, devices):
     """
-    Return the parent device associated with the extender.
+    Syntax: get_extender_parent(initialize, extender, devices)
+    Description: Return the parent device associated with the extender.
+    Parameters: initialize - Testbed interface; extender - Extender name; devices - Devices to inspect.
+    Return Value: A parent-device and BSSID tuple, or (None, None).
+    Example: get_extender_parent(initialize, "extender1", devices)
     """
     link_output = initialize.get_iw_dev_link_info(extender, "wifi1.3")
     match = re.search(

@@ -19,9 +19,42 @@ import time
 import pytest
 from rdkbmeshzap.common_utils import report_logger
 
+def validate_device_accessibility(initialize):
+    """
+    Validate SSH accessibility for every configured testbed device.
+    Parameters: initialize - Testbed initialization and device interface.
+    Return Value: A list of devices that failed accessibility validation.
+    Example: validate_device_accessibility(initialize)
+    """
+    devices = initialize.get_testbed_devices()
+    failures = []
+    report_logger.print_info(
+        f"INFO: Validating accessibility of {len(devices)} configured devices"
+    )
+    for device in devices:
+        report_logger.print_info(f"INFO: Connecting to {device}")
+        try:
+            connected = initialize.connect_with_device(device)
+            if connected is False:
+                raise RuntimeError("connection API returned False")
+        except Exception as error:
+            failures.append(device)
+            report_logger.print_error(
+                f"{device} accessibility validation failed: {error}"
+            )
+        else:
+            report_logger.print_success(
+                f"{device} is accessible over SSH"
+            )
+    return failures
+
 def get_enabled_extenders(initialize):
     """
-    Return enabled extender devices from the configured testbed.
+    Syntax: get_enabled_extenders(initialize)
+    Description: Return enabled extender devices from the configured testbed.
+    Parameters: initialize - Testbed initialization and database interface.
+    Return Value: A list of enabled extender device names.
+    Example: get_enabled_extenders(initialize)
     """
     return [
         device
@@ -35,7 +68,11 @@ def get_enabled_extenders(initialize):
 
 def get_enabled_device_al_macs(initialize):
     """
-    Return AL MAC addresses for enabled controller and extender devices.
+    Syntax: get_enabled_device_al_macs(initialize)
+    Description: Return AL MAC addresses for enabled controller and extender devices.
+    Parameters: initialize - Testbed initialization and device database interface.
+    Return Value: A device-to-AL-MAC dictionary.
+    Example: get_enabled_device_al_macs(initialize)
     """
     devices = [
         device
@@ -55,14 +92,22 @@ def get_enabled_device_al_macs(initialize):
 
 def create_capture_name(prefix, device=None, extension="pcapng"):
     """
-    Create a timestamped capture filename, optionally including a device.
+    Syntax: create_capture_name(prefix, device=None, extension="pcapng")
+    Description: Create a timestamped packet-capture filename.
+    Parameters: prefix - Capture name prefix; device - Optional device name; extension - File extension.
+    Return Value: A unique capture filename string.
+    Example: create_capture_name("recovery", "extender1")
     """
     device_suffix = f"_{device}" if device else ""
     return f"{prefix}{device_suffix}_{time.time_ns()}.{extension}"
 
 def get_backhaul_capture_interface(initialize, device):
     """
-    Return the backhaul capture interface configured in platform YAML.
+    Syntax: get_backhaul_capture_interface(initialize, device)
+    Description: Return the backhaul capture interface configured in platform YAML.
+    Parameters: initialize - Testbed interface; device - Device name.
+    Return Value: The configured interface name.
+    Example: get_backhaul_capture_interface(initialize, "extender1")
     """
     capture_interface = initialize.read_from_database(device, "backhaul_capture_iface")
     if not capture_interface:
@@ -73,7 +118,12 @@ def get_backhaul_capture_interface(initialize, device):
 
 def start_capture(initialize, device, capture_prefix, step, include_device=False):
     """
-    Start an IEEE 1905 capture on a device backhaul interface.
+    Syntax: start_capture(initialize, device, capture_prefix, step, include_device=False)
+    Description: Start an IEEE 1905 capture on a device backhaul interface.
+    Parameters: initialize - Testbed interface; device - Device name; capture_prefix - Name prefix;
+                step - Report step; include_device - Include device in filename.
+    Return Value: The capture filename.
+    Example: start_capture(initialize, "extender1", "recovery", 1)
     """
     capture_device = device if include_device else None
     capture_name = create_capture_name(capture_prefix, capture_device)
@@ -93,7 +143,11 @@ def start_capture(initialize, device, capture_prefix, step, include_device=False
 
 def stop_and_collect_capture(initialize, device, capture_name):
     """
-    Stop, download, and remove a device capture.
+    Syntax: stop_and_collect_capture(initialize, device, capture_name)
+    Description: Stop, download, and remove a device capture.
+    Parameters: initialize - Testbed interface; device - Device name; capture_name - Remote capture filename.
+    Return Value: The local capture path.
+    Example: stop_and_collect_capture(initialize, "extender1", capture_name)
     """
     report_logger.print_step(f"Stop and collect packet capture from {device}")
     initialize.stop_frame_capture(device)
@@ -111,7 +165,12 @@ def stop_and_collect_capture(initialize, device, capture_name):
 
 def verify_services(initialize, device, service_names, deadline=None):
     """
-    Verify required services with retries bounded by an optional deadline.
+    Syntax: verify_services(initialize, device, service_names, deadline=None)
+    Description: Verify required services with retries bounded by an optional deadline.
+    Parameters: initialize - Testbed interface; device - Device name; service_names - Services to verify;
+                deadline - Optional monotonic deadline.
+    Return Value: None when all services are active; raises pytest failure otherwise.
+    Example: verify_services(initialize, "controller", ("onewifi",))
     """
     if not service_names:
         pytest.fail(f"{device}: no services were configured for validation")
@@ -138,7 +197,11 @@ def verify_services(initialize, device, service_names, deadline=None):
 
 def verify_controller_services(initialize, deadline=None):
     """
-    Verify controller services after recovery.
+    Syntax: verify_controller_services(initialize, deadline=None)
+    Description: Verify controller services after recovery.
+    Parameters: initialize - Testbed interface; deadline - Optional monotonic deadline.
+    Return Value: None when controller services are active.
+    Example: verify_controller_services(initialize)
     """
     verify_services(
         initialize,
@@ -149,7 +212,11 @@ def verify_controller_services(initialize, deadline=None):
 
 def verify_extender_services(initialize, extender, deadline=None):
     """
-    Verify extender services after recovery.
+    Syntax: verify_extender_services(initialize, extender, deadline=None)
+    Description: Verify extender services after recovery.
+    Parameters: initialize - Testbed interface; extender - Extender name; deadline - Optional monotonic deadline.
+    Return Value: None when extender services are active.
+    Example: verify_extender_services(initialize, "extender1")
     """
     verify_services(
         initialize,
