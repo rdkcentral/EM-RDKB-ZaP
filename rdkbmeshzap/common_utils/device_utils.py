@@ -15,18 +15,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import pytest
 from rdkbmeshzap.common_utils import report_logger
 
-@pytest.mark.connectivity_check
-def test_setup_accessibility(initialize):
+def validate_device_accessibility(initialize):
     """
     Validate SSH accessibility for every configured testbed device.
+    Parameters: initialize - Testbed initialization and device interface.
+    Return Value: A list of devices that failed accessibility validation.
+    Example: validate_device_accessibility(initialize)
     """
-    report_logger.print_test("Entering Setup Accessibility Validation")
     devices = initialize.get_testbed_devices()
     failures = []
-
     report_logger.print_info(
         f"INFO: Validating accessibility of {len(devices)} configured devices"
     )
@@ -39,20 +40,10 @@ def test_setup_accessibility(initialize):
         except Exception as error:
             failures.append(device)
             report_logger.print_error(
-                f"ERROR: {device} accessibility validation failed: {error}"
+                f"{device} accessibility validation failed: {error}"
             )
         else:
-            report_logger.print_info(
-                f"INFO: {device} is accessible over SSH"
+            report_logger.print_success(
+                f"{device} is accessible over SSH"
             )
-
-    if failures:
-        pytest.fail(
-            "Accessibility validation failed for: " + ", ".join(failures)
-        )
-
-    initialize.accessibility_validated = True
-    report_logger.print_success(
-        "PASS: All configured devices passed accessibility validation"
-    )
-    report_logger.print_test("Exiting Setup Accessibility Validation")
+    return failures
