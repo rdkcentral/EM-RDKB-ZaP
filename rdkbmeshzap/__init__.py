@@ -16,11 +16,13 @@
 # limitations under the License.
 
 from rdkbmeshzap.bridge.feature_interface import FeatureInterface
+from rdkbmeshzap.common_utils.device_utils import Utils
 import zaero.utils.zi_logger as zi_logger
 
-class rdkbmeshzap(FeatureInterface):
+class rdkbmeshzap(FeatureInterface, Utils):
     
     def __init__(self):
         zi_logger.print_context()
         FeatureInterface.__init__(self)
+        Utils.__init__(self)
         zi_logger.log("Rdkb __init__ : END")
