@@ -18,35 +18,71 @@
 import time
 import pytest
 from rdkbmeshzap.common_utils import report_logger
+from zaero.bridge.database_module import DatabaseModule
+from zaero.bridge.connection_modules import ConnectionModules
+import zaero.utils.zi_logger as zi_logger
 
-def validate_device_accessibility(initialize):
-    """
-    Validate SSH accessibility for every configured testbed device.
-    Parameters: initialize - Testbed initialization and device interface.
-    Return Value: A list of devices that failed accessibility validation.
-    Example: validate_device_accessibility(initialize)
-    """
-    devices = initialize.get_testbed_devices()
-    failures = []
-    report_logger.print_info(
-        f"INFO: Validating accessibility of {len(devices)} configured devices"
-    )
-    for device in devices:
-        report_logger.print_info(f"INFO: Connecting to {device}")
-        try:
-            connected = initialize.connect_with_device(device)
-            if connected is False:
-                raise RuntimeError("connection API returned False")
-        except Exception as error:
-            failures.append(device)
-            report_logger.print_error(
-                f"{device} accessibility validation failed: {error}"
-            )
+class Utils(DatabaseModule, ConnectionModules):
+    
+    def __init__(self):
+        DatabaseModule.__init__(self)
+        ConnectionModules.__init__(self)
+        self.db_obj = self.get_database_module_object()
+        zi_logger.log(f"==== db_obj : {self.db_obj}")
+
+    def validate_device_accessibility(initialize):
+        """
+        Validate SSH accessibility for every configured testbed device.
+        Parameters: initialize - Testbed initialization and device interface.
+        Return Value: A list of devices that failed accessibility validation.
+        Example: validate_device_accessibility(initialize)
+        """
+        devices = initialize.get_testbed_devices()
+        failures = []
+        report_logger.print_info(
+            f"INFO: Validating accessibility of {len(devices)} configured devices"
+        )
+        for device in devices:
+            report_logger.print_info(f"INFO: Connecting to {device}")
+            try:
+                connected = initialize.connect_with_device(device)
+                if connected is False:
+                    raise RuntimeError("connection API returned False")
+            except Exception as error:
+                failures.append(device)
+                report_logger.print_error(
+                    f"{device} accessibility validation failed: {error}"
+                )
+            else:
+                report_logger.print_success(
+                    f"{device} is accessible over SSH"
+                )
+        return failures
+
+    def get_enabled_clients(initialize):
+        """Return client devices enabled in the testbed configuration."""
+        return [
+            device
+            for device in initialize.get_testbed_devices()
+            if "_wlan_client_" in device
+        ]
+    def normalize_security(self, value: str) -> str:
+        """
+        Maps AKM/key_mgmt values from either DataElements or wpa_cli
+        to a common security family for comparison.
+        """
+        value = value.lower()
+        wpa3_values = ["sae", "dpp", "dpp+sae", "eap-sha256", "eap-sha384"]
+        wpa2_values = ["psk", "wpa2-psk", "eap", "dot1x", "wpa-eap"]
+        transition_values = ["psk+sae"]
+        if value in wpa3_values:
+            return "WPA3"
+        elif value in wpa2_values:
+            return "WPA2"
+        elif value in transition_values:
+            return "WPA2/WPA3-Transition"
         else:
-            report_logger.print_success(
-                f"{device} is accessible over SSH"
-            )
-    return failures
+            return f"UNKNOWN({value})"   
 
 def get_enabled_extenders(initialize):
     """
@@ -224,3 +260,4 @@ def verify_extender_services(initialize, extender, deadline=None):
         ("onewifi", "ieee1905_em_agent", "em_agent"),
         deadline,
     )
+ 
