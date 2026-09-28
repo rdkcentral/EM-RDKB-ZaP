@@ -330,8 +330,6 @@ class FeatureInterface(FeatureInterfaceModules):
         return iface_obj.set_fronthaul_network_state(device, profile_identifier, enable)
     
     def get_fronthaul_password(self,
-        device: str,method = 'gui') -> str:
-    def get_fronthaul_password(self,
         device: str,
         index: str) -> str:
         """
