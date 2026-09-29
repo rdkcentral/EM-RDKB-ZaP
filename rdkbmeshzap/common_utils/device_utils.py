@@ -48,6 +48,43 @@ def validate_device_accessibility(initialize):
             )
     return failures
 
+def get_enabled_clients(initialize):
+    """
+    Syntax: get_enabled_clients(initialize)
+    Description: Return enabled client devices from the configured testbed.
+    Parameters: initialize - Testbed initialization and database interface.
+    Return Value: A list of enabled client device names.
+    Example: get_enabled_clients(initialize)
+    """
+    return [
+        device
+        for device in initialize.get_testbed_devices()
+        if "_wlan_client_" in device
+    ]
+
+def normalize_security( value: str) -> str:
+    """
+    Syntax: normalize_security(value)
+    Description: Normalize AKM/key management values from DataElements or wpa_cli
+                 into a common security family for comparison.
+    Parameters: value - AKM/key management value obtained from DataElements or wpa_cli.
+    Return Value: A normalized security family such as WPA2, WPA3,
+                  WPA2/WPA3-Transition, or UNKNOWN(value).
+    Example: normalize_security("sae")
+    """
+    value = value.lower()
+    wpa3_values = ["sae", "dpp", "dpp+sae", "eap-sha256", "eap-sha384"]
+    wpa2_values = ["psk", "wpa2-psk", "eap", "dot1x", "wpa-eap"]
+    transition_values = ["psk+sae"]
+    if value in wpa3_values:
+        return "WPA3"
+    elif value in wpa2_values:
+        return "WPA2"
+    elif value in transition_values:
+        return "WPA2/WPA3-Transition"
+    else:
+        return f"UNKNOWN({value})"   
+
 def get_enabled_extenders(initialize):
     """
     Syntax: get_enabled_extenders(initialize)
@@ -223,4 +260,4 @@ def verify_extender_services(initialize, extender, deadline=None):
         extender,
         ("onewifi", "ieee1905_em_agent", "em_agent"),
         deadline,
-    )
+    ) 
