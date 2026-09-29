@@ -35,7 +35,11 @@ _WHITE_REPORT_STYLE = (
 
 def format_report_line(line):
     """
-    Strip terminal markup and return a bold, HTML-safe report line.
+    Syntax: format_report_line(line)
+    Description: Strip terminal markup and return a styled HTML-safe report line.
+    Parameters: line - Report text to format.
+    Return Value: HTML span containing the formatted report line.
+    Example: format_report_line("PASS: Capture completed")
     """
     plain_line = _ANSI_ESCAPE.sub("", line)
     plain_line = re.sub(r"</?span[^>]*>", "", plain_line, flags=re.IGNORECASE)
@@ -47,7 +51,11 @@ def format_report_line(line):
         color, weight = "#8a5a00", "bold"
     elif "PASS:" in plain_line or plain_line.lstrip().startswith("Pass:"):
         color, weight = "green", "bold"
-    elif "FAIL:" in plain_line or "ERROR" in plain_line:
+    elif (
+        "FAIL:" in plain_line
+        or "ERROR" in plain_line
+        or any(error in plain_line for error in _error_logs)
+    ):
         color, weight = "red", "bold"
     else:
         color, weight = "black", "normal"
@@ -58,20 +66,32 @@ def format_report_line(line):
 
 def get_report_style():
     """
-    Return custom CSS for the pytest HTML report.
+    Syntax: get_report_style()
+    Description: Return custom CSS for the pytest HTML report.
+    Parameters: None.
+    Return Value: A CSS style string.
+    Example: get_report_style()
     """
     return _WHITE_REPORT_STYLE
 
 def set_log_state(status):
     """
-    Enable or disable report logging.
+    Syntax: set_log_state(status)
+    Description: Enable or disable diagnostic logging.
+    Parameters: status - Boolean logging state.
+    Return Value: None.
+    Example: set_log_state(True)
     """
     global _enable_log
     _enable_log = status
 
 def log(message, status="INFO", log_error=False):
     """
-    Send diagnostic messages to logging without adding report stdout.
+    Syntax: log(message, status="INFO", log_error=False)
+    Description: Send diagnostic messages to logging without adding report stdout.
+    Parameters: message - Diagnostic text; status - Log severity; log_error - Store as an error.
+    Return Value: None.
+    Example: log("Capture started")
     """
     if not _enable_log:
         return
@@ -84,48 +104,80 @@ def log(message, status="INFO", log_error=False):
 
 def print_step(message):
     """
-    Print and return a formatted test step."""
+    Syntax: print_step(message)
+    Description: Print a formatted test step.
+    Parameters: message - Step text.
+    Return Value: Styled HTML for the step.
+    Example: print_step("STEP 1: Start capture")
+    """
     print(f"\033[1m\033[94m{message}\033[0m")
     return f'<span style="color:#0055aa; font-weight:bold;">{message}</span>'
 
 def print_info(message):
     """
-    Print and return a bold informational report message.
+    Syntax: print_info(message)
+    Description: Print a bold informational report message.
+    Parameters: message - Informational text.
+    Return Value: Styled HTML for the message.
+    Example: print_info("INFO: Capture started")
     """
     print(f"\033[1m\033[96m{message}\033[0m")
     return f'<span style="color:#007a8a; font-weight:bold;">{message}</span>'
 
 def print_test(message):
     """
-    Print and return a formatted test name.
+    Syntax: print_test(message)
+    Description: Print a formatted test name.
+    Parameters: message - Test name.
+    Return Value: Styled HTML for the test name.
+    Example: print_test("Controller Recovery")
     """
     print(f"\033[1m\033[33m{message}\033[0m")
     return f'<span style="color:#8a5a00; font-weight:bold;">{message}</span>'
 
 def print_success(message):
     """
-    Print and return a formatted passing message.
+    Syntax: print_success(message)
+    Description: Print a formatted passing message.
+    Parameters: message - Passing message.
+    Return Value: Styled HTML for the passing message.
+    Example: print_success("PASS: Capture completed")
     """
     print(f"\033[92m{message}\033[0m")
     return f'<span style="color:green; font-weight:bold;">{message}</span>'
 
 def print_error(message, log_error=True):
     """
-    Print and optionally store a failing report message.
+    Syntax: print_error(message, log_error=True)
+    Description: Print and optionally store a failing report message.
+    Parameters: message - Failure message; log_error - Store the message for test reporting.
+    Return Value: Styled HTML for the failure message.
+    Example: print_error("FAIL: Capture was empty")
     """
-    print(f"\033[91m{message}\033[0m")
+    formatted_message = (
+        message if message.lstrip().startswith("FAIL:") else f"FAIL: {message}"
+    )
+    print(f"\033[91m{formatted_message}\033[0m")
     if log_error:
-        _error_logs.append(message)
-    return f'<span style="color:red; font-weight:bold;">{message}</span>'
+        _error_logs.append(formatted_message)
+    return f'<span style="color:red; font-weight:bold;">{formatted_message}</span>'
 
 def get_error_logs():
     """
-    Return failure messages collected for the current test.
+    Syntax: get_error_logs()
+    Description: Return failure messages collected for the current test.
+    Parameters: None.
+    Return Value: A list of failure messages.
+    Example: get_error_logs()
     """
     return list(_error_logs)
 
 def clear_error_logs():
     """
-    Clear failure messages before the next test.
+    Syntax: clear_error_logs()
+    Description: Clear failure messages before the next test.
+    Parameters: None.
+    Return Value: None.
+    Example: clear_error_logs()
     """
     _error_logs.clear()

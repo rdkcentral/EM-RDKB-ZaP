@@ -16,14 +16,15 @@
 # limitations under the License.
 
 import pytest
+import time
+from html import escape
+from pathlib import Path
+
 import zaero
 from zaero.utils import zi_logger
 from zaero.utils.database import Database
 from packet_analyzer.protocol_validation import common_protocol_validation
-from rdkbmeshzap.common_utils import report_logger
-import time
-from html import escape
-from pathlib import Path
+from rdkbmeshzap.common_utils import device_utils, report_logger
 
 _setup_output = ""
 
@@ -35,8 +36,9 @@ def initialize():
 	platform = zaero_obj.read_from_database("controller", "platform")
 	zaero_obj.configure_platform(platform)
 	for device_name, device_data in Database._Database__database.items():
-		device_data.setdefault("device_present", device_name != "protocol")
-
+		device_data.setdefault(
+			"device_present", device_name not in {"protocol", "test_parameters"}
+		)
 	pcap_log_dir = zaero_obj.read_from_database("controller", "pcap_remote_dir")
 	pcap_local_dir = zaero_obj.read_from_database("controller", "pcap_local_dir")
 	Path(pcap_local_dir).mkdir(parents=True, exist_ok=True)
@@ -44,11 +46,21 @@ def initialize():
 	yield zaero_obj
 
 
+@pytest.fixture(scope="session", autouse=True)
+def validate_setup_accessibility(initialize):
+	failures = device_utils.validate_device_accessibility(initialize)
+	if failures:
+		pytest.fail(
+			"Accessibility validation failed for: " + ", ".join(failures)
+		)
+	initialize.accessibility_validated = True
+	report_logger.print_success(
+		"PASS: All configured devices passed accessibility validation"
+	)
+
+
 @pytest.fixture(scope="function", autouse=True)
-def test_setup(request, initialize):
-	if request.node.get_closest_marker("connectivity_check"):
-		yield initialize
-		return
+def test_setup(initialize):
 	if not getattr(initialize, "accessibility_validated", False):
 		pytest.skip("Setup accessibility validation did not pass")
 
@@ -99,15 +111,14 @@ def pytest_runtest_makereport(item, call):
 	global _setup_output
 	outcome = yield
 	report = outcome.get_result()
-	if report.when != "call":
-		return
-	if item.get_closest_marker("connectivity_check"):
+	if report.when == "setup" and not _setup_output:
 		_setup_output = "\n".join(
 			content
 			for section_name, content in getattr(report, "sections", [])
-			if section_name in ("Captured stdout call", "Captured log call")
+			if section_name in ("Captured stdout setup", "Captured log setup")
 		)
-		report.connectivity_check = True
+		return
+	if report.when != "call":
 		return
 	errors = report_logger.get_error_logs() + zi_logger.get_error_logs()
 	if errors:
@@ -116,17 +127,20 @@ def pytest_runtest_makereport(item, call):
 
 
 def pytest_html_results_table_html(report, data):
-	if report.when != "call" or getattr(report, "connectivity_check", False):
+	if report.when != "call":
 		data.clear()
 		return
 	new_data = []
-	if report.failed and hasattr(report, "longrepr"):
-		new_data.append(f"<div>{escape(str(report.longrepr))}</div>")
 	call_output = "\n".join(
 		content
 		for section_name, content in getattr(report, "sections", [])
 		if section_name in ("Captured stdout call", "Captured log call")
 	)
+	if report.failed and hasattr(report, "longrepr"):
+		new_data.append(
+			'<div><span style="color:red; font-weight:bold; '
+			f'white-space:pre-wrap;">{escape(str(report.longrepr))}</span></div>'
+		)
 	if call_output:
 		html = "<br>".join(
 			report_logger.format_report_line(line)
@@ -138,7 +152,7 @@ def pytest_html_results_table_html(report, data):
 
 
 def pytest_html_results_table_row(report, cells):
-	if report.when != "call" or getattr(report, "connectivity_check", False):
+	if report.when != "call":
 		cells.clear()
 
 
@@ -163,7 +177,9 @@ def protocol_validation(request, initialize):
 	report_logger.print_step("========== Start Frame Capture ==========")
 	backhaul_iface = initialize.read_from_database("controller", "backhaul_capture_iface")
 	frame_filter = initialize.read_from_database("controller", "filter_1905")
-	initialize.start_frame_capture("controller", backhaul_iface, frame_filter, capture_name)
+	initialize.start_frame_capture(
+		"controller", backhaul_iface, frame_filter, capture_name
+	)
 	yield True
 	report_logger.print_step("========== Stop Frame Capture ==========")
 	initialize.stop_frame_capture("controller")
