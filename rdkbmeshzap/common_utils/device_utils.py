@@ -260,5 +260,4 @@ def verify_extender_services(initialize, extender, deadline=None):
         extender,
         ("onewifi", "ieee1905_em_agent", "em_agent"),
         deadline,
-    )
- 
+    ) 

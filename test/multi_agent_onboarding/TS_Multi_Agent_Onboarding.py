@@ -20,10 +20,6 @@ import pytest
 import time
 from rdkbmeshzap.common_utils import device_utils, report_logger
 
-# ---------------------------------------------------------------------------
-# Test Case-1: EM_Mutli_Agent_Onboarding_Topology_Device_Count
-# ---------------------------------------------------------------------------
-
 def test_multi_agent_onboarding_topology_device_count(initialize):
     report_logger.print_test("Entering  Multi-Agent Onboarding Topology Device Count ")
     report_logger.print_step("STEP 1: Get initial topology device count for controller from DataElements")
@@ -96,12 +92,8 @@ def test_multi_agent_onboarding_topology_device_count(initialize):
             report_logger.print_success(f"PASS: Device count verified successfully: {updated_device_count}")
     except Exception as e:
         report_logger.print_error(f"FAIL: Failed to query updated device count for controller: {e}")
-    
-# ---------------------------------------------------------------------------
-# Test Case-2: EM_Mutli_Agent_Onboarding_No_Duplicate_Entries
-# ---------------------------------------------------------------------------
 
-def test_multi_agent_onborading_no_duplicate_entries(initialize):
+def test_multi_agent_onboarding_no_duplicate_entries(initialize):
     report_logger.print_test("Entering EM Multi-Agent Onboarding No Duplicate Entries")
     report_logger.print_step("STEP 1: Get device-IDs of controller and all extenders from DataElements")
     present_devices = []

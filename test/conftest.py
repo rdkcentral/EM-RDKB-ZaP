@@ -98,6 +98,7 @@ def test_setup(initialize):
 			except Exception:
 				pass
 
+
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_setup(item):
 	report_logger.clear_error_logs()

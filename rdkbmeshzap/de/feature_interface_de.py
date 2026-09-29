@@ -113,6 +113,9 @@ class FeatureInterfaceDE(DatabaseModule,
             raise RuntimeError(f"Expected ssid {ssid} is not matched with {output}")
 
     def get_radio_Number_of_entries(self, device: str, index: str) -> str:
+        """
+        Get the radio number of entries for a given device.
+        """
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)

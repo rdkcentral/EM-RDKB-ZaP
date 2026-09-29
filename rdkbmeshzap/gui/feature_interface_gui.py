@@ -168,7 +168,6 @@ class FeatureInterfaceGUI(DatabaseModule,
 
     def get_fronthaul_password(self,
             device: str) -> str:
-
         """
         To get fronthaul password in the GUI Application
         """

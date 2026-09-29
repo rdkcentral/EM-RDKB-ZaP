@@ -20,10 +20,6 @@ import pytest
 import time
 from rdkbmeshzap.common_utils import device_utils, report_logger
 
-# ---------------------------------------------------------------------------
-# Test Case-1: EM_Client_Association_Discovery_EasyMesh_SSID
-# ---------------------------------------------------------------------------
-
 def test_client_association_discovery_easymesh_ssid(initialize):
     report_logger.print_test("Entering EM_Client_Association_Discovery_EasyMesh_SSID")
     report_logger.print_step("STEP 1: Get SSID from DataElements")
@@ -47,10 +43,6 @@ def test_client_association_discovery_easymesh_ssid(initialize):
                     report_logger.print_error(f"FAIL: {client}: SSID count: {len(output)}")
             except Exception as e:
                 report_logger.print_error(f"FAIL: Failed to initiate WiFi scan on {client}: {e}")
-
-# ---------------------------------------------------------------------------
-# Test Case-2: EM_Client_Association_Authentication_Correct_Credentials
-# ---------------------------------------------------------------------------
 
 def test_client_association_authentication_correct_credentials(initialize):
     report_logger.print_test(" Entering EM_Client_Association_Authentication_Correct_Credentials")
@@ -159,10 +151,6 @@ def test_client_association_authentication_correct_credentials(initialize):
                     report_logger.print_error(f"FAIL: Client {client} cannot ping 8.8.8.8")
             except Exception as e:
                 report_logger.print_error(f"FAIL: Failed to test connectivity for client {client}: {e}")
-
-# ---------------------------------------------------------------------------
-# Test Case-3: EM_Client_Association_DHCP_IP_Assignment
-# ---------------------------------------------------------------------------
 
 def test_client_association_dhcp_ip_assignment(initialize):
     report_logger.print_test("Entering EM_Client_Association_DHCP_IP_Assignment")
@@ -311,10 +299,6 @@ def test_client_association_dhcp_ip_assignment(initialize):
                     report_logger.print_error(f"FAIL: Client {client} IP address {ip_address} is NOT within the DHCP pool range: {dhcp_pool_min_address} - {dhcp_pool_max_address}")
         except Exception as e:
             report_logger.print_error(f"FAIL: Failed to verify IP address assignment "f"for client {client}: {e}")
-
-# ---------------------------------------------------------------------------
-# Test Case-4: EM_Client_Association_Gateway_Reachability
-# ---------------------------------------------------------------------------
 
 def test_client_association_gateway_reachability(initialize):
     report_logger.print_test("Entering EM_Client_Association_Gateway_Reachability")
