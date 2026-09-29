@@ -41,8 +41,19 @@ if __name__ == "__main__":
         f"{BASE_DIR}/test/ref_test/test_tunneling_and_reboot.py",
         f"{BASE_DIR}/test/ref_test/test_ssid_config_packet_analyzer_usage.py",
         f"{BASE_DIR}/test/ref_test/test_protocol_validation.py",
-        f"{BASE_DIR}/test/testscripts/stability/TS_Stability.py",
+        f"{BASE_DIR}/test/testscripts/Metrics_Collection/TS_Metrics_Collection_periodic_reporting.py",
+        f"{BASE_DIR}/test/testscripts/Metrics_Collection/TS_Metrics_Collection_response_disable.py",
+        f"{BASE_DIR}/test/testscripts/Controller_Recovery/TS_Controller_Recovery_extender_reconnection.py",
+        f"{BASE_DIR}/test/testscripts/Controller_Recovery/TS_Controller_Recovery_consecutive_reboots.py",
+        f"{BASE_DIR}/test/client_association/TS_Dynamic_Discovery.py",
+        f"{BASE_DIR}/test/multi_agent_onboarding/TS_Multi_Agent_Onboarding.py",
+        f"{BASE_DIR}/test/client_association/TS_Client_Connectivity.py",
+        f"{BASE_DIR}/test/testscripts/stability/TS_Stability_long_duration_validation.py",
+        f"{BASE_DIR}/test/testscripts/stability/TS_Stability_fronthaul_toggle_stress.py",
+        f"{BASE_DIR}/test/testscripts/stability/TS_Stability_channel_change_stress.py",
+        f"{BASE_DIR}/test/testscripts/stability/TS_Stability_ssid_update_stress.py",
         f"--html={reports_path}/report.html",
         "--self-contained-html",
-        "--log-cli-level=INFO",
+        "--log-cli-level=INFO"
     ]))
+

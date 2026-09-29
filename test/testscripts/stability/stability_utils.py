@@ -1,42 +1,55 @@
+# If not stated otherwise in this file or this component LICENSE file the
+# following copyright and licenses apply:
+#
+# Copyright 2026 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from datetime import datetime
 import subprocess
+import pytest
+import zaero
 from zaero.utils import zi_logger
 from pathlib import Path
 import csv
 from rdkbmeshzap.common_utils import report_logger
+from stability_config import AVG_CPU_BASELINE, LOG_PATHS, MAX_CPU_BASELINE
 
+# common_setup
+# syntax: common_setup(initialize)
+# Description: Sets up the common test environment by uploading the monitoring tool to the controller and providing access to testbed devices.
+# parameters: initialize - Testbed initialization object used to interact with the testbed devices.
+# Return Value: A list of testbed devices obtained from the initialization object.
+@pytest.fixture(autouse=True)
+def common_setup(initialize):
+    monitoring_tool_path = Path(__file__).with_name("monitoring_tool.py")
+    initialize.put_file("controller", str(monitoring_tool_path), "/nvram/")
+    zaero_obj = zaero.zaero()
+    devices = zaero_obj.get_testbed_devices()
+    yield devices
+    # Cleanup code after the test is done
+    for log_file in LOG_PATHS:
+        if initialize.get_file_presence_status("controller", log_file):
+            initialize.execute_command("controller", f"rm -f {log_file}")
 
-AVG_CPU_BASELINE = 5
-MAX_CPU_BASELINE = 20
-
+#get_timestamp
+# Syntax : get_timestamp()
+# Description : Returns the current date and time as a formatted string.
+# Parameters : None.
+# Return Value: Current timestamp as a string in the format "YYYY-MM-DD HH:MM:SS".
 def get_timestamp() -> str:
     """Return current date and time as string."""
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-#copy_file_to_remote
-# Syntax : copy_file_to_remote(local_file, remote_host, remote_path, remote_user="root")
-# Description : Copies a local file to a remote host using SCP.
-# Parameters :
-#     local_file - Path of the source file to copy.
-#     remote_host - IP address or hostname of the destination machine.
-#     remote_path - Destination directory path on the remote host.
-#     remote_user - SSH username used for the remote connection. Default is 'root'.
-# Return Value: True if the file is copied successfully, otherwise False.
-def copy_file_to_remote(local_file, remote_host, remote_path, remote_user="root"):
-    cmd = [
-        "scp",
-        "-o", "StrictHostKeyChecking=no",
-        "-o", "UserKnownHostsFile=/dev/null",
-        local_file,
-        f"{remote_user}@{remote_host}:{remote_path}"
-    ]
-
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode == 0:
-        print(f"Successfully copied '{local_file}' to '{remote_host}:{remote_path}'")
-        return True
-    print(f"SCP failed: {result.stderr}")
-    return False
 
 #get_core_dump_status
 # Syntax : get_core_dump_status(initialize, device, timestamp)
@@ -68,14 +81,29 @@ def get_core_dump_status(initialize, device, timestamp):
 def analyse_device_log(csv_file):
     with open(csv_file) as f:
         rows = list(csv.DictReader(f))
-    initial_rss = int(rows[0]["rss_kb"])
-    final_rss = int(rows[-1]["rss_kb"])
-    initial_cpu = float(rows[0]["cpu_percent"])
-    final_cpu = float(rows[-1]["cpu_percent"])
-    mem_percent =  round(((final_rss - initial_rss) / initial_rss) * 100, 2)
-    cpu_values = [float(row["cpu_percent"]) for row in rows]
-    avg_cpu = round(sum(cpu_values) / len(cpu_values), 2)
-    max_cpu = max(cpu_values)
+
+    rss_values = [
+        int(row["rss_kb"])
+        for row in rows
+        if row["rss_kb"] not in ("", "NA")
+    ]
+    if len(rss_values) >= 2 and rss_values[0] != 0:
+        mem_percent = round(((rss_values[-1] - rss_values[0]) / rss_values[0]) * 100, 2)
+    else:
+        mem_percent = None
+
+    cpu_values = [
+        float(row["cpu_percent"])
+        for row in rows
+        if row["cpu_percent"] not in ("", "NA")
+    ]
+    if cpu_values:
+        avg_cpu = round(sum(cpu_values) / len(cpu_values), 2)
+        max_cpu = max(cpu_values)
+    else:
+        avg_cpu = None
+        max_cpu = None
+
     initial_pid = rows[0]["pid"]
     pid_status = any(row["pid"] != initial_pid for row in rows[1:])
     return mem_percent,avg_cpu, max_cpu,pid_status
@@ -86,21 +114,26 @@ def analyse_device_log(csv_file):
 # Parameters :
 #     local_dir - Absolute or relative path to the local directory containing log files to analyze.
 # Return Value: None. It logs pass/fail messages for each analyzed log file.
-
 def log_analyzer(local_dir):
     files = [f.name for f in Path(local_dir).iterdir() if f.is_file()]
     for file in files:
         zi_logger.log(f"Analyzing log file: {local_dir}/{file}")
         mem_usage,avg_cpu, max_cpu,pid_status = analyse_device_log(f"{local_dir}/{file}")
-        if mem_usage > 20:
+        if mem_usage is None:
+            report_logger.print_error(f"[FAIL]: [controller] Memory usage unavailable. check log file: {local_dir}/{file}")
+        elif mem_usage > 20:
             report_logger.print_error(f"[FAIL]: [controller] High Memory Usage :{mem_usage}% variation detected. check log file: {local_dir}/{file}")
         else:
             report_logger.print_success(f"[PASS]: [controller] Memory usage normal : {mem_usage}% variation detected in log file: {local_dir}/{file}")
-        if avg_cpu > AVG_CPU_BASELINE:
+        if avg_cpu is None:
+            report_logger.print_error(f"[FAIL]: [controller] Average CPU usage unavailable. check log file: {local_dir}/{file}")
+        elif avg_cpu > AVG_CPU_BASELINE:
             report_logger.print_error(f"[FAIL]: [controller] High Average CPU Detected : {avg_cpu}% check log file: {local_dir}/{file}")
         else:
             report_logger.print_success(f"[PASS]: [controller] Average CPU usage normal : {avg_cpu}% in log file: {local_dir}/{file}")
-        if max_cpu > MAX_CPU_BASELINE:
+        if max_cpu is None:
+            report_logger.print_error(f"[FAIL]: [controller] Max CPU usage unavailable. check log file: {local_dir}/{file}")
+        elif max_cpu > MAX_CPU_BASELINE:
             report_logger.print_error(f"[FAIL]: [controller] High Max CPU Detected : {max_cpu}% check log file: {local_dir}/{file}")
         else:
             report_logger.print_success(f"[PASS]: [controller] Max CPU usage normal : {max_cpu}% in log file: {local_dir}/{file}")

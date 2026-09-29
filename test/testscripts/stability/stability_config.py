@@ -1,11 +1,11 @@
-# Shared stability test configuration values.
-# Timeout for the 24-hour stability loop, expressed in seconds. [test_stability_24hours]
-timeout = 24 * 60 * 60  # 24 hours expressed in seconds
-# Number of SSID update iterations to run in the SSID stability test. [test_stability_ssid_update]
-ssid_update_max_count = 100
-
-# Number of fronthaul toggle iterations to run in the fronthaul stability test. [test_stability_fronthaul_toggle]
-fronthaul_toggle_max_count = 100
-
-# Number of channel update iterations to run in the channel stability test. [test_stability_channel_update]
-channel_update_max_count = 100
+# CPU usage baseline values for stability analysis.
+AVG_CPU_BASELINE = 5
+# Maximum CPU usage baseline for stability analysis.
+MAX_CPU_BASELINE = 20
+# Time to wait after SSID update, in seconds.
+SSID_UPDATE_WAITING_TIME = 60
+# Time to wait after channel update, in seconds.
+CHANNEL_UPDATE_WAITING_TIME = 60  
+# Time to wait after fronthaul toggle, in seconds.
+FRONTHAUL_TOGGLE_WAITING_TIME = 60  
+LOG_PATHS = ["/tmp/onewifi_em_ctrl_monitor.csv", "/tmp/onewifi_em_agent_monitor.csv", "/tmp/OneWifi_monitor.csv"]

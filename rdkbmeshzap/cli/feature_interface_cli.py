@@ -305,8 +305,7 @@ class FeatureInterfaceCLI(DatabaseModule,
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
-        command = f"ls {file_path} >/dev/null 2>&1 && echo True || echo False"
-        # command = f"python3 -c \"import os, sys; print(os.path.exists(sys.argv[1]))\" {shlex.quote(file_path)}"
+        command = f"python3 -c \"import glob, sys; print(bool(glob.glob(sys.argv[1])))\" {shlex.quote(file_path)}"
         output, error = connection_obj.execute_command(command,
                                                    return_stderr=True)
         if error != '':
@@ -456,6 +455,30 @@ class FeatureInterfaceCLI(DatabaseModule,
             )
 
         return True
+
+    def get_service_status(self,
+                           device: str,
+                           service_name: str) -> bool:
+        """
+        Get the status of the specified service on the device.
+        """
+        zi_logger.print_context()
+
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+
+        command = f"systemctl is-active {shlex.quote(service_name)}"
+        output, error = connection_obj.execute_command(
+            command,
+            return_stderr=True
+        )
+        if error:
+            raise RuntimeError(
+                f"Command execution failed: {command}. stderr: {error.strip()}"
+            )
+
+        return output.strip() == "active"
 
 
     def stop_service(self,
