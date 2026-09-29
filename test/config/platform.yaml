@@ -106,3 +106,5 @@ extender3:
     
 protocol:
     common_protocol_validation: True                        # Enable/Disable common protocol validation for verifying protocol-level behavior and message exchanges                      
+test_parameters:
+    controller_recovery_kpi_seconds: 300                    # Controller Recovery KPI threshold in seconds

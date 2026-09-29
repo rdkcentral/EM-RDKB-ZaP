@@ -19,10 +19,19 @@ from scapy.layers.l2 import Ether
 from packet_analyzer.packet_dissector import *
 from rdkbmeshzap.common_utils import report_logger
 
+# Interval in seconds between periodic AP Metrics reports.
 REPORTING_INTERVAL = 10
+
+# Allowed tolerance in seconds for validating the reporting interval.
 INTERVAL_TOLERANCE = 1
+
+# Total duration in seconds to monitor periodic AP Metrics reporting.
 OBSERVATION_SECONDS = 120
+
+# Interval value used to disable periodic AP Metrics reporting.
 DISABLED_INTERVAL = 0
+
+# Wait time in seconds to clear previously generated AP Metrics reports before validation.
 DRAIN_SECONDS = 10
 
 def extract_message_times_by_source(packets, message_type):
