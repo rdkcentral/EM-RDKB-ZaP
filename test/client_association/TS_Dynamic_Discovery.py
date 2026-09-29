@@ -17,7 +17,7 @@
 
 import pytest
 from pathlib import Path
-from rdkbmeshzap.common_utils import report_logger
+from rdkbmeshzap.common_utils import device_utils, report_logger
 
 def test_discover_macs(initialize):
     """
@@ -29,7 +29,7 @@ def test_discover_macs(initialize):
         # Controller
         devices = ["controller"]
         # Enabled extenders
-        devices.extend(initialize.get_enabled_extenders())
+        devices.extend(device_utils.get_enabled_extenders(initialize))
         report_logger.print_info(f"Devices found for MAC discovery: {devices}")
         # Discover MACs for every device
         for device in devices:

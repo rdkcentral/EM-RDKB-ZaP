@@ -18,7 +18,7 @@
 import zaero
 import pytest
 import time
-from rdkbmeshzap.common_utils import report_logger
+from rdkbmeshzap.common_utils import device_utils, report_logger
 
 # ---------------------------------------------------------------------------
 # Test Case-1: EM_Mutli_Agent_Onboarding_Topology_Device_Count
@@ -43,7 +43,7 @@ def test_multi_agent_onboarding_topology_device_count(initialize):
         present_devices.append("controller")
         index.append(controller_index)
 
-    devices = initialize.get_enabled_extenders()
+    devices = device_utils.get_enabled_extenders(initialize)
     report_logger.print_success(f"{devices}")
     for device in devices:
         if initialize.read_from_database(device, "device_present"):
@@ -111,7 +111,7 @@ def test_multi_agent_onborading_no_duplicate_entries(initialize):
         present_devices.append("controller")
         index.append(controller_index)
 
-    devices = initialize.get_enabled_extenders()
+    devices = device_utils.get_enabled_extenders(initialize)
     report_logger.print_success(f"{devices}")
     for device in devices:
         if initialize.read_from_database(device, "device_present"):

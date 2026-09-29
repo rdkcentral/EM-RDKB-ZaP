@@ -18,7 +18,7 @@
 import zaero
 import pytest
 import time
-from rdkbmeshzap.common_utils import report_logger
+from rdkbmeshzap.common_utils import device_utils, report_logger
 
 # ---------------------------------------------------------------------------
 # Test Case-1: EM_Client_Association_Discovery_EasyMesh_SSID
@@ -32,7 +32,7 @@ def test_client_association_discovery_easymesh_ssid(initialize):
     report_logger.print_step("STEP 2: Wait for some time for SSID propagation")
     time.sleep(10)
     report_logger.print_step("STEP 3: Initiate WiFi scan on each wlan client of the devices")
-    clients = initialize.get_enabled_clients()
+    clients = device_utils.get_enabled_clients(initialize)
     for client in clients:
         if initialize.read_from_database(client, "device_present"):
             output = []
@@ -81,7 +81,7 @@ def test_client_association_authentication_correct_credentials(initialize):
     time.sleep(10)
     report_logger.print_step("STEP 5: Connect client with correct credentials and verify the connection status" )
     ssid = initialize.get_ssid("controller","controller_device_index",'de')
-    clients = initialize.get_enabled_clients()
+    clients = device_utils.get_enabled_clients(initialize)
     for client in clients:
         if not initialize.read_from_database(client, "device_present"):
             continue
@@ -139,8 +139,8 @@ def test_client_association_authentication_correct_credentials(initialize):
         if initialize.read_from_database(client,"device_present"):
             try:
                 client_security = initialize.get_client_encryption( client)
-                expected_security = initialize.normalize_security( ssid_akm)
-                actual_security = initialize.normalize_security(client_security)
+                expected_security = device_utils.normalize_security( ssid_akm)
+                actual_security = device_utils.normalize_security(client_security)
                 report_logger.print_info(f"Comparing security for {client}: Controller AKM='{ssid_akm}' ({expected_security}) vs Client negotiated='{client_security}' ({actual_security})")
                 if expected_security == actual_security:
                     report_logger.print_success(f"PASS: {client} negotiated security matches: {client_security} ({actual_security}) is consistent with controller AKM {ssid_akm} ({expected_security})")
@@ -199,7 +199,7 @@ def test_client_association_dhcp_ip_assignment(initialize):
     report_logger.print_step("STEP 4: Perform WiFi scan on each client")
     ssid = initialize.get_ssid("controller","controller_device_index",'de')
     report_logger.print_info(f"Retrieved SSID: {ssid}")
-    clients = initialize.get_enabled_clients()
+    clients = device_utils.get_enabled_clients(initialize)
     for client in clients:
         if not initialize.read_from_database(client,"device_present"):
             continue
@@ -340,7 +340,7 @@ def test_client_association_gateway_reachability(initialize):
     else:
         report_logger.print_success(f"PASS: Gateway IP address {gateway_ip} matches controller gateway IP address {controller_gateway_ip}")
     report_logger.print_step("STEP 3: Verify client IP Address assignment")
-    clients = initialize.get_enabled_clients()
+    clients = device_utils.get_enabled_clients(initialize)
     for client in clients:
         if not initialize.read_from_database(client, "device_present"):
             continue
