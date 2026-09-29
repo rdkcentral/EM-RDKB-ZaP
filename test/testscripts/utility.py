@@ -1,3 +1,19 @@
+# If not stated otherwise in this file or this component LICENSE file the
+# following copyright and licenses apply:
+#
+# Copyright 2026 Zilogic Systems
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """Common helper utilities for Zaero-based tests."""
 
 import re
@@ -166,19 +182,19 @@ def assert_memory_limits(snapshot: dict, used_history: list,
     if snapshot["available_percent"] <= AVAILABLE_MEMORY_PERCENT:
         message = (f"{device}: available memory too low: "
                    f"{snapshot['available_percent']:.1f}%")
-        print_error(message)
+        report_logger.print_error(message)
         pytest.fail(message)
     if snapshot["used_percent"] >= MAX_USED_MEMORY_PERCENT:
         message = (f"{device}: used memory too high: "
                    f"{snapshot['used_percent']:.1f}%")
-        print_error(message)
+        report_logger.print_error(message)
         pytest.fail(message)
     if baseline:
         increase = snapshot["used_percent"] - baseline["used_percent"]
         if increase > MAX_BASELINE_USED_INCREASE_PERCENT:
             message = (f"{device}: abnormal used-memory increase vs baseline: "
                        f"{increase:.1f} percentage points")
-            print_error(message)
+            report_logger.print_error(message)
             pytest.fail(message)
 
     used_history.append(snapshot["used_mb"])
@@ -191,7 +207,7 @@ def assert_memory_limits(snapshot: dict, used_history: list,
         message = (f"{device}: used memory increased monotonically across "
                f"{MONOTONIC_GROWTH_SAMPLES} samples by "
                f"{recent[-1] - recent[0]:.1f} MB: {recent} MB")
-        print_error(message)
+        report_logger.print_error(message)
         pytest.fail(message)
 
 
@@ -209,7 +225,7 @@ def assert_cpu_limits(snapshot: dict, high_cpu_counts: dict,
             f"{device}: CPU limits exceeded: idle={idle_percent:.1f}%, "
             f"utilization={snapshot['utilization_percent']:.1f}%"
         )
-        print_error(message)
+        report_logger.print_error(message)
         pytest.fail(message)
     if baseline:
         increase = snapshot["utilization_percent"] - baseline["utilization_percent"]
@@ -218,7 +234,7 @@ def assert_cpu_limits(snapshot: dict, high_cpu_counts: dict,
                 f"{device}: abnormal utilization increase vs baseline: "
                 f"{increase:.1f} percentage points"
             )
-            print_error(message)
+            report_logger.print_error(message)
             pytest.fail(message)
 
     current_processes = set(snapshot["high_cpu_processes"])
@@ -232,7 +248,7 @@ def assert_cpu_limits(snapshot: dict, high_cpu_counts: dict,
                 f"{device}: process continuously exceeded 50% CPU: {process} "
                 f"({snapshot['high_cpu_processes'][process]:.1f}%)"
             )
-            print_error(message)
+            report_logger.print_error(message)
             pytest.fail(message)
 
 
@@ -277,49 +293,6 @@ def execute_on_device(zaero_obj, device: str, command: str):
     connection_obj = zaero_obj.get_connection_module_object(connection)
     connection_obj.switch_connection(device)
     return connection_obj.execute_command(command, return_stderr=True)
-
-
-# Syntax : print_step(message: str)
-# Description : Print and log a test step message.
-# Parameters : message - step text.
-# Return Value : Result returned by the report logger.
-def print_step(message: str):
-    """Print and log a step so pytest-html captures it in test details."""
-    return report_logger.print_step(message)
-
-
-# Syntax : print_test(message: str)
-# Description : Print and log a test boundary message.
-def print_test(message: str):
-    """Print and log a test name for the pytest-html report."""
-    return report_logger.print_test(message)
-
-
-# Syntax : print_info(message: str)
-# Description : Print and log an informational test message.
-def print_info(message: str):
-    """Print and log informational text for the pytest-html report."""
-    return report_logger.print_info(message)
-
-
-# Syntax : print_success(message: str)
-# Description : Print and log a successful test message.
-# Parameters : message - success text.
-# Return Value : Result returned by the Zaero success logger.
-def print_success(message: str):
-    """Print and log a passing check for the pytest-html report."""
-    report_message = f"PASS: {message}"
-    return report_logger.print_success(report_message)
-
-
-# Syntax : print_error(message: str)
-# Description : Print and log a failed test message.
-# Parameters : message - error text.
-# Return Value : Result returned by the Zaero error logger.
-def print_error(message: str):
-    """Print and log a failing check for the pytest-html report."""
-    report_message = f"FAIL: {message}"
-    return report_logger.print_error(report_message)
 
 
 # Syntax : device_present(zaero_obj, device: str) -> bool
@@ -438,7 +411,7 @@ def all_stations(zaero_obj, device: str) -> set:
             output = get_iw_dev_sta_dump(zaero_obj, device, iface)
             macs.update(station_macs(output))
         except Exception as err:
-            print_error(f"station dump failed on {device}/{iface}: {err}")
+            report_logger.print_error(f"station dump failed on {device}/{iface}: {err}")
     return macs
 
 
@@ -454,12 +427,12 @@ def collect_fronthaul_associations(zaero_obj, devices: list) -> dict:
         try:
             output = get_iw_dev_sta_dump(zaero_obj, device, interface)
             associations[device] = station_macs(output)
-            print_step(
+            report_logger.print_step(
                 f"Observed {device} fronthaul clients: "
                 f"{sorted(associations[device])}"
             )
         except Exception as err:
-            print_error(
+            report_logger.print_error(
                 f"Fronthaul station dump failed on "
                 f"{device}/{interface}: {err}"
             )
@@ -528,7 +501,7 @@ def capture_topology(zaero_obj, agents: list) -> dict:
         client_macs.update(all_stations(zaero_obj, agent))
 
     topology = {"agent_macs": agent_macs, "client_macs": client_macs}
-    print_step(f"Topology snapshot: agents={topology['agent_macs']}, "
+    report_logger.print_step(f"Topology snapshot: agents={topology['agent_macs']}, "
                f"clients={len(topology['client_macs'])}")
     return topology
 
@@ -607,7 +580,7 @@ def fronthaul_client_connected(zaero_obj, client: str) -> bool:
     """Return True if the client's MAC is associated on its AP's fronthaul interfaces."""
     host = client_host(client)
     mac = client_mac(zaero_obj, client)
-    print_step(f"Checking client '{client}' (MAC {mac}) on host '{host}'")
+    report_logger.print_step(f"Checking client '{client}' (MAC {mac}) on host '{host}'")
     return mac in {station.lower() for station in all_stations(zaero_obj, host)}
 
 
@@ -679,11 +652,11 @@ def client_station_info(zaero_obj, client: str):
     """Return the fronthaul station record for a configured client, if present."""
     host = client_host(client)
     macs = client_wifi_macs(zaero_obj, client)
-    print_step(f"Host: {host}")
-    print_step(f"Client '{client}' wireless MACs: {sorted(macs)}")
+    report_logger.print_step(f"Host: {host}")
+    report_logger.print_step(f"Client '{client}' wireless MACs: {sorted(macs)}")
     for interface in fronthaul_interfaces(zaero_obj, host):
         output = get_iw_dev_sta_dump(zaero_obj, host, interface)
-        print_step(f"Station dump for '{host}/{interface}':\n{output}")
+        report_logger.print_step(f"Station dump for '{host}/{interface}':\n{output}")
         for station_mac, details in matching_station_records(output, macs):
             connected_time = re.search(r"^\s*connected time:\s*(\d+) seconds", details, re.MULTILINE)
             return {

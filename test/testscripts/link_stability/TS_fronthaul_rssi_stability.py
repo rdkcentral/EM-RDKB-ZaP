@@ -27,13 +27,11 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from config import FRONTHAUL_CLIENTS, POLL_INTERVAL_SEC, TEST_DURATION_SEC
+from rdkbmeshzap.common_utils import report_logger
+
 from utility import (
     client_rssi,
     device_present,
-    print_error,
-    print_step,
-    print_success,
-    print_test,
     validate_rssi,
 )
 
@@ -42,7 +40,7 @@ MAX_RSSI_DEGRADATION_DB = 10
 
 def test_em_fronthaul_rssi_stability(initialize):
     """Verify fronthaul client RSSI remains within the allowed degradation limit."""
-    print_test("Entering test_em_fronthaul_rssi_stability")
+    report_logger.print_test("Entering test_em_fronthaul_rssi_stability")
     configured_clients = FRONTHAUL_CLIENTS
     clients = [
         client
@@ -55,56 +53,56 @@ def test_em_fronthaul_rssi_stability(initialize):
     if not clients:
         pytest.skip("No fronthaul clients are marked present in the database")
 
-    print_step(f"Step 1: Capture baseline RSSI for {len(clients)} client(s)")
+    report_logger.print_step(f"Step 1: Capture baseline RSSI for {len(clients)} client(s)")
     baseline_rssi = {}
     for client in clients:
         state = client_rssi(initialize, client)
         error = validate_rssi(state)
         if error:
             message = f"Client '{client}' baseline RSSI validation failed: {error}"
-            print_error(message)
+            report_logger.print_error(message)
             pytest.fail(message)
         baseline_rssi[client] = state["rssi_dbm"]
-        print_success(
+        report_logger.print_success(
             f"Client '{client}' baseline RSSI: {state['rssi_dbm']} dBm "
             f"on {state['host']}/{state['interface']}"
         )
 
-    print_step("Step 2: Monitor fronthaul RSSI for the configured duration")
+    report_logger.print_step("Step 2: Monitor fronthaul RSSI for the configured duration")
     start_time = time.time()
     poll_count = 0
     while time.time() - start_time < test_duration_sec:
         poll_count += 1
         elapsed_sec = int(time.time() - start_time)
-        print_step(f"RSSI poll #{poll_count} at {elapsed_sec}s elapsed")
+        report_logger.print_step(f"RSSI poll #{poll_count} at {elapsed_sec}s elapsed")
         for client in clients:
             try:
                 state = client_rssi(initialize, client)
                 error = validate_rssi(state, baseline_rssi[client], MAX_RSSI_DEGRADATION_DB)
             except Exception as err:
                 message = f"RSSI poll #{poll_count} failed for '{client}': {err}"
-                print_error(message)
+                report_logger.print_error(message)
                 pytest.fail(message)
             if error:
                 message = f"Client '{client}' RSSI check failed: {error}"
-                print_error(message)
+                report_logger.print_error(message)
                 pytest.fail(message)
-            print_success(
+            report_logger.print_success(
                 f"Client '{client}' RSSI is {state['rssi_dbm']} dBm "
                 f"(baseline {baseline_rssi[client]} dBm)"
             )
         time.sleep(poll_interval_sec)
 
-    print_step("Step 3: Final fronthaul RSSI validation")
+    report_logger.print_step("Step 3: Final fronthaul RSSI validation")
     for client in clients:
         state = client_rssi(initialize, client)
         error = validate_rssi(state, baseline_rssi[client], MAX_RSSI_DEGRADATION_DB)
         if error:
             message = f"Client '{client}' final RSSI validation failed: {error}"
-            print_error(message)
+            report_logger.print_error(message)
             pytest.fail(message)
-        print_success(
+        report_logger.print_success(
             f"Client '{client}' final RSSI is {state['rssi_dbm']} dBm; "
             f"no degradation beyond {MAX_RSSI_DEGRADATION_DB} dB"
         )
-    print_test("Exiting test_em_fronthaul_rssi_stability")
+    report_logger.print_test("Exiting test_em_fronthaul_rssi_stability")

@@ -27,13 +27,11 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from config import FRONTHAUL_CLIENTS, POLL_INTERVAL_SEC, TEST_DURATION_SEC
+from rdkbmeshzap.common_utils import report_logger
+
 from utility import (
     client_phy_rate,
     device_present,
-    print_error,
-    print_step,
-    print_success,
-    print_test,
     validate_phy_rate,
 )
 
@@ -42,7 +40,7 @@ PHY_RATE_DROP_PERCENT = 50
 
 def test_em_fronthaul_phyrate_stability(initialize):
     """Verify client TX/RX PHY rates remain within the allowed drop limit."""
-    print_test("Entering test_em_fronthaul_phyrate_stability")
+    report_logger.print_test("Entering test_em_fronthaul_phyrate_stability")
     configured_clients = FRONTHAUL_CLIENTS
     clients = [
         client
@@ -55,57 +53,57 @@ def test_em_fronthaul_phyrate_stability(initialize):
     if not clients:
         pytest.skip("No fronthaul clients are marked present in the database")
 
-    print_step(f"Step 1: Capture baseline PHY rates for {len(clients)} client(s)")
+    report_logger.print_step(f"Step 1: Capture baseline PHY rates for {len(clients)} client(s)")
     baseline_rates = {}
     for client in clients:
         state = client_phy_rate(initialize, client)
         error = validate_phy_rate(state)
         if error:
             message = f"Client '{client}' baseline PHY validation failed: {error}"
-            print_error(message)
+            report_logger.print_error(message)
             pytest.fail(message)
         baseline_rates[client] = state
-        print_success(
+        report_logger.print_success(
             f"Client '{client}' baseline PHY rate: "
             f"TX {state['tx_mbps']:.1f} Mbps, RX {state['rx_mbps']:.1f} Mbps "
             f"on {state['host']}/{state['interface']}"
         )
 
-    print_step("Step 2: Monitor fronthaul PHY rates for the configured duration")
+    report_logger.print_step("Step 2: Monitor fronthaul PHY rates for the configured duration")
     start_time = time.time()
     poll_count = 0
     while time.time() - start_time < test_duration_sec:
         poll_count += 1
         elapsed_sec = int(time.time() - start_time)
-        print_step(f"PHY-rate poll #{poll_count} at {elapsed_sec}s elapsed")
+        report_logger.print_step(f"PHY-rate poll #{poll_count} at {elapsed_sec}s elapsed")
         for client in clients:
             try:
                 state = client_phy_rate(initialize, client)
                 error = validate_phy_rate(state, baseline_rates[client], PHY_RATE_DROP_PERCENT)
             except Exception as err:
                 message = f"PHY-rate poll #{poll_count} failed for '{client}': {err}"
-                print_error(message)
+                report_logger.print_error(message)
                 pytest.fail(message)
             if error:
                 message = f"Client '{client}' PHY-rate check failed: {error}"
-                print_error(message)
+                report_logger.print_error(message)
                 pytest.fail(message)
-            print_success(
+            report_logger.print_success(
                 f"Client '{client}' PHY rate: TX {state['tx_mbps']:.1f} Mbps, "
                 f"RX {state['rx_mbps']:.1f} Mbps"
             )
         time.sleep(poll_interval_sec)
 
-    print_step("Step 3: Final fronthaul PHY-rate validation")
+    report_logger.print_step("Step 3: Final fronthaul PHY-rate validation")
     for client in clients:
         state = client_phy_rate(initialize, client)
         error = validate_phy_rate(state, baseline_rates[client], PHY_RATE_DROP_PERCENT)
         if error:
             message = f"Client '{client}' final PHY validation failed: {error}"
-            print_error(message)
+            report_logger.print_error(message)
             pytest.fail(message)
-        print_success(
+        report_logger.print_success(
             f"Client '{client}' final PHY rate: TX {state['tx_mbps']:.1f} Mbps, "
             f"RX {state['rx_mbps']:.1f} Mbps"
         )
-    print_test("Exiting test_em_fronthaul_phyrate_stability")
+    report_logger.print_test("Exiting test_em_fronthaul_phyrate_stability")
