@@ -22,7 +22,10 @@ from packet_analyzer.packet_dissector import *
 from rdkbmeshzap.common_utils import report_logger
 from rdkbmeshzap.common_utils import device_utils
 
+# Number of consecutive reboot cycles to perform.
 REBOOT_CYCLES = 5
+
+# Interval in seconds between retry attempts.
 RETRY_INTERVAL_SECONDS = 5
 
 def get_controller_recovery_kpi(initialize):
