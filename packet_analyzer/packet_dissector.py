@@ -66,6 +66,7 @@ def reassemble_packets(pcap_local_dir):
             # Store reassembled frame as a proper Ethernet packet so downstream
             # code can safely access Ether fields (src/dst/type).
             reassembled_pkt = Ether(dst=eth.dst, src=eth.src, type=ETHERTYPE_1905) / bytes(reassembled)
+            reassembled_pkt.time = pkt.time
             reassembled_packets.append(reassembled_pkt)
             del fragment_store[key]
     return reassembled_packets
