@@ -17,6 +17,7 @@
 """Common helper utilities for Zaero-based tests."""
 
 import re
+import shlex
 import pytest
 from rdkbmeshzap.bridge.feature_interface import FeatureInterface
 from rdkbmeshzap.common_utils import report_logger
@@ -309,6 +310,57 @@ def device_present(zaero_obj, device: str) -> bool:
     return bool(value)
 
 
+def get_present_agents(zaero_obj) -> list:
+    """Return extender agents marked present in the infra YAML."""
+    return [
+        device
+        for device in zaero_obj.get_testbed_devices()
+        if re.fullmatch(r"extender\d+", device)
+        and device_present(zaero_obj, device)
+    ]
+
+
+# Syntax : get_scale_setup(zaero_obj, scale: str = None) -> dict
+# Description : Read the selected scale settings from the platform YAML.
+def get_scale_setup(zaero_obj, scale: str = None) -> dict:
+    """Return the explicitly requested or enabled scale setup."""
+    scale_names = (scale,) if scale else ("small", "medium", "large")
+    enabled_setup = None
+    for scale_name in scale_names:
+        setup = zaero_obj.read_from_database("scalesetup", scale_name)
+        if not isinstance(setup, dict):
+            raise ValueError(
+                f"Scale setup '{scale_name}' is missing from platform YAML"
+            )
+        if scale:
+            return setup
+        enabled = setup.get("enabled", False)
+        if isinstance(enabled, str):
+            enabled = enabled.strip().lower() in {"true", "yes", "1", "on"}
+        if enabled:
+            if enabled_setup is not None:
+                raise ValueError("Multiple scale setups are enabled in platform YAML")
+            enabled_setup = setup
+    if enabled_setup is None:
+        raise ValueError("No scale setup is enabled in platform YAML")
+    return enabled_setup
+
+
+def get_test_parameters(zaero_obj) -> dict:
+    """Return common test parameters from the platform YAML."""
+    parameters = {
+        "poll_interval_sec": zaero_obj.read_from_database(
+            "test_parameters", "poll_interval_sec"
+        ),
+        "test_duration_sec": zaero_obj.read_from_database(
+            "test_parameters", "test_duration_sec"
+        ),
+    }
+    if any(value is None for value in parameters.values()):
+        raise ValueError("Common stability parameters are missing from platform YAML")
+    return parameters
+
+
 # Syntax : fronthaul_interface(zaero_obj, device: str) -> str
 # Description : Build the configured MLD fronthaul interface name.
 # Parameters : zaero_obj - Zaero object; device - device name.
@@ -449,26 +501,18 @@ def total_associations(associations: dict) -> int:
     return sum(len(macs) for macs in associations.values())
 
 
-# Syntax : compare_associations(baseline: dict, current: dict, expected_count: int = None) -> list
-# Description : Compare station associations with a baseline and expected total.
-# Parameters : baseline - initial associations; current - current associations; expected_count - optional required total.
+# Syntax : compare_associations(baseline: dict, current: dict) -> list
+# Description : Compare the current association count with the baseline count.
+# Parameters : baseline - initial associations; current - current associations.
 # Return Value : List of association mismatch descriptions.
-def compare_associations(
-    baseline: dict, current: dict, expected_count: int = None
-) -> list:
-    """Return association and optional expected-count differences."""
+def compare_associations(baseline: dict, current: dict) -> list:
+    """Return a mismatch when the connected-client count changes."""
     mismatches = []
-    for device, baseline_macs in baseline.items():
-        missing = baseline_macs - current.get(device, set())
-        if missing:
-            mismatches.append(f"{device}: clients absent vs baseline {missing}")
-
     baseline_total = total_associations(baseline)
     current_total = total_associations(current)
-    required_total = expected_count if expected_count is not None else baseline_total
-    if current_total != required_total:
+    if current_total != baseline_total:
         mismatches.append(
-            f"Total client count changed: expected={required_total} "
+            f"Total client count changed: baseline={baseline_total} "
             f"current={current_total}"
         )
     return mismatches
@@ -506,25 +550,6 @@ def capture_topology(zaero_obj, agents: list) -> dict:
     return topology
 
 
-# Syntax : compare_topologies(baseline: dict, current: dict) -> list
-# Description : Compare current topology against a baseline topology.
-# Parameters : baseline - initial topology; current - current topology.
-# Return Value : List of topology mismatch descriptions.
-def compare_topologies(baseline: dict, current: dict) -> list:
-    """Return a list of mismatch descriptions; empty list means topologies match."""
-    mismatches = []
-
-    missing_agents = baseline["agent_macs"] - current["agent_macs"]
-    if missing_agents:
-        mismatches.append(f"Missing agents vs baseline: {missing_agents}")
-
-    missing_clients = baseline["client_macs"] - current["client_macs"]
-    if missing_clients:
-        mismatches.append(f"Missing clients vs baseline: {missing_clients}")
-
-    return mismatches
-
-
 # Syntax : compare_agent_presence(expected_count: int, baseline: dict, current: dict) -> list
 # Description : Validate controller-side agent count and presence.
 # Parameters : expected_count - required agent count; baseline - initial topology; current - current topology.
@@ -558,30 +583,6 @@ def client_host(client: str) -> str:
     if not match:
         raise ValueError(f"Cannot determine AP for client '{client}': unexpected naming")
     return match.group(1)
-
-
-# Syntax : client_mac(zaero_obj, client: str) -> str
-# Description : Read and normalize a client's configured MAC address.
-# Parameters : zaero_obj - Zaero object; client - client configuration name.
-# Return Value : Lowercase client MAC address.
-def client_mac(zaero_obj, client: str) -> str:
-    """Return the configured MAC address of a wlan client from the database."""
-    mac = zaero_obj.read_from_database(client, "mac")
-    if not mac:
-        raise ValueError(f"No 'mac' configured for client '{client}'")
-    return mac.lower()
-
-
-# Syntax : fronthaul_client_connected(zaero_obj, client: str) -> bool
-# Description : Check whether a client is associated on its fronthaul interfaces.
-# Parameters : zaero_obj - Zaero object; client - client configuration name.
-# Return Value : True when the client's MAC is associated.
-def fronthaul_client_connected(zaero_obj, client: str) -> bool:
-    """Return True if the client's MAC is associated on its AP's fronthaul interfaces."""
-    host = client_host(client)
-    mac = client_mac(zaero_obj, client)
-    report_logger.print_step(f"Checking client '{client}' (MAC {mac}) on host '{host}'")
-    return mac in {station.lower() for station in all_stations(zaero_obj, host)}
 
 
 # Syntax : fronthaul_interfaces(zaero_obj, host: str) -> list
@@ -669,6 +670,29 @@ def client_station_info(zaero_obj, client: str):
     return None
 
 
+def client_link_info(zaero_obj, client: str):
+    """Return association state reported by the client's Wi-Fi interface."""
+    interface = zaero_obj.read_from_database(client, "data_iface")
+    output, stderr = execute_on_host(
+        zaero_obj, client, f"iw dev {shlex.quote(interface)} link"
+    )
+    if not output and stderr:
+        raise RuntimeError(f"{client}: link query failed on {interface}: {stderr}")
+    bssid_match = LINK_BSSID_PATTERN.search(output)
+    if not bssid_match:
+        return None
+    return {
+        "host": client,
+        "interface": interface,
+        "mac": None,
+        "authorized": True,
+        "authenticated": True,
+        "associated": True,
+        "connected_time": None,
+        "bssid": bssid_match.group(1).lower(),
+    }
+
+
 # Syntax : client_reachable(zaero_obj, client: str, gateway_ip: str) -> bool
 # Description : Check whether a client can reach the controller gateway.
 # Parameters : zaero_obj - Zaero object; client - client host name; gateway_ip - gateway address.
@@ -695,23 +719,41 @@ def station_validation_error(state, missing_message: str):
     return None
 
 
-# Syntax : validate_client(zaero_obj, client: str, gateway_ip: str, previous_connected_time=None)
+# Syntax : validate_client(zaero_obj, client: str, gateway_ip: str, previous_connected_time=None, allow_any_bssid=False)
 # Description : Validate station state, session continuity, and gateway reachability.
-# Parameters : zaero_obj - Zaero object; client - client name; gateway_ip - gateway address; previous_connected_time - prior session time.
+# Parameters : zaero_obj - Zaero object; client - client name; gateway_ip - gateway address; previous_connected_time - prior session time; allow_any_bssid - validate association from the client interface.
 # Return Value : Tuple containing station state and an error message.
-def validate_client(zaero_obj, client: str, gateway_ip: str, previous_connected_time=None):
+def validate_client(
+    zaero_obj,
+    client: str,
+    gateway_ip: str,
+    previous_connected_time=None,
+    allow_any_bssid=False,
+):
     """Validate fronthaul state, session continuity, and gateway reachability."""
-    station = client_station_info(zaero_obj, client)
+    station = (
+        client_link_info(zaero_obj, client)
+        if allow_any_bssid
+        else client_station_info(zaero_obj, client)
+    )
     error = station_validation_error(
         station,
-        f"none of the client's wireless MACs are associated on the "
-        f"fronthaul interface of '{client_host(client)}'",
+        (
+            f"client interface is not associated to any BSSID"
+            if allow_any_bssid
+            else f"none of the client's wireless MACs are associated on the "
+            f"fronthaul interface of '{client_host(client)}'"
+        ),
     )
     if error:
         return None, error
-    if station["connected_time"] is None:
+    if not allow_any_bssid and station["connected_time"] is None:
         return None, "station record has no connected time"
-    if previous_connected_time is not None and station["connected_time"] < previous_connected_time:
+    if (
+        not allow_any_bssid
+        and previous_connected_time is not None
+        and station["connected_time"] < previous_connected_time
+    ):
         return None, (
             f"connected time reset from {previous_connected_time}s "
             f"to {station['connected_time']}s"

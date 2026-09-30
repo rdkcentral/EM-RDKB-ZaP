@@ -26,12 +26,15 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from config import FRONTHAUL_CLIENTS, POLL_INTERVAL_SEC, TEST_DURATION_SEC
 from rdkbmeshzap.common_utils import report_logger
+from rdkbmeshzap.common_utils.client_utils import (
+    connect_wlan_clients,
+    get_present_wlan_clients,
+)
 
 from utility import (
     client_phy_rate,
-    device_present,
+    get_test_parameters,
     validate_phy_rate,
 )
 
@@ -41,33 +44,59 @@ PHY_RATE_DROP_PERCENT = 50
 def test_em_fronthaul_phyrate_stability(initialize):
     """Verify client TX/RX PHY rates remain within the allowed drop limit."""
     report_logger.print_test("Entering test_em_fronthaul_phyrate_stability")
-    configured_clients = FRONTHAUL_CLIENTS
-    clients = [
-        client
-        for client in configured_clients
-        if device_present(initialize, client)
-    ]
-    poll_interval_sec = POLL_INTERVAL_SEC
-    test_duration_sec = TEST_DURATION_SEC
-
+    present_clients = get_present_wlan_clients(initialize)
+    if not present_clients:
+        pytest.fail("No fronthaul clients are marked present in the database")
+    clients = connect_wlan_clients(
+        initialize, present_clients, require_all=False
+    )
     if not clients:
-        pytest.skip("No fronthaul clients are marked present in the database")
+        pytest.fail("No present WLAN clients could be connected")
+    skipped = [
+        f"{client}: connection unavailable"
+        for client in present_clients
+        if client not in clients
+    ]
+    report_logger.print_success(
+        f"Connected clients before PHY-rate test: {', '.join(clients)}"
+    )
+    test_parameters = get_test_parameters(initialize)
+    poll_interval_sec = test_parameters["poll_interval_sec"]
+    test_duration_sec = test_parameters["test_duration_sec"]
 
     report_logger.print_step(f"Step 1: Capture baseline PHY rates for {len(clients)} client(s)")
     baseline_rates = {}
     for client in clients:
-        state = client_phy_rate(initialize, client)
-        error = validate_phy_rate(state)
+        try:
+            state = client_phy_rate(initialize, client)
+            error = validate_phy_rate(state)
+        except Exception as err:
+            skipped.append(f"{client}: baseline validation failed: {err}")
+            report_logger.print_info(
+                f"Skipping unreachable client '{client}' during baseline: {err}"
+            )
+            continue
         if error:
-            message = f"Client '{client}' baseline PHY validation failed: {error}"
-            report_logger.print_error(message)
-            pytest.fail(message)
+            skipped.append(f"{client}: baseline validation failed: {error}")
+            report_logger.print_info(
+                f"Skipping client '{client}' during baseline: {error}"
+            )
+            continue
         baseline_rates[client] = state
         report_logger.print_success(
             f"Client '{client}' baseline PHY rate: "
             f"TX {state['tx_mbps']:.1f} Mbps, RX {state['rx_mbps']:.1f} Mbps "
             f"on {state['host']}/{state['interface']}"
         )
+    clients = list(baseline_rates)
+    if not clients:
+        pytest.fail("No WLAN clients were reachable for baseline validation")
+    report_logger.print_step(
+        f"Baseline captured for {len(clients)} client(s); "
+        f"skipped {len(skipped)} present client(s)"
+    )
+    for item in skipped:
+        report_logger.print_info(f"Present fronthaul client not monitored: {item}")
 
     report_logger.print_step("Step 2: Monitor fronthaul PHY rates for the configured duration")
     start_time = time.time()

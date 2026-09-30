@@ -23,23 +23,20 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from config import POLL_INTERVAL_SEC, SCALE_AGENTS, TEST_DURATION_SEC
 from rdkbmeshzap.common_utils import report_logger
 
 from utility import (
-	assert_cpu_limits, collect_cpu, device_present,
+	assert_cpu_limits, collect_cpu, get_present_agents, get_test_parameters,
 )
 
 
 def test_em_scale_cpu_utilization(initialize):
 	"""Verify CPU remains within limits for the configured scale test duration."""
 	report_logger.print_test("Entering test_em_scale_cpu_utilization")
-	agents = [
-		agent for agent in SCALE_AGENTS
-		if device_present(initialize, agent)
-	]
-	poll_interval_sec = POLL_INTERVAL_SEC
-	test_duration_sec = TEST_DURATION_SEC
+	agents = get_present_agents(initialize)
+	test_parameters = get_test_parameters(initialize)
+	poll_interval_sec = test_parameters["poll_interval_sec"]
+	test_duration_sec = test_parameters["test_duration_sec"]
 	devices = ["controller", *agents]
 	consecutive_limit = 2
 	high_cpu_counts = {device: {} for device in devices}

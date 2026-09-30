@@ -23,11 +23,10 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from config import POLL_INTERVAL_SEC, SCALE_AGENTS, TEST_DURATION_SEC
 from rdkbmeshzap.common_utils import report_logger
 
 from utility import (
-	assert_memory_limits, collect_memory, device_present,
+	assert_memory_limits, collect_memory, get_present_agents, get_test_parameters,
 
 )
 
@@ -35,12 +34,10 @@ from utility import (
 def test_em_scale_memory_utilization(initialize):
 	"""Verify memory remains within limits for the configured scale duration."""
 	report_logger.print_test("Entering test_em_scale_memory_utilization")
-	agents = [
-		agent for agent in SCALE_AGENTS
-		if device_present(initialize, agent)
-	]
-	poll_interval_sec = POLL_INTERVAL_SEC
-	test_duration_sec = TEST_DURATION_SEC
+	agents = get_present_agents(initialize)
+	test_parameters = get_test_parameters(initialize)
+	poll_interval_sec = test_parameters["poll_interval_sec"]
+	test_duration_sec = test_parameters["test_duration_sec"]
 	devices = ["controller", *agents]
 	used_history = {device: [] for device in devices}
 

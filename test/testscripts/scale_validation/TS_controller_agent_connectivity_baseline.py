@@ -32,7 +32,7 @@
 # limitations under the License.
 
 # Test Case: EM_Scale_ControllerAgent_Connectivity
-# Topology: 1 Controller + N Agents (agent list driven by platform DB scale_agents)
+# Topology: 1 Controller + N Agents (agent list driven by present platform devices)
 # Validates that the expected EasyMesh agent scale forms using iw station dump
 # (no Data Elements / rbuscli involved), with a single check (no repeated
 # polling). Client connectivity and stability over time are covered separately;
@@ -44,11 +44,10 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from config import SCALE_AGENTS
 from rdkbmeshzap.common_utils import report_logger
 
 from utility import (
-    all_stations, device_present,
+    all_stations, get_present_agents, get_scale_setup,
 )
 
 
@@ -62,15 +61,12 @@ def test_em_scale_controller_agent_connectivity(initialize):
     """
     report_logger.print_test("Entering test_em_scale_controller_agent_connectivity")
     report_logger.print_step("Step 1: Read the controller's configured scale agent list from the platform database")
-    configured_agents = SCALE_AGENTS
+    configured_agents = get_present_agents(initialize)
 
     report_logger.print_step("Step 2: Keep only the agents that are marked present and available for validation")
-    agents = [
-        agent for agent in configured_agents
-        if device_present(initialize, agent)
-    ]
+    agents = configured_agents
 
-    expected_agent_count = len(agents)
+    expected_agent_count = get_scale_setup(initialize)["expected_agent_count"]
     report_logger.print_step(
         "Step 3: Validate the controller sees the expected scale of agents"
     )

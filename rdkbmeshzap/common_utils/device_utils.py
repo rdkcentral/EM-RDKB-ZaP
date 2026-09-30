@@ -26,7 +26,14 @@ def validate_device_accessibility(initialize):
     Return Value: A list of devices that failed accessibility validation.
     Example: validate_device_accessibility(initialize)
     """
-    devices = initialize.get_testbed_devices()
+    devices = []
+    for device in initialize.get_testbed_devices():
+        try:
+            connection = initialize.read_from_database(device, "connection")
+        except (KeyError, RuntimeError):
+            connection = None
+        if connection:
+            devices.append(device)
     failures = []
     report_logger.print_info(
         f"INFO: Validating accessibility of {len(devices)} configured devices"

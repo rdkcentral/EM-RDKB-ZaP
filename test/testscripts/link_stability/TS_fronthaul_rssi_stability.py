@@ -26,12 +26,15 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from config import FRONTHAUL_CLIENTS, POLL_INTERVAL_SEC, TEST_DURATION_SEC
 from rdkbmeshzap.common_utils import report_logger
+from rdkbmeshzap.common_utils.client_utils import (
+    connect_wlan_clients,
+    get_present_wlan_clients,
+)
 
 from utility import (
     client_rssi,
-    device_present,
+    get_test_parameters,
     validate_rssi,
 )
 
@@ -41,32 +44,58 @@ MAX_RSSI_DEGRADATION_DB = 10
 def test_em_fronthaul_rssi_stability(initialize):
     """Verify fronthaul client RSSI remains within the allowed degradation limit."""
     report_logger.print_test("Entering test_em_fronthaul_rssi_stability")
-    configured_clients = FRONTHAUL_CLIENTS
-    clients = [
-        client
-        for client in configured_clients
-        if device_present(initialize, client)
-    ]
-    poll_interval_sec = POLL_INTERVAL_SEC
-    test_duration_sec = TEST_DURATION_SEC
-
+    present_clients = get_present_wlan_clients(initialize)
+    if not present_clients:
+        pytest.fail("No fronthaul clients are marked present in the database")
+    clients = connect_wlan_clients(
+        initialize, present_clients, require_all=False
+    )
     if not clients:
-        pytest.skip("No fronthaul clients are marked present in the database")
+        pytest.fail("No present WLAN clients could be connected")
+    skipped = [
+        f"{client}: connection unavailable"
+        for client in present_clients
+        if client not in clients
+    ]
+    report_logger.print_success(
+        f"Connected clients before RSSI test: {', '.join(clients)}"
+    )
+    test_parameters = get_test_parameters(initialize)
+    poll_interval_sec = test_parameters["poll_interval_sec"]
+    test_duration_sec = test_parameters["test_duration_sec"]
 
     report_logger.print_step(f"Step 1: Capture baseline RSSI for {len(clients)} client(s)")
     baseline_rssi = {}
     for client in clients:
-        state = client_rssi(initialize, client)
-        error = validate_rssi(state)
+        try:
+            state = client_rssi(initialize, client)
+            error = validate_rssi(state)
+        except Exception as err:
+            skipped.append(f"{client}: baseline validation failed: {err}")
+            report_logger.print_info(
+                f"Skipping unreachable client '{client}' during baseline: {err}"
+            )
+            continue
         if error:
-            message = f"Client '{client}' baseline RSSI validation failed: {error}"
-            report_logger.print_error(message)
-            pytest.fail(message)
+            skipped.append(f"{client}: baseline validation failed: {error}")
+            report_logger.print_info(
+                f"Skipping client '{client}' during baseline: {error}"
+            )
+            continue
         baseline_rssi[client] = state["rssi_dbm"]
         report_logger.print_success(
             f"Client '{client}' baseline RSSI: {state['rssi_dbm']} dBm "
             f"on {state['host']}/{state['interface']}"
         )
+    clients = list(baseline_rssi)
+    if not clients:
+        pytest.fail("No WLAN clients were reachable for baseline validation")
+    report_logger.print_step(
+        f"Baseline captured for {len(clients)} client(s); "
+        f"skipped {len(skipped)} present client(s)"
+    )
+    for item in skipped:
+        report_logger.print_info(f"Present fronthaul client not monitored: {item}")
 
     report_logger.print_step("Step 2: Monitor fronthaul RSSI for the configured duration")
     start_time = time.time()

@@ -26,14 +26,20 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from config import EXPECTED_CLIENT_COUNT, POLL_INTERVAL_SEC, SCALE_AGENTS, TEST_DURATION_SEC
 from rdkbmeshzap.common_utils import report_logger
+from rdkbmeshzap.common_utils.client_utils import (
+    connect_wlan_clients,
+    get_present_wlan_clients,
+)
 
 from utility import (
     collect_fronthaul_associations,
     compare_associations,
     device_present,
     execute_on_device,
+    get_present_agents,
+    get_scale_setup,
+    get_test_parameters,
     total_associations,
 )
 
@@ -48,17 +54,23 @@ def test_em_scale_client_association(initialize):
     Steps:
       1. Verify all Agents are reachable; capture baseline associations.
       2. Verify backhaul links are active on all Agents.
-      3. Periodically verify the expected client count and associations.
+    3. Periodically verify the present client associations.
       4. Capture final associations and assert they match the baseline.
     """
     report_logger.print_test("Entering test_em_scale_client_association")
-    agents = [
-        agent for agent in SCALE_AGENTS
-        if device_present(initialize, agent)
-    ]
-    expected_client_count = EXPECTED_CLIENT_COUNT
-    poll_interval_sec = POLL_INTERVAL_SEC
-    test_duration_sec = TEST_DURATION_SEC
+    agents = get_present_agents(initialize)
+    clients = get_present_wlan_clients(initialize)
+    if not clients:
+        pytest.skip("No clients are marked present in the database")
+    clients = connect_wlan_clients(initialize, clients)
+    report_logger.print_success(
+        f"Connected clients before association test: {', '.join(clients)}"
+    )
+    scale_setup = get_scale_setup(initialize)
+    expected_client_count = scale_setup["expected_client_count"]
+    test_parameters = get_test_parameters(initialize)
+    poll_interval_sec = test_parameters["poll_interval_sec"]
+    test_duration_sec = test_parameters["test_duration_sec"]
     all_devices = ["controller"] + agents
 
     report_logger.print_step("Step 1: Verify topology and capture baseline associations")
@@ -126,9 +138,7 @@ def test_em_scale_client_association(initialize):
         report_logger.print_step(f"Poll #{poll_count} at ~{elapsed_min} min elapsed")
 
         current = collect_fronthaul_associations(initialize, all_devices)
-        mismatches = compare_associations(
-            baseline, current, expected_client_count
-        )
+        mismatches = compare_associations(baseline, current)
         if mismatches:
             message = (
                 f"Poll #{poll_count} ({elapsed_min} min): "
@@ -144,9 +154,7 @@ def test_em_scale_client_association(initialize):
 
     report_logger.print_step("Step 4: Final association comparison against baseline")
     final = collect_fronthaul_associations(initialize, all_devices)
-    final_mismatches = compare_associations(
-        baseline, final, expected_client_count
-    )
+    final_mismatches = compare_associations(baseline, final)
     if final_mismatches:
         message = f"Final associations do not match baseline: {final_mismatches}"
         report_logger.print_error(message)

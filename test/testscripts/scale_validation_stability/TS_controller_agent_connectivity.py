@@ -16,7 +16,7 @@
 # limitations under the License.
 
 # Test Case: EM_Scale_ControllerAgent_Stability
-# Topology: 1 Controller + N Agents (agent list driven by platform DB scale_agents)
+# Topology: 1 Controller + N Agents (agent list driven by present platform devices)
 # Validates that, once the expected EasyMesh scale topology has formed, it stays
 # stable over test_duration_sec, polling every poll_interval_sec, using iw
 # station dump / link (no Data Elements / rbuscli involved). For a one-time
@@ -27,11 +27,12 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from config import POLL_INTERVAL_SEC, SCALE_AGENTS, TEST_DURATION_SEC
 from rdkbmeshzap.common_utils import report_logger
 
 from utility import (
-    device_present, capture_topology, compare_agent_presence, backhaul_active, get_iw_dev_info,
+    capture_topology, compare_agent_presence, backhaul_active,
+    get_iw_dev_info, get_present_agents, get_scale_setup,
+    get_test_parameters,
 )
 
 import time
@@ -49,20 +50,18 @@ def test_em_scale_controller_agent_stability(initialize):
             4. Capture the final agent topology and verify it against the baseline.
     """
     report_logger.print_test("Entering test_em_scale_controller_agent_stability")
-    configured_agents = SCALE_AGENTS
-    AGENTS = [
-        agent for agent in configured_agents
-        if device_present(initialize, agent)
-    ]
-    poll_interval_sec = POLL_INTERVAL_SEC
-    test_duration_sec = TEST_DURATION_SEC
+    AGENTS = get_present_agents(initialize)
+    scale_setup = get_scale_setup(initialize)
+    test_parameters = get_test_parameters(initialize)
+    poll_interval_sec = test_parameters["poll_interval_sec"]
+    test_duration_sec = test_parameters["test_duration_sec"]
 
     # ------------------------------------------------------------------
     # Step 1 — Verify onboarding and capture baseline topology
     # ------------------------------------------------------------------
     report_logger.print_step("Step 1: Verify onboarding and capture baseline topology")
 
-    expected_agent_count = len(AGENTS)
+    expected_agent_count = scale_setup["expected_agent_count"]
 
     # Verify each Agent is reachable (basic iw command check)
     for agent in AGENTS:
