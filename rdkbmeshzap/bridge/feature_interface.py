@@ -287,6 +287,17 @@ class FeatureInterface(FeatureInterfaceModules):
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.start_service(device, service_name)
 
+    def get_service_status(self,
+                           device: str,
+                           service_name: str,
+                           method: str = 'cli') -> bool:
+        """
+        Get the status of the specified service on the device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_service_status(device, service_name)
+
 
     def stop_service(self,
                     device: str,
