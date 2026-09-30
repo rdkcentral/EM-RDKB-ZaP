@@ -1,4 +1,118 @@
-# Test Case 1: EM_AssociatedSTALinkMetrics
+# Test Case 1: EM_APMetrics_PeriodicReporting
+
+## Objective
+
+Verify that Extenders transmit AP Metrics Response messages at the configured reporting interval and include a valid AP Metrics TLV.
+
+## Test Type
+
+**Positive**
+
+---
+
+## Test Environment
+
+| Component | Description |
+|-----------|-------------|
+| Controller | EasyMesh Controller |
+| Extenders | 3 EasyMesh Agents |
+| Network Topology Type | Hybrid Topology |
+| Packet Analyzer | IEEE 1905 packet analysis tool |
+
+---
+
+## Pre-Requisites
+
+1. Controller and all Extenders are onboarded with active EasyMesh backhaul connections.
+2. Packet capture is configured on the Controller with the IEEE 1905 filter and capture directories.
+
+---
+
+## Test Configuration
+
+| Parameter | Value |
+|-----------|-------|
+| AP Metrics Reporting Interval | 10 seconds |
+| Reporting Interval Tolerance | +/-1 second |
+| Observation Period | 120 seconds |
+| IEEE 1905 Messages Validated | AP Metrics Response |
+| IEEE 1905 TLVs Validated | AP Metrics TLV |
+| Network Topology | Controller and 3 Extenders in an active EasyMesh Hybrid topology |
+
+---
+
+## Test Procedure and Expected Results
+
+| Step Number | Controller | Extenders | Expected Result |
+|-------------|------------|-----------|-----------------|
+| 1 | Identify the AL MAC address of the Controller and all Extenders for packet validation. | N/A | AL MAC addresses are obtained for all expected devices. |
+| 2 | Configure the AP Metrics reporting interval to 10 seconds for the Controller and all Extenders. | Apply the configured reporting interval. | The AP Metrics reporting policy is applied successfully. |
+| 3 | Verify that the configured AP Metrics reporting interval is 10 seconds. | N/A | The configured interval matches the expected value. |
+| 4 | Start IEEE 1905 packet capture on the Controller. | N/A | Packet capture starts successfully. |
+| 5 | Monitor IEEE 1905 traffic for 120 seconds. | Transmit AP Metrics Response messages at the configured interval. | AP Metrics traffic is observed during the complete observation period. |
+| 6 | Stop and collect the Controller packet capture, then reassemble the captured packets. | N/A | The packet capture is collected and decoded successfully. |
+| 7 | Validate AP Metrics Response messages from each Extender and verify their AP Metrics TLVs and reporting intervals. | N/A | Each Extender transmits AP Metrics Responses containing a valid AP Metrics TLV, with consecutive responses spaced within 10 +/-1 seconds. |
+
+---
+
+# Test Case 2: EM_APMetrics_ResponseDisable
+
+## Objective
+
+Verify that Extenders stop transmitting AP Metrics Response messages after AP Metrics reporting is disabled.
+
+## Test Type
+
+**Positive**
+
+---
+
+## Test Environment
+
+| Component | Description |
+|-----------|-------------|
+| Controller | EasyMesh Controller |
+| Extenders | 3 EasyMesh Agents |
+| Network Topology Type | Hybrid Topology |
+| Packet Analyzer | IEEE 1905 packet analysis tool |
+
+---
+
+## Pre-Requisites
+
+1. Controller and all Extenders are onboarded with active EasyMesh backhaul connections.
+2. Packet capture is configured on the Controller with the IEEE 1905 filter and capture directories.
+
+---
+
+## Test Configuration
+
+| Parameter | Value |
+|-----------|-------|
+| AP Metrics Reporting Interval | 0 seconds (disabled) |
+| Drain Period | 10 seconds |
+| Observation Period | 120 seconds |
+| IEEE 1905 Messages Validated | AP Metrics Response |
+| Network Topology | Controller and 3 Extenders in an active EasyMesh Hybrid topology |
+
+---
+
+## Test Procedure and Expected Results
+
+| Step Number | Controller | Extenders | Expected Result |
+|-------------|------------|-----------|-----------------|
+| 1 | Identify the AL MAC address of the Controller and all Extenders for packet validation. | N/A | AL MAC addresses are obtained for all expected devices. |
+| 2 | Set the AP Metrics reporting interval to 0 seconds for the Controller and all Extenders. | Apply the disabled reporting interval and confirm completion. | AP Metrics reporting is disabled successfully. |
+| 3 | Verify that the configured AP Metrics reporting interval is 0 seconds. | N/A | The configured interval confirms that AP Metrics reporting is disabled. |
+| 4 | Wait 10 seconds for in-flight AP Metrics responses to drain. | N/A | The drain period is completed before packet monitoring begins. |
+| 5 | Start IEEE 1905 packet capture on the Controller. | N/A | Packet capture starts successfully after the drain period. |
+| 6 | Monitor IEEE 1905 traffic for 120 seconds. | Do not transmit AP Metrics Response messages after the drain period. | IEEE 1905 traffic is monitored while AP Metrics reporting remains disabled. |
+| 7 | Stop and collect the Controller packet capture, then reassemble the captured packets. | N/A | The packet capture is collected and decoded successfully. |
+| 8 | Validate AP Metrics Response messages from each Extender after the drain period. | N/A | No AP Metrics Response messages are captured from any Extender after reporting is disabled and the drain period has elapsed. |
+
+---
+
+# Test Case 3: EM_AssociatedSTALinkMetrics
 
 ## Objective
 
@@ -58,7 +172,7 @@ Verify that the Multi-AP Agent reports per-STA link metrics in Associated STA Li
 
 ---
 
-# Test Case 2: EM_AssociatedSTALinkMetrics_ClientMLDReporting
+# Test Case 4: EM_AssociatedSTALinkMetrics_ClientMLDReporting
 
 ## Objective
 
@@ -120,7 +234,7 @@ Verify that the Multi-AP Agent reports Associated STA Link Metrics and Associate
 
 ---
 
-# Test Case 3: EM_UnassociatedSTALinkMetrics_RCPIReporting
+# Test Case 5: EM_UnassociatedSTALinkMetrics_RCPIReporting
 
 ## Objective
 
@@ -180,7 +294,7 @@ Verify that the Multi-AP Agent reports uplink RCPI measurements for unassociated
 
 ---
 
-# Test Case 4: EM_STARCPIThresholdBasedReporting
+# Test Case 6: EM_STARCPIThresholdBasedReporting
 
 ## Objective
 
@@ -242,7 +356,7 @@ Verify that an unsolicited IEEE 1905 AP Metrics Response is transmitted when the
 
 ---
 
-# Test Case 5: EM_STARCPIHysteresisBehavior
+# Test Case 7: EM_STARCPIHysteresisBehavior
 
 ## Objective
 
@@ -310,7 +424,7 @@ Verify that STA Metrics reporting follows the configured RCPI Hysteresis Margin 
 
 ---
 
-# Test Case 6: EM_STARCPIThreshold_PerSTAIsolation
+# Test Case 8: EM_STARCPIThreshold_PerSTAIsolation
 
 ## Objective
 
@@ -371,7 +485,7 @@ Verify that when multiple STAs are associated on the same Radio, an RCPI thresho
 
 ---
 
-# Test Case 7: EM_BackhaulLinkMetrics_PHYRateCorrelation
+# Test Case 9: EM_BackhaulLinkMetrics_PHYRateCorrelation
 
 ## Objective
 
@@ -429,7 +543,7 @@ Verify that the Backhaul PHY Rate reported through DataElements is consistent wi
 
 ---
 
-# Test Case 8: EM_BackhaulLinkMetrics_LinkQualityChange
+# Test Case 10: EM_BackhaulLinkMetrics_LinkQualityChange
 
 ## Objective
 
@@ -490,7 +604,7 @@ Verify that Backhaul Link Metrics and Backhaul PHY Rate are updated when wireles
 
 ---
 
-# Test Case 9: EM_BackhaulLinkMetrics_MultiHopTopology
+# Test Case 11: EM_BackhaulLinkMetrics_MultiHopTopology
 
 ## Objective
 
@@ -545,7 +659,7 @@ Verify that Backhaul Link Metrics are reported correctly for each active backhau
 
 ---
 
-# Test Case 10: EM_BackhaulLinkMetrics_WiredBackhaul
+# Test Case 12: EM_BackhaulLinkMetrics_WiredBackhaul
 
 ## Objective
 
@@ -602,7 +716,7 @@ Verify that Backhaul Link Metrics are reported correctly for an active Ethernet 
 
 ---
 
-# Test Case 11: EM_APMetrics_RadioMetricsValidation
+# Test Case 13: EM_APMetrics_RadioMetricsValidation
 
 ## Objective
 
@@ -661,7 +775,7 @@ Verify that the Multi-AP Agent includes a Radio Metrics TLV for each queried rad
 
 ---
 
-# Test Case 12: EM_APMetrics_QueryResponseReporting
+# Test Case 14: EM_APMetrics_QueryResponseReporting
 
 ## Objective
 
@@ -723,66 +837,7 @@ Verify that the Multi-AP Agent responds to an AP Metrics Query with an AP Metric
 
 ---
 
-# Test Case 13: EM_APMetrics_PeriodicReporting
-
-## Objective
-
-Verify that the EasyMesh Agent periodically transmits IEEE 1905 AP Metrics Response messages according to the configured AP Metrics Reporting Interval, that the reporting frequency matches the configured value, and that the AP Metrics Response contains valid AP Metrics TLVs for all operational BSSs.
-
-## Test Type
-
-**Positive**
-
----
-
-## Test Environment
-| Component | Description |
-|-----------|-------------|
-| Controller | EasyMesh Controller |
-| Extenders | 3 EasyMesh Agents |
-| Network Topology Type | Hybrid |
-| Packet Analyzer | IEEE 1905 packet analysis tool |
-
----
-
-## Pre-Requisites
-1. Controller and all Extenders are onboarded with active EasyMesh backhaul connections.
-2. EasyMesh and IEEE 1905 services are running on Controller and all Extenders.
-3. All Extenders are visible in the Controller topology.
-4. DataElements is accessible via rbuscli.
-
----
-
-## Test Configuration
-
-| Parameter | Value |
-|-----------|-------|
-| AP Metrics Reporting Interval | 30 Seconds |
-| IEEE 1905 Messages Validated | Multi-AP Policy Configuration Request, ACK, AP Metrics Response |
-| Network Topology | Controller and 3 Extenders |
-| DataElements | Device.WiFi.DataElements.Network.Device.{i}.APMetricsReportingInterval |
-
----
-
-## Test Procedure and Expected Results
-
-| Step Number | Controller | Extenders | Expected Result |
-|-------------|------------|----------|-----------------|
-| 1 | Configure AP Metrics Reporting Interval using `rbuscli set Device.WiFi.DataElements.Network.Device.{i}.APMetricsReportingInterval 30` | N/A | AP Metrics Reporting Interval is configured successfully. |
-| 2 | Verify the configured value using `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.APMetricsReportingInterval` | N/A | APMetricsReportingInterval Parameter returns 30. |
-| 3 | Start IEEE 1905 packet capture. | N/A | IEEE 1905 traffic capture begins successfully. |
-| 4 | Wait for approximately 90 seconds (3 reporting intervals). | Transmit unsolicited AP Metrics Response messages. | Multiple unsolicited AP Metrics Response messages are transmitted periodically by the Extender. |
-| 5 | Stop IEEE 1905 packet capture. | N/A | IEEE 1905 packet capture is stopped. |
-| 6 | Verify timestamps of consecutive AP Metrics Response packets in the captured IEEE 1905 traffic. | N/A | Consecutive AP Metrics Response packets are observed at approximately 30-second intervals. |
-| 7 | Verify the captured IEEE 1905 packets. | N/A | Multi-AP Policy Configuration Request and corresponding ACK message are observed successfully for the configuration applied via rbuscli. One AP Metrics TLV is present for each operational BSS, and each AP Metrics TLV is decodable and contains valid field values. |
-
----
-
-> Note: If required, follow the same procedure for the remaining Extenders (Extender-2 and Extender-3).
-
----
-
-# Test Case 14: EM_ChannelUtilizationThresholdBasedReporting
+# Test Case 15: EM_ChannelUtilizationThresholdBasedReporting
 
 ## Objective
 
@@ -844,7 +899,7 @@ Verify that an unsolicited IEEE 1905 AP Metrics Response is transmitted when the
 
 ---
 
-# Test Case 15: EM_LinkMetricQuery_AllNeighbors
+# Test Case 16: EM_LinkMetricQuery_AllNeighbors
 
 ## Objective
 
@@ -901,7 +956,7 @@ Verify that the EasyMesh Agent correctly responds to an IEEE 1905 Link Metric Qu
 
 ---
 
-# Test Case 16: EM_LinkMetricQuery_SpecificNeighbor
+# Test Case 17: EM_LinkMetricQuery_SpecificNeighbor
 
 ## Objective
 

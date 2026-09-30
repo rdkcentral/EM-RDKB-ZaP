@@ -55,8 +55,11 @@ if __name__ == "__main__":
         f"{BASE_DIR}/test/testscripts/Metrics_Collection/TS_Metrics_Collection_periodic_reporting.py",
         f"{BASE_DIR}/test/testscripts/Metrics_Collection/TS_Metrics_Collection_response_disable.py",
         f"{BASE_DIR}/test/testscripts/Controller_Recovery/TS_Controller_Recovery_extender_reconnection.py",
-	   	f"{BASE_DIR}/test/testscripts/Controller_Recovery/TS_Controller_Recovery_consecutive_reboots.py",
+        f"{BASE_DIR}/test/testscripts/Controller_Recovery/TS_Controller_Recovery_consecutive_reboots.py",
+        f"{BASE_DIR}/test/client_association/TS_Dynamic_Discovery.py",
+        f"{BASE_DIR}/test/multi_agent_onboarding/TS_Multi_Agent_Onboarding.py",
+        f"{BASE_DIR}/test/client_association/TS_Client_Connectivity.py",
         f"--html={reports_path}/report.html",
         "--self-contained-html",
-        "--log-cli-level=INFO",
+        "--log-cli-level=INFO"
     ]))
