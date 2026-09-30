@@ -56,7 +56,7 @@ def test_stability_fronthaul_toggle_stress(initialize, common_setup):
                 report_logger.print_success(f"Iteration: {fronthaul_toggle_current_count} Fronthaul network profile toggle succeeded in {device}")
         if not devices:
             break
-    if initial_mld_status is not None and initial_mld_status != current_mld_status:
-        report_logger.print_info(f"Reverting MLD status to {initial_mld_status}")
-        initialize.set_fronthaul_network_state("controller", "Home Network", enable=initial_mld_status)
+
+    report_logger.print_step("Step2: Enabling MLD status for clearing any previous toggles")
+    initialize.set_fronthaul_network_state("controller", "Home Network", enable=True)
     report_logger.print_test(f"[{get_timestamp()}] Exiting test_stability_fronthaul_toggle_stress")

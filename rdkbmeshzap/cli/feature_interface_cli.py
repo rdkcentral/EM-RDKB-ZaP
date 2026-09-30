@@ -394,7 +394,13 @@ class FeatureInterfaceCLI(DatabaseModule,
             raise RuntimeError(
                 f"Command execution failed: {command}. stderr: {error.strip()}"
             )
-        return int(output.strip())
+        output = output.strip()
+        if not output:
+            raise RuntimeError(
+                f"No operating channel found for band {band} on device {device}. "
+                f"Command: {command}"
+            )
+        return int(output)
 
     def copy_file_to_remote(self,
                             device: str,

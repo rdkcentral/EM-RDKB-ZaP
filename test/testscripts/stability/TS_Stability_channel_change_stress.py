@@ -63,7 +63,10 @@ def test_stability_channel_change_stress(initialize, common_setup):
         if not devices:
             break
 
-    if initial_channel_number is not None and initial_channel_number != current_operating_channel:
+    report_logger.print_step("Step2: Reverting channel number")
+    report_logger.print_info("Fetching current operating channel from the controller")
+    operating_channel = initialize.get_operating_channel("controller", "2.4")
+    if initial_channel_number is not None and initial_channel_number != operating_channel:
         report_logger.print_info(f"Reverting operating channel to {initial_channel_number}")
-        initialize.set_channel_preference_for_2_4_band("controller", uncheck_channel=current_operating_channel, check_channel=initial_channel_number, priority=14)
+        initialize.set_channel_preference_for_2_4_band("controller", uncheck_channel=operating_channel, check_channel=initial_channel_number, priority=14)
     report_logger.print_test(f"[{get_timestamp()}] Exiting test_stability_channel_change_stress")

@@ -36,13 +36,14 @@ PROCESSES = [
     "OneWifi"
 ]
 
-# run_cmd
-# Syntax : run_cmd(cmd)
-# Description : Executes a shell command and returns its trimmed output.
-# Parameters :
-#     cmd - Shell command to execute.
-# Return Value: Command output as a string, or an empty string if execution fails.
 def run_cmd(cmd):
+    """
+    Syntax : run_cmd(cmd)
+    Description : Executes a shell command and returns its trimmed output.
+    Parameters :
+        cmd - Shell command to execute.
+    Return Value: Command output as a string, or an empty string if execution fails.
+    """
     try:
         return subprocess.check_output(
             cmd,
@@ -53,39 +54,43 @@ def run_cmd(cmd):
     except Exception:
         return ""
 
-# get_pid
-# Syntax : get_pid(proc_name)
-# Description : Fetches the PID of the requested process name using pidof.
-# Parameters :
-#     proc_name - Name of the process whose PID should be retrieved.
-# Return Value: First PID of the process if found, otherwise None.
 def get_pid(proc_name):
+    """
+    Syntax : get_pid(proc_name)
+    Description : Fetches the PID of the requested process name using pidof.
+    Parameters :
+        proc_name - Name of the process whose PID should be retrieved.
+    Return Value: First PID of the process if found, otherwise None.
+    """
     pid = run_cmd(f"pidof {proc_name}")
     if not pid:
         return None
     # If multiple PIDs exist, use first one.
     return pid.split()[0]
 
-# get_memory_stats
-# Syntax : get_memory_stats(pid)
-# Description : Reads the RSS memory usage for a given PID from /proc/<pid>/status.
-# Parameters :
-#     pid - Process ID whose memory usage is to be read.
-# Return Value: RSS memory size in KB as a string, or 'NA' if unavailable.
 def get_memory_stats(pid):
+    """
+    Syntax : get_memory_stats(pid)
+    Description : Reads the RSS memory usage for a given PID from /proc/<pid>/status.
+    Parameters :
+        pid - Process ID whose memory usage is to be read.
+    Return Value: RSS memory size in KB as a string, or 'NA' if unavailable.
+    """
     rss = "NA"
     line = run_cmd(f"grep VmRSS /proc/{pid}/status")
     if line:
         rss = line.split()[1]
     return rss
 
-# get_cpu_usage
-# Syntax : get_cpu_usage(pid)
-# Description : Retrieves the current CPU usage percentage for the specified process.
-# Parameters :
-#     pid - Process ID whose CPU usage should be measured.
-# Return Value: CPU usage percentage as a string, or 'NA' if not available.
+
 def get_cpu_usage(pid):
+    """
+    Syntax : get_cpu_usage(pid)
+    Description : Retrieves the current CPU usage percentage for the specified process.
+    Parameters :
+        pid - Process ID whose CPU usage should be measured.
+    Return Value: CPU usage percentage as a string, or 'NA' if not available.
+    """
     cmd = (
         f"top -bn2 -d 1 -p {pid} "
         f"| tail -1 "
@@ -96,13 +101,14 @@ def get_cpu_usage(pid):
         cpu = "NA"
     return cpu
 
-#init_csv
-# Syntax : init_csv(log_file)
-# Description : Initializes a CSV log file with headers if it does not already exist.
-# Parameters :
-#     log_file - Path to the CSV log file to initialize.
-# Return Value: None.
 def init_csv(log_file):
+    """
+    Syntax : init_csv(log_file)
+    Description : Initializes a CSV log file with headers if it does not already exist.
+    Parameters :
+        log_file - Path to the CSV log file to initialize.
+    Return Value: None.
+    """
     if not os.path.exists(log_file):
         with open(log_file, "w", newline="") as f:
             writer = csv.writer(f)
@@ -113,14 +119,15 @@ def init_csv(log_file):
                 "cpu_percent"
             ])
 
-#log_process
-# Syntax : log_process(proc_name, data)
-# Description : Logs process monitoring data to a CSV file, initializing the file if necessary.
-# Parameters :
-#     proc_name - Name of the process being monitored.
-#     data - List of data values to log (e.g., timestamp, uptime, pid, rss, cpu).
-# Return Value: None.
 def log_process(proc_name, data):
+    """
+    Syntax : log_process(proc_name, data)
+    Description : Logs process monitoring data to a CSV file, initializing the file if necessary.
+    Parameters :
+        proc_name - Name of the process being monitored.
+        data - List of data values to log (e.g., timestamp, uptime, pid, rss, cpu).
+    Return Value: None.
+    """
     log_file = os.path.join(
         LOG_DIR,
         f"{proc_name}_monitor.csv"
@@ -130,12 +137,14 @@ def log_process(proc_name, data):
         writer = csv.writer(f)
         writer.writerow(data)
 
-# main
-# Syntax : main()
-# Description : Main monitoring loop that checks system uptime, core dumps, and process statuses, logging any stability issues.
-# Parameters : None.
-# Return Value: None.
+
 def main():
+    """
+    Syntax : main()
+    Description : Main monitoring loop that checks system uptime, core dumps, and process statuses, logging any stability issues.
+    Parameters : None.
+    Return Value: None.
+    """
     while True:
         for proc in PROCESSES:
             pid = get_pid(proc)

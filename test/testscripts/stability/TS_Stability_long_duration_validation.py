@@ -61,7 +61,7 @@ def test_stability_long_duration_validation(initialize, common_setup):
                     report_logger.print_success(f"{device} is connected to the backhaul.")
         time.sleep(60)
 
-    report_logger.print_info("Stopping monitor_service in controller")
+    report_logger.print_info("Stopping monitoring script in controller")
     initialize.execute_command("controller", "pkill -f monitoring_tool.py")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     ctrl_local_dir = os.path.join(ctrl_local_dir, "test_stability_long_duration_validation_" + str(timestamp))
@@ -76,5 +76,5 @@ def test_stability_long_duration_validation(initialize, common_setup):
             report_logger.print_step(f"STEP2: Analyzing downloaded log files in {ctrl_local_dir}")
             log_analyzer(ctrl_local_dir)
         else:
-            report_logger.print_info(f"Log file not found on controller: {log_file}")
+            report_logger.print_error(f"Log file not found on controller: {log_file}")
     report_logger.print_test(f"[{get_timestamp()}] Exiting test_stability_long_duration_validation")

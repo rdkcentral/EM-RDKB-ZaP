@@ -41,7 +41,7 @@ def test_stability_ssid_update_stress(initialize, common_setup):
         pytest.fail(f"Local log directory {ctrl_local_dir} does not exist. Please create it or update the configuration in platform.yaml")
 
     report_logger.print_info("Starting monitor_service in controller")
-    initialize.execute_command("controller", "python /nvram/monitoring_tool.py &")
+    initialize.execute_command("controller", "python3 /nvram/monitoring_tool.py &")
     ssid_update_current_count = 0
     report_logger.print_step("Step1: Fetching initial SSID from controller")
     try:
@@ -76,16 +76,21 @@ def test_stability_ssid_update_stress(initialize, common_setup):
     if not os.path.exists(ctrl_local_dir):
         os.makedirs(ctrl_local_dir)
 
+    log_file_presence_status = False
     for log_file in LOG_PATHS:
         report_logger.print_info(f"checking presence of {log_file} on controller")
         if initialize.get_file_presence_status("controller", log_file):
             report_logger.print_info(f"Downloading log file locally and deleting remote file instance: {log_file}")
             initialize.get_file("controller", log_file, ctrl_local_dir)
             initialize.execute_command("controller", f"rm -f {log_file}")
-            report_logger.print_step(f"Step3: Analyzing downloaded log files in {ctrl_local_dir}")
-            log_analyzer(ctrl_local_dir)
+            log_file_presence_status = True
         else:
             report_logger.print_error(f"Log file not found on controller: {log_file}")
+
+    if log_file_presence_status:
+        log_file_presence_status = False
+        report_logger.print_step(f"Step3: Analyzing downloaded log files in {ctrl_local_dir}")
+        log_analyzer(ctrl_local_dir)
 
     report_logger.print_step("Step4: Reverting SSID to initial value")
     initialize.set_ssid("controller", "mld_iface_index", initial_ssid, 'gui')
