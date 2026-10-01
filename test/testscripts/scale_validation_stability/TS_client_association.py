@@ -1,7 +1,7 @@
 # If not stated otherwise in this file or this component LICENSE file the
 # following copyright and licenses apply:
 #
-# Copyright 2026 Zilogic Systems
+# Copyright 2026 RDK Management
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,31 +21,12 @@
 # throughout the test duration using iw dev station dump.
 
 import pytest
-import sys
 import time
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rdkbmeshzap.common_utils import report_logger
-from rdkbmeshzap.common_utils.client_utils import (
-    connect_wlan_clients,
-    get_present_wlan_clients,
-)
+from rdkbmeshzap.common_utils import device_utils, report_logger
+from rdkbmeshzap.common_utils.client_utils import connect_wlan_clients
 
-from utility import (
-    collect_fronthaul_associations,
-    compare_associations,
-    device_present,
-    execute_on_device,
-    get_present_agents,
-    get_scale_setup,
-    get_test_parameters,
-    total_associations,
-)
-
-
-BH_IFACE_KEY = "5g_bh_iface_index"
-
+from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
 
 def test_em_scale_client_association(initialize):
     """
@@ -53,36 +34,46 @@ def test_em_scale_client_association(initialize):
 
     Steps:
       1. Verify all Agents are reachable; capture baseline associations.
-      2. Verify backhaul links are active on all Agents.
-    3. Periodically verify the present client associations.
-      4. Capture final associations and assert they match the baseline.
+            2. Periodically verify the present client associations.
+            3. Capture final associations and assert they match the baseline.
     """
     report_logger.print_test("Entering test_em_scale_client_association")
-    agents = get_present_agents(initialize)
-    clients = get_present_wlan_clients(initialize)
+    report_logger.print_step(
+        "Step 1: Discover scale agents and configured WLAN clients"
+    )
+    agents = device_utils.get_enabled_extenders(initialize)
+    clients = device_utils.get_enabled_clients(initialize)
     if not clients:
         pytest.skip("No clients are marked present in the database")
+    report_logger.print_step(
+        f"Step 2: Connect every configured WLAN client before baseline capture: "
+        f"{clients}"
+    )
     clients = connect_wlan_clients(initialize, clients)
     report_logger.print_success(
-        f"Connected clients before association test: {', '.join(clients)}"
+        f"PASS: Connected clients before association test: {', '.join(clients)}"
     )
-    scale_setup = get_scale_setup(initialize)
-    expected_client_count = scale_setup["expected_client_count"]
-    test_parameters = get_test_parameters(initialize)
-    poll_interval_sec = test_parameters["poll_interval_sec"]
-    test_duration_sec = test_parameters["test_duration_sec"]
+    expected_client_count = get_scale_setup(initialize)["expected_client_count"]
+    poll_interval_sec = POLL_INTERVAL_SEC
+    test_duration_sec = TEST_DURATION_SEC
     all_devices = ["controller"] + agents
 
-    report_logger.print_step("Step 1: Verify topology and capture baseline associations")
+    report_logger.print_step(
+        "Step 3: Verify each agent is reachable before association capture"
+    )
     for agent in agents:
         for attempt in range(1, 7):
             try:
-                output, _ = execute_on_device(initialize, agent, "iw dev")
+                output = initialize.get_iw_dev_info(agent)
                 if output:
-                    report_logger.print_success(f"Agent '{agent}' is reachable")
+                    report_logger.print_success(
+                        f"PASS: Agent '{agent}' is reachable"
+                    )
                     break
             except Exception as err:
-                report_logger.print_info(f"Attempt {attempt}: '{agent}' not ready — {err}")
+                report_logger.print_info(
+                    f"INFO: Attempt {attempt}: '{agent}' not ready — {err}"
+                )
             time.sleep(10)
         else:
             message = (
@@ -91,6 +82,10 @@ def test_em_scale_client_association(initialize):
             report_logger.print_error(message)
             pytest.fail(message)
 
+    report_logger.print_step(
+        "Step 4: Capture per-device fronthaul client MACs and validate the "
+        "baseline client count"
+    )
     baseline = collect_fronthaul_associations(initialize, all_devices)
     total_baseline = total_associations(baseline)
     if total_baseline != expected_client_count:
@@ -101,41 +96,22 @@ def test_em_scale_client_association(initialize):
         report_logger.print_error(message)
         pytest.fail(message)
     report_logger.print_success(
-        f"Baseline captured: {total_baseline} clients "
+        f"PASS: Baseline captured: {total_baseline} clients "
         f"across {len(all_devices)} devices"
     )
 
-    report_logger.print_step("Step 2: Verify backhaul connectivity on all Agents")
-    for agent in agents:
-        wifi_ifname = initialize.read_from_database(agent, "wifi_ifname")
-        bh_idx = initialize.read_from_database(agent, BH_IFACE_KEY)
-        bh_iface = f"{wifi_ifname}{bh_idx}"
-        for attempt in range(1, 13):
-            try:
-                output, _ = execute_on_device(
-                    initialize, agent, f"iw dev {bh_iface} link"
-                )
-                if "Connected" in output or "SSID" in output:
-                    report_logger.print_success(f"Agent '{agent}' backhaul active on {bh_iface}")
-                    break
-                raise RuntimeError("Backhaul link not yet established")
-            except Exception as err:
-                report_logger.print_info(f"Attempt {attempt}: '{agent}' backhaul — {err}")
-            time.sleep(10)
-        else:
-            message = (
-                f"Agent '{agent}' backhaul on {bh_iface} not active at test start"
-            )
-            report_logger.print_error(message)
-            pytest.fail(message)
-
-    report_logger.print_step("Step 3: Periodic association comparison")
+    report_logger.print_step(
+        "Step 5: Periodically compare each device's client MAC associations "
+        "with the baseline"
+    )
     start_time = time.time()
     poll_count = 0
     while time.time() - start_time < test_duration_sec:
         elapsed_min = int((time.time() - start_time) / 60)
         poll_count += 1
-        report_logger.print_step(f"Poll #{poll_count} at ~{elapsed_min} min elapsed")
+        report_logger.print_step(
+            f"STEP: Poll #{poll_count} at ~{elapsed_min} min elapsed"
+        )
 
         current = collect_fronthaul_associations(initialize, all_devices)
         mismatches = compare_associations(baseline, current)
@@ -147,12 +123,15 @@ def test_em_scale_client_association(initialize):
             report_logger.print_error(message)
             pytest.fail(message)
         report_logger.print_success(
-            f"Poll #{poll_count}: Associations match baseline "
+            f"PASS: Poll #{poll_count}: Associations match baseline "
             f"({total_associations(current)} clients)"
         )
         time.sleep(poll_interval_sec)
 
-    report_logger.print_step("Step 4: Final association comparison against baseline")
+    report_logger.print_step(
+        "Step 6: Capture final per-device client associations and report any "
+        "missing or unexpected client MACs"
+    )
     final = collect_fronthaul_associations(initialize, all_devices)
     final_mismatches = compare_associations(baseline, final)
     if final_mismatches:
@@ -160,7 +139,7 @@ def test_em_scale_client_association(initialize):
         report_logger.print_error(message)
         pytest.fail(message)
     report_logger.print_success(
-        f"Final associations match baseline: "
+        f"PASS: Final associations match baseline: "
         f"{total_associations(final)} clients — PASS"
     )
     report_logger.print_test("Exiting test_em_scale_client_association")

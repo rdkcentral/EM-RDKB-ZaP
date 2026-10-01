@@ -1,7 +1,7 @@
 # If not stated otherwise in this file or this component LICENSE file the
 # following copyright and licenses apply:
 #
-# Copyright 2026 Zilogic Systems
+# Copyright 2026 RDK Management
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,33 +18,27 @@
 # Test Case: EM_Fronthaul_RSSI_Stability
 # Validates RSSI stability for configured clients on the MLO fronthaul interface.
 
-import re
-import sys
 import time
-from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rdkbmeshzap.common_utils import report_logger
-from rdkbmeshzap.common_utils.client_utils import (
-    connect_wlan_clients,
-    get_present_wlan_clients,
-)
+from rdkbmeshzap.common_utils import device_utils, report_logger
+from rdkbmeshzap.common_utils.client_utils import connect_wlan_clients
 
-from utility import (
-    client_rssi,
-    get_test_parameters,
-    validate_rssi,
-)
+from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
 
 MAX_RSSI_DEGRADATION_DB = 10
 
-
 def test_em_fronthaul_rssi_stability(initialize):
-    """Verify fronthaul client RSSI remains within the allowed degradation limit."""
+    """
+    Verify fronthaul client RSSI remains within the allowed degradation limit.
+    """
     report_logger.print_test("Entering test_em_fronthaul_rssi_stability")
-    present_clients = get_present_wlan_clients(initialize)
+    report_logger.print_step(
+        "Step 1: Discover present WLAN clients and connect each client to a "
+        "present mesh-device BSSID"
+    )
+    present_clients = device_utils.get_enabled_clients(initialize)
     if not present_clients:
         pytest.fail("No fronthaul clients are marked present in the database")
     clients = connect_wlan_clients(
@@ -58,13 +52,14 @@ def test_em_fronthaul_rssi_stability(initialize):
         if client not in clients
     ]
     report_logger.print_success(
-        f"Connected clients before RSSI test: {', '.join(clients)}"
+        f"PASS: Connected clients before RSSI test: {', '.join(clients)}"
     )
-    test_parameters = get_test_parameters(initialize)
-    poll_interval_sec = test_parameters["poll_interval_sec"]
-    test_duration_sec = test_parameters["test_duration_sec"]
+    poll_interval_sec = POLL_INTERVAL_SEC
+    test_duration_sec = TEST_DURATION_SEC
 
-    report_logger.print_step(f"Step 1: Capture baseline RSSI for {len(clients)} client(s)")
+    report_logger.print_step(
+        f"Step 2: Capture and validate baseline RSSI for {len(clients)} client(s)"
+    )
     baseline_rssi = {}
     for client in clients:
         try:
@@ -73,37 +68,44 @@ def test_em_fronthaul_rssi_stability(initialize):
         except Exception as err:
             skipped.append(f"{client}: baseline validation failed: {err}")
             report_logger.print_info(
-                f"Skipping unreachable client '{client}' during baseline: {err}"
+                f"INFO: Skipping unreachable client '{client}' during baseline: {err}"
             )
             continue
         if error:
             skipped.append(f"{client}: baseline validation failed: {error}")
             report_logger.print_info(
-                f"Skipping client '{client}' during baseline: {error}"
+                f"INFO: Skipping client '{client}' during baseline: {error}"
             )
             continue
         baseline_rssi[client] = state["rssi_dbm"]
         report_logger.print_success(
-            f"Client '{client}' baseline RSSI: {state['rssi_dbm']} dBm "
+            f"PASS: Client '{client}' baseline RSSI: {state['rssi_dbm']} dBm "
             f"on {state['host']}/{state['interface']}"
         )
     clients = list(baseline_rssi)
     if not clients:
         pytest.fail("No WLAN clients were reachable for baseline validation")
     report_logger.print_step(
-        f"Baseline captured for {len(clients)} client(s); "
+        f"STEP: Baseline captured for {len(clients)} client(s); "
         f"skipped {len(skipped)} present client(s)"
     )
     for item in skipped:
-        report_logger.print_info(f"Present fronthaul client not monitored: {item}")
+        report_logger.print_info(
+            f"INFO: Present fronthaul client not monitored: {item}"
+        )
 
-    report_logger.print_step("Step 2: Monitor fronthaul RSSI for the configured duration")
+    report_logger.print_step(
+        "Step 3: Sample each client's RSSI and compare it with the baseline "
+        "for the configured duration"
+    )
     start_time = time.time()
     poll_count = 0
     while time.time() - start_time < test_duration_sec:
         poll_count += 1
         elapsed_sec = int(time.time() - start_time)
-        report_logger.print_step(f"RSSI poll #{poll_count} at {elapsed_sec}s elapsed")
+        report_logger.print_step(
+            f"STEP: RSSI poll #{poll_count} at {elapsed_sec}s elapsed"
+        )
         for client in clients:
             try:
                 state = client_rssi(initialize, client)
@@ -117,12 +119,15 @@ def test_em_fronthaul_rssi_stability(initialize):
                 report_logger.print_error(message)
                 pytest.fail(message)
             report_logger.print_success(
-                f"Client '{client}' RSSI is {state['rssi_dbm']} dBm "
+                f"PASS: Client '{client}' RSSI is {state['rssi_dbm']} dBm "
                 f"(baseline {baseline_rssi[client]} dBm)"
             )
         time.sleep(poll_interval_sec)
 
-    report_logger.print_step("Step 3: Final fronthaul RSSI validation")
+    report_logger.print_step(
+        "Step 4: Capture final per-client RSSI and enforce the allowed "
+        "degradation limit"
+    )
     for client in clients:
         state = client_rssi(initialize, client)
         error = validate_rssi(state, baseline_rssi[client], MAX_RSSI_DEGRADATION_DB)
@@ -131,7 +136,7 @@ def test_em_fronthaul_rssi_stability(initialize):
             report_logger.print_error(message)
             pytest.fail(message)
         report_logger.print_success(
-            f"Client '{client}' final RSSI is {state['rssi_dbm']} dBm; "
+            f"PASS: Client '{client}' final RSSI is {state['rssi_dbm']} dBm; "
             f"no degradation beyond {MAX_RSSI_DEGRADATION_DB} dB"
         )
     report_logger.print_test("Exiting test_em_fronthaul_rssi_stability")

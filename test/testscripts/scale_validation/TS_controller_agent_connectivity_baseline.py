@@ -1,7 +1,7 @@
 # If not stated otherwise in this file or this component LICENSE file the
 # following copyright and licenses apply:
 #
-# Copyright 2026 Zilogic Systems
+# Copyright 2026 RDK Management
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,23 +14,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# If not stated otherwise in this file or this component LICENSE file the
-# following copyright and licenses apply:
-#
-# Copyright 2026 Zilogic Systems
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 # Test Case: EM_Scale_ControllerAgent_Connectivity
 # Topology: 1 Controller + N Agents (agent list driven by present platform devices)
 # Validates that the expected EasyMesh agent scale forms using iw station dump
@@ -39,17 +22,11 @@
 # see
 # test_controller_agent_stability.py.
 
-import sys
-from pathlib import Path
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rdkbmeshzap.common_utils import report_logger
+from rdkbmeshzap.common_utils import device_utils, report_logger
 
-from utility import (
-    all_stations, get_present_agents, get_scale_setup,
-)
-
+from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
 
 def test_em_scale_controller_agent_connectivity(initialize):
     """
@@ -61,17 +38,14 @@ def test_em_scale_controller_agent_connectivity(initialize):
     """
     report_logger.print_test("Entering test_em_scale_controller_agent_connectivity")
     report_logger.print_step("Step 1: Read the controller's configured scale agent list from the platform database")
-    configured_agents = get_present_agents(initialize)
-
-    report_logger.print_step("Step 2: Keep only the agents that are marked present and available for validation")
-    agents = configured_agents
+    agents = device_utils.get_enabled_extenders(initialize)
 
     expected_agent_count = get_scale_setup(initialize)["expected_agent_count"]
     report_logger.print_step(
         "Step 3: Validate the controller sees the expected scale of agents"
     )
     report_logger.print_step(
-        f"Expected Result: Controller should report {expected_agent_count} "
+        f"STEP: Expected Result: Controller should report {expected_agent_count} "
         "connected scale agents"
     )
 
@@ -79,7 +53,7 @@ def test_em_scale_controller_agent_connectivity(initialize):
     actual_agent_count = len(connected_agent_macs)
 
     report_logger.print_step(
-        f"Observed Result: Controller station dump reported {actual_agent_count} "
+        f"STEP: Observed Result: Controller station dump reported {actual_agent_count} "
         f"connected agent MACs: {sorted(connected_agent_macs)}"
     )
 
@@ -93,7 +67,7 @@ def test_em_scale_controller_agent_connectivity(initialize):
         pytest.fail(msg)
 
     report_logger.print_success(
-        f"Expected scale agents are present. "
+        f"PASS: Expected scale agents are present. "
         f"Expected {expected_agent_count} agents and controller sees {actual_agent_count} connected agent MACs: "
         f"{sorted(connected_agent_macs)}"
     )

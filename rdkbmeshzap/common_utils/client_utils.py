@@ -20,22 +20,6 @@ import shlex
 import time
 from rdkbmeshzap.common_utils import report_logger
 
-def get_present_wlan_clients(initialize):
-    """
-    Return WLAN client entries marked present in the testbed YAML.
-    """
-    clients = []
-    for device in initialize.get_testbed_devices():
-        if not re.fullmatch(r".+_wlan_client_\d+", device):
-            continue
-        value = initialize.read_from_database(device, "device_present")
-        if value is None or (
-            isinstance(value, str)
-            and value.strip().lower() in {"true", "yes", "1", "on"}
-        ) or (not isinstance(value, str) and bool(value)):
-            clients.append(device)
-    return clients
-
 def get_client_bssids(client, ssid, ssh):
     """
     Return scan results matching the requested SSID.
@@ -53,18 +37,14 @@ def get_client_bssids(client, ssid, ssh):
                 bssids.append(bssid.lower())
     return bssids
 
-def get_connected_client_bssid(initialize, client, ssh):
+def get_connected_client_bssid(initialize, client):
     """
     Return the BSSID currently used by a client Wi-Fi interface.
     """
-    wifi_interface = initialize.read_from_database(client, "data_iface")
-    ssh.switch_connection(client)
-    output = ssh.execute_command(f"iw dev {shlex.quote(wifi_interface)} link")
-    match = re.search(
-        r"Connected to ((?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2})",
-        output or "",
-    )
-    return match.group(1).lower() if match else None
+    try:
+        return initialize.get_association_status(client, "cli").lower()
+    except RuntimeError:
+        return None
 
 def get_present_device_bssids(initialize):
     """Return fronthaul BSSIDs belonging to present mesh devices."""
@@ -99,7 +79,7 @@ def connect_client_to_bssid(
     )
     ssh.switch_connection(client)
     output = ssh.execute_command(command)
-    connected_bssid = get_connected_client_bssid(initialize, client, ssh)
+    connected_bssid = get_connected_client_bssid(initialize, client)
     accepted_bssids = (
         {value.lower() for value in allowed_bssids}
         if allowed_bssids is not None
@@ -107,9 +87,11 @@ def connect_client_to_bssid(
     )
     if connected_bssid in accepted_bssids:
         if connected_bssid != bssid.lower():
+            owner = client.rsplit("_wlan_client_", 1)[0]
             report_logger.print_info(
-                f"Client '{client}' connected to present device BSSID "
-                f"{connected_bssid} instead of requested BSSID {bssid.lower()}"
+                f"INFO: BSSID mismatch for client '{client}' owned by "
+                f"'{owner}': requested={bssid.lower()}, actual={connected_bssid}; "
+                "actual BSSID belongs to another present mesh device"
             )
         return
     if "successfully activated" not in output.lower() and connected_bssid is None:
@@ -198,9 +180,7 @@ def connect_wlan_clients(initialize, client_devices, require_all=True):
             connect_clients_to_extender(
                 initialize, [client], match.group(1), allowed_bssids
             )
-            connected_bssid = get_connected_client_bssid(
-                initialize, client, ssh
-            )
+            connected_bssid = get_connected_client_bssid(initialize, client)
             if connected_bssid is None:
                 raise RuntimeError(
                     f"{client} is not connected after connection attempt"
@@ -215,9 +195,7 @@ def connect_wlan_clients(initialize, client_devices, require_all=True):
             last_errors[client] = error
             if not require_all:
                 try:
-                    connected_bssid = get_connected_client_bssid(
-                        initialize, client, ssh
-                    )
+                    connected_bssid = get_connected_client_bssid(initialize, client)
                 except Exception:
                     connected_bssid = None
                 if connected_bssid in allowed_bssids:

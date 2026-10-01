@@ -1,7 +1,7 @@
 # If not stated otherwise in this file or this component LICENSE file the
 # following copyright and licenses apply:
 #
-# Copyright 2026 Zilogic Systems
+# Copyright 2026 RDK Management
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,47 +14,42 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""CPU utilization stability test for the scale topology."""
-
-import sys
 import time
-from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rdkbmeshzap.common_utils import report_logger
+from rdkbmeshzap.common_utils import device_utils, report_logger
 
-from utility import (
-	assert_cpu_limits, collect_cpu, get_present_agents, get_test_parameters,
-)
-
+from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
 
 def test_em_scale_cpu_utilization(initialize):
-	"""Verify CPU remains within limits for the configured scale test duration."""
+	"""
+	Verify CPU remains within limits for the configured scale test duration.
+	"""
 	report_logger.print_test("Entering test_em_scale_cpu_utilization")
-	agents = get_present_agents(initialize)
-	test_parameters = get_test_parameters(initialize)
-	poll_interval_sec = test_parameters["poll_interval_sec"]
-	test_duration_sec = test_parameters["test_duration_sec"]
+	agents = device_utils.get_enabled_extenders(initialize)
+	poll_interval_sec = POLL_INTERVAL_SEC
+	test_duration_sec = TEST_DURATION_SEC
 	devices = ["controller", *agents]
 	consecutive_limit = 2
 	high_cpu_counts = {device: {} for device in devices}
 
-	report_logger.print_step("Step 1: Capture baseline CPU statistics")
 	report_logger.print_step(
-		"Expected Result: Each device must have more than 20% idle CPU, "
+		"Step 1: Capture per-device baseline CPU idle, utilization, and process usage"
+	)
+	report_logger.print_step(
+		"STEP: Expected Result: Each device must have more than 20% idle CPU, "
 		"less than 80% utilization, and no sustained high-CPU process"
 	)
 	baseline = {}
 	for device in devices:
 		try:
-			baseline[device] = collect_cpu(initialize, device)
-			assert_cpu_limits(
+			baseline[device] = collect_device_cpu_utilization(initialize, device)
+			validate_cpu_utilization_limits(
 				baseline[device], high_cpu_counts[device], consecutive_limit
 			)
 			report_logger.print_success(
-				f"Baseline observed on {device}: "
+				f"PASS: Baseline observed on {device}: "
 				f"idle={baseline[device]['idle_percent']:.1f}%, "
 				f"utilization={baseline[device]['utilization_percent']:.1f}%"
 			)
@@ -63,9 +58,12 @@ def test_em_scale_cpu_utilization(initialize):
 			report_logger.print_error(message)
 			pytest.fail(message)
 
-	report_logger.print_step("Steps 2-4: Monitor CPU during scale traffic")
 	report_logger.print_step(
-		f"Expected Result: CPU remains within limits for approximately "
+		"Step 2: Sample every device at the configured interval and compare CPU "
+		"usage with its baseline"
+	)
+	report_logger.print_step(
+		f"STEP: Expected Result: CPU remains within limits for approximately "
 		f"{test_duration_sec} seconds, sampled every {poll_interval_sec} seconds"
 	)
 	start_time = time.time()
@@ -74,13 +72,13 @@ def test_em_scale_cpu_utilization(initialize):
 		sample_count += 1
 		for device in devices:
 			try:
-				snapshot = collect_cpu(initialize, device)
-				assert_cpu_limits(
+				snapshot = collect_device_cpu_utilization(initialize, device)
+				validate_cpu_utilization_limits(
 					snapshot, high_cpu_counts[device], consecutive_limit,
 					baseline[device]
 				)
 				report_logger.print_success(
-					f"Sample #{sample_count} observed on {device}: "
+					f"PASS: Sample #{sample_count} observed on {device}: "
 					f"idle={snapshot['idle_percent']:.1f}%, "
 					f"utilization={snapshot['utilization_percent']:.1f}%"
 				)
@@ -90,17 +88,19 @@ def test_em_scale_cpu_utilization(initialize):
 				pytest.fail(message)
 		time.sleep(poll_interval_sec)
 
-	report_logger.print_step("Step 5: Capture final CPU statistics")
+	report_logger.print_step(
+		"Step 3: Capture final per-device CPU statistics and enforce all limits"
+	)
 	final = {}
 	for device in devices:
 		try:
-			final[device] = collect_cpu(initialize, device)
-			assert_cpu_limits(
+			final[device] = collect_device_cpu_utilization(initialize, device)
+			validate_cpu_utilization_limits(
 				final[device], high_cpu_counts[device], consecutive_limit,
 				baseline[device]
 			)
 			report_logger.print_success(
-				f"Final observed result for {device}: "
+				f"PASS: Final observed result for {device}: "
 				f"idle={final[device]['idle_percent']:.1f}%, "
 				f"utilization={final[device]['utilization_percent']:.1f}%"
 			)
@@ -110,7 +110,7 @@ def test_em_scale_cpu_utilization(initialize):
 			pytest.fail(message)
 
 	report_logger.print_success(
-		f"CPU utilization remained within configured limits for all "
+		f"PASS: CPU utilization remained within configured limits for all "
 		f"{len(devices)} devices across {sample_count} monitoring samples"
 	)
 	report_logger.print_test("Exiting test_em_scale_cpu_utilization")

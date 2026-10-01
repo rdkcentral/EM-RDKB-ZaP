@@ -1,7 +1,7 @@
 # If not stated otherwise in this file or this component LICENSE file the
 # following copyright and licenses apply:
 #
-# Copyright 2026 Zilogic Systems
+# Copyright 2026 RDK Management
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,41 +14,35 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Memory utilization stability test for the scale topology."""
-
-import sys
 import time
-from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rdkbmeshzap.common_utils import report_logger
+from rdkbmeshzap.common_utils import device_utils, report_logger
 
-from utility import (
-	assert_memory_limits, collect_memory, get_present_agents, get_test_parameters,
-
-)
-
+from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
 
 def test_em_scale_memory_utilization(initialize):
-	"""Verify memory remains within limits for the configured scale duration."""
+	"""
+	Verify memory remains within limits for the configured scale duration.
+	"""
 	report_logger.print_test("Entering test_em_scale_memory_utilization")
-	agents = get_present_agents(initialize)
-	test_parameters = get_test_parameters(initialize)
-	poll_interval_sec = test_parameters["poll_interval_sec"]
-	test_duration_sec = test_parameters["test_duration_sec"]
+	agents = device_utils.get_enabled_extenders(initialize)
+	poll_interval_sec = POLL_INTERVAL_SEC
+	test_duration_sec = TEST_DURATION_SEC
 	devices = ["controller", *agents]
 	used_history = {device: [] for device in devices}
 
-	report_logger.print_step("Step 1: Capture baseline memory statistics")
+	report_logger.print_step(
+		"Step 1: Capture and validate baseline available and used memory for each device"
+	)
 	baseline = {}
 	for device in devices:
 		try:
-			baseline[device] = collect_memory(initialize, device)
-			assert_memory_limits(baseline[device], used_history[device])
+			baseline[device] = collect_device_memory_utilization(initialize, device)
+			validate_memory_utilization_limits(baseline[device], used_history[device])
 			report_logger.print_success(
-				f"Baseline {device}: "
+				f"PASS: Baseline {device}: "
 				f"available={baseline[device]['available_percent']:.1f}%, "
 				f"used={baseline[device]['used_percent']:.1f}%"
 			)
@@ -56,21 +50,24 @@ def test_em_scale_memory_utilization(initialize):
 			message = f"Baseline memory collection failed on {device}: {err}"
 			report_logger.print_error(message)
 			pytest.fail(message)
-	report_logger.print_info(f"Baseline memory snapshot: {baseline}")
+	report_logger.print_info(f"INFO: Baseline memory snapshot: {baseline}")
 
-	report_logger.print_step("Steps 2-4: Monitor memory during scale traffic")
+	report_logger.print_step(
+		"Step 2: Sample each device at the configured interval and compare memory "
+		"usage with its baseline"
+	)
 	start_time = time.time()
 	sample_count = 0
 	while time.time() - start_time < test_duration_sec:
 		sample_count += 1
 		for device in devices:
 			try:
-				snapshot = collect_memory(initialize, device)
-				assert_memory_limits(
+				snapshot = collect_device_memory_utilization(initialize, device)
+				validate_memory_utilization_limits(
 					snapshot, used_history[device], baseline[device]
 				)
 				report_logger.print_success(
-					f"Sample #{sample_count} {device}: "
+					f"PASS: Sample #{sample_count} {device}: "
 					f"available={snapshot['available_percent']:.1f}%, "
 					f"used={snapshot['used_percent']:.1f}%"
 				)
@@ -80,18 +77,20 @@ def test_em_scale_memory_utilization(initialize):
 				pytest.fail(message)
 		time.sleep(poll_interval_sec)
 
-	report_logger.print_step("Step 5: Capture final memory statistics")
+	report_logger.print_step(
+		"Step 3: Capture final per-device memory statistics and enforce all limits"
+	)
 	final = {}
 	for device in devices:
 		try:
-			final[device] = collect_memory(initialize, device)
-			assert_memory_limits(
+			final[device] = collect_device_memory_utilization(initialize, device)
+			validate_memory_utilization_limits(
 				final[device], used_history[device], baseline[device]
 			)
 		except Exception as err:
 			message = f"Final memory collection failed on {device}: {err}"
 			report_logger.print_error(message)
 			pytest.fail(message)
-	report_logger.print_success(f"Final memory snapshot: {final}")
-	report_logger.print_success("Memory utilization remained within limits")
+	report_logger.print_success(f"PASS: Final memory snapshot: {final}")
+	report_logger.print_success("PASS: Memory utilization remained within limits")
 	report_logger.print_test("Exiting test_em_scale_memory_utilization")
