@@ -398,6 +398,7 @@ class FeatureUi(DatabaseModule):
             raise Exception(f"Timeout while toggling profile: {profile}")
         except Exception as ERR:
             zi_logger.log(f"Failed to toggle profile {profile}: {ERR}")
+            raise
             
     def ui_get_input_value(self, profile, field):
         zi_logger.print_context()

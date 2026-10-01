@@ -163,8 +163,9 @@ class FeatureInterfaceGUI(DatabaseModule,
         time.sleep(3)
         self.ui_obj.ui_navigate_to_required_page("Wireless Settings")
         time.sleep(3)
-        self.ui_obj.set_fronthaul_network_state(profile, enable)
+        result = self.ui_obj.set_fronthaul_network_state(profile, enable)
         time.sleep(3)
+        return result
 
     def get_fronthaul_password(self,
             device: str) -> str:

@@ -52,7 +52,7 @@ def common_setup(initialize):
     monitoring_tool_path = Path(__file__).with_name("monitoring_tool.py")
     initialize.put_file("controller", str(monitoring_tool_path), "/nvram/")
     zaero_obj = zaero.zaero()
-    devices = zaero_obj.get_testbed_devices()
+    devices = [device for device in zaero_obj.get_testbed_devices() if device == "controller" or (device.startswith("extender") and "_" not in device)]
     report_logger.print_info(f"Common setup completed. Testbed devices: {devices}")
     yield devices
     # Cleanup code after the test is done
@@ -131,38 +131,50 @@ def analyse_device_log(csv_file):
     pid_status = any(row["pid"] != initial_pid for row in rows[1:])
     return mem_percent,avg_cpu, max_cpu,pid_status
 
-def log_analyzer(local_dir):
+def log_analyzer(log_path, step_count, sub_step_count=1):
     """
-    Syntax : log_analyzer(local_dir)
+    Syntax : log_analyzer(local_dir, step_count, sub_step_count)
     Description : Inspects all local log files in the specified directory, evaluates memory and CPU health, and logs any PID instability issues.
     Parameters :
         local_dir - Absolute or relative path to the local directory containing log files to analyze.
+        step_count - The current step count in the test script.
+        sub_step_count - The current sub-step count in the test script.
     Return Value: None. It logs pass/fail messages for each analyzed log file.
     """
-    files = [f.name for f in Path(local_dir).iterdir() if f.is_file()]
-    for file in files:
-        zi_logger.log(f"Analyzing log file: {local_dir}/{file}")
-        mem_usage,avg_cpu, max_cpu,pid_status = analyse_device_log(f"{local_dir}/{file}")
-        if mem_usage is None:
-            report_logger.print_error(f"[FAIL]: [controller] Memory usage unavailable. check log file: {local_dir}/{file}")
-        elif mem_usage > 20:
-            report_logger.print_error(f"[FAIL]: [controller] High Memory Usage :{mem_usage}% variation detected. check log file: {local_dir}/{file}")
-        else:
-            report_logger.print_success(f"[PASS]: [controller] Memory usage normal : {mem_usage}% variation detected in log file: {local_dir}/{file}")
-        if avg_cpu is None:
-            report_logger.print_error(f"[FAIL]: [controller] Average CPU usage unavailable. check log file: {local_dir}/{file}")
-        elif avg_cpu > AVG_CPU_BASELINE:
-            report_logger.print_error(f"[FAIL]: [controller] High Average CPU Detected : {avg_cpu}% check log file: {local_dir}/{file}")
-        else:
-            report_logger.print_success(f"[PASS]: [controller] Average CPU usage normal : {avg_cpu}% in log file: {local_dir}/{file}")
-        if max_cpu is None:
-            report_logger.print_error(f"[FAIL]: [controller] Max CPU usage unavailable. check log file: {local_dir}/{file}")
-        elif max_cpu > MAX_CPU_BASELINE:
-            report_logger.print_error(f"[FAIL]: [controller] High Max CPU Detected : {max_cpu}% check log file: {local_dir}/{file}")
-        else:
-            report_logger.print_success(f"[PASS]: [controller] Max CPU usage normal : {max_cpu}% in log file: {local_dir}/{file}")
-        if pid_status:
-            report_logger.print_error(f"[FAIL]: [controller] PID Change Detected. check log file: {local_dir}/{file}")
-        else:
-            report_logger.print_success(f"[PASS]: [controller] PID is stable in log file: {local_dir}/{file}")  
+
+    report_logger.print_step(f"Step {step_count}: Analyzing log file: {log_path}")
+    mem_usage,avg_cpu, max_cpu,pid_status = analyse_device_log(log_path)
+    report_logger.print_step(f"Step {step_count}.{sub_step_count}: Analyzing memory usage ")
+    sub_step_count += 1
+    if mem_usage is None:
+        report_logger.print_error(f"controller: Memory usage unavailable")
+    elif mem_usage > 20:
+        report_logger.print_error(f"controller: High Memory Usage :{mem_usage}% variation detected.")
+    else:
+        report_logger.print_success(f"PASS: [controller] Memory usage normal : {mem_usage}% variation detected.")
+
+    report_logger.print_step(f"Step {step_count}.{sub_step_count}: Analyzing Average CPU usage ")
+    sub_step_count += 1
+    if avg_cpu is None:
+        report_logger.print_error(f"controller: Average CPU usage unavailable.")
+    elif avg_cpu > AVG_CPU_BASELINE:
+        report_logger.print_error(f"controller: High Average CPU Detected : {avg_cpu}% .")
+    else:
+        report_logger.print_success(f"PASS: [controller] Average CPU usage normal : {avg_cpu}%.")
+
+    report_logger.print_step(f"Step {step_count}.{sub_step_count}: Analyzing Max CPU usage ")
+    sub_step_count += 1
+    if max_cpu is None:
+        report_logger.print_error(f"controller: Max CPU usage unavailable.")
+    elif max_cpu > MAX_CPU_BASELINE:
+        report_logger.print_error(f"controller: High Max CPU Detected : {max_cpu}% .")
+    else:
+        report_logger.print_success(f"PASS: [controller] Max CPU usage normal : {max_cpu}%.")
+
+    report_logger.print_step(f"Step {step_count}.{sub_step_count}: Analyzing PID stability ")
+    sub_step_count += 1
+    if pid_status:
+        report_logger.print_error(f"controller: PID Change Detected.")
+    else:
+        report_logger.print_success(f"PASS: [controller] PID is stable.")  
 

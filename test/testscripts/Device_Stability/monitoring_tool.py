@@ -29,7 +29,6 @@ logger = logging.getLogger(__name__)
 CHECK_INTERVAL = 60
 LOG_DIR = "/tmp/"
 
-
 PROCESSES = [
     "onewifi_em_agent",
     "onewifi_em_ctrl",
@@ -81,7 +80,6 @@ def get_memory_stats(pid):
     if line:
         rss = line.split()[1]
     return rss
-
 
 def get_cpu_usage(pid):
     """

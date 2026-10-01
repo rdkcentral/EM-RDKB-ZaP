@@ -109,7 +109,8 @@ protocol:
     common_protocol_validation: True                        # Enable/Disable common protocol validation for verifying protocol-level behavior and message exchanges                      
 test_parameters:
     controller_recovery_kpi_seconds: 300                    # Controller Recovery KPI threshold in seconds
-    Endurance_test_duration_in_seconds: 86400               # Stability test duration in seconds
-    ssid_update_max_count: 0                                # Stability test Maximum number of SSID updates during the test
-    channel_update_max_count: 0                             # Stability test Maximum number of channel updates during the test
-    fronthaul_toggle_max_count: 0                           # Stability test Maximum number of fronthaul toggles during the test
+    device_stability:
+        Endurance_test_duration_in_seconds: 86400               # Stability test duration in seconds
+        ssid_update_max_count: 100                              # Stability test Maximum number of SSID updates during the test
+        channel_update_max_count: 100                           # Stability test Maximum number of channel updates during the test
+        fronthaul_toggle_max_count: 100                         # Stability test Maximum number of fronthaul toggles during the test
