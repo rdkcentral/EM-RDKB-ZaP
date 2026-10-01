@@ -57,7 +57,6 @@ def validate_setup_accessibility(initialize):
 	report_logger.print_success(
 		"PASS: All configured devices passed accessibility validation"
 	)
-	device_utils.discover_macs(initialize)
 
 
 @pytest.fixture(scope="function", autouse=True)
