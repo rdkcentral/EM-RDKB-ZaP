@@ -47,7 +47,7 @@ def test_client_association_authentication_correct_credentials(initialize):
         pytest.fail(f"DataElements query failed: {e}")
     report_logger.print_step("STEP 3: Get Passphrase from GUI")
     password = initialize.get_fronthaul_password("controller","gui")
-    report_logger.print_success(f"PASS: Fronthaul password retrieved successfully: {password}")
+    report_logger.print_success(f"PASS: Fronthaul password retrieved successfully")
     report_logger.print_step("STEP 4: Wait for some time for SSID propagation")
     time.sleep(10)
     report_logger.print_step("STEP 5: Connect client with correct credentials and verify the connection status" )
@@ -76,7 +76,7 @@ def test_client_association_authentication_correct_credentials(initialize):
                     connected = True
                     break
                 except Exception as e:
-                    report_logger.print_error(f"Client {client} failed to connect through {radio} radio ({device_bssid}): {e}")
+                    report_logger.print_info(f"Client {client} failed to connect through {radio} radio ({device_bssid}): {e}")
             if not connected:
                 pytest.fail(f"Client {client} could not connect to SSID {ssid} through 2G, 5G or 6G radio")
         except Exception as e:

@@ -34,6 +34,7 @@ controller:
     controller_device_index: 1                              # Controller Device index
     extender1_device_index: 2                               # Extender 1 Device index
     extender2_device_index: 3                               # Extender 2 Device index
+    extender3_device_index: 4                               # Extender 3 Device index
     2g_ssid_index: 1                                        # 2.4 GHz ssid index
     2g_radio_index: 1                                       # 2.4 GHz Radio index
     5g_radio_index: 2                                       # 5 GHz Radio index

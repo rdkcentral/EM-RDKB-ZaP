@@ -296,3 +296,4 @@ def discover_macs(initialize):
     except Exception as e:
         report_logger.print_error(f"Failed to discover radio MACs: {e}")
         pytest.fail(f"Radio MAC discovery failed: {e}")
+        

@@ -93,7 +93,7 @@ def test_client_association_dhcp_ip_assignment(initialize):
                     connected = True
                     break
                 except Exception as e:
-                    report_logger.print_error(f"Client {client} failed to connect through {radio} radio ({device_bssid}): {e}")
+                    report_logger.print_info(f"INFO: Client {client} failed to connect through {radio} radio ({device_bssid}): {e}")
             if not connected:
                 pytest.fail(f"Client {client} could not connect to SSID {ssid} through 2G, 5G or 6G radio")
         except Exception as e:
@@ -160,4 +160,4 @@ def test_client_association_dhcp_ip_assignment(initialize):
                 else:
                     report_logger.print_error(f"FAIL: Client {client} IP address {ip_address} is NOT within the DHCP pool range: {dhcp_pool_min_address} - {dhcp_pool_max_address}")
         except Exception as e:
-            report_logger.print_error(f"FAIL: Failed to verify IP address assignment "f"for client {client}: {e}")
+            report_logger.print_error(f"FAIL: Failed to verify IP address assignment "f"for client {client}: {e}")         
