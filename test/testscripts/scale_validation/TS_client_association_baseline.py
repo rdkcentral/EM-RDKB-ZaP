@@ -27,15 +27,23 @@ def test_em_scale_client_association_baseline(initialize):
     """
     report_logger.print_test("Entering test_em_scale_client_association_baseline")
     report_logger.print_step(
-        "Step 1: Discover the configured scale agents and WLAN clients"
+        "STEP 1: Discover the configured scale agents and WLAN clients"
     )
     agents = device_utils.get_enabled_extenders(initialize)
     clients = device_utils.get_enabled_clients(initialize)
+    report_logger.print_info(
+        f"INFO: Discovered {len(agents)} scale devices and "
+        f"{len(clients)} configured WLAN clients: agents={agents}, clients={clients}"
+    )
     if not clients:
-        pytest.skip("No WLAN clients are marked present in the database")
+        message = "No WLAN clients are marked present in the database"
+        report_logger.print_info(f"INFO: Skipping baseline test: {message}")
+        pytest.skip(message)
     report_logger.print_step(
-        f"Step 2: Connect configured WLAN clients and verify all are available: "
-        f"{clients}"
+        "STEP 2: Connect configured WLAN clients and verify availability"
+    )
+    report_logger.print_info(
+        f"INFO: WLAN clients selected for connection: {clients}"
     )
     clients = connect_wlan_clients(initialize, clients)
     report_logger.print_success(
@@ -45,15 +53,21 @@ def test_em_scale_client_association_baseline(initialize):
     all_devices = ["controller", *agents]
 
     report_logger.print_step(
-        "Step 3: Capture client MAC associations from each controller and "
+        "STEP 3: Capture client MAC associations from each controller and "
         "agent fronthaul interface"
     )
     baseline = collect_fronthaul_associations(initialize, all_devices)
     observed_client_count = total_associations(baseline)
+    report_logger.print_info(
+        f"INFO: Captured {observed_client_count} client associations across "
+        f"{len(all_devices)} devices"
+    )
     report_logger.print_step(
-        f"Step 4: Compare the {observed_client_count} observed associations with "
-        f"the expected client count across "
-        f"{len(all_devices)} devices: {baseline}"
+        "STEP 4: Compare observed associations with the expected client count"
+    )
+    report_logger.print_info(
+        f"INFO: Observed {observed_client_count} associations across "
+        f"{len(all_devices)} devices; snapshot={baseline}"
     )
     if observed_client_count != expected_client_count:
         message = (

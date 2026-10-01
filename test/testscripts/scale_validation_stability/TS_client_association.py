@@ -15,11 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Test Case: EM_Scale_Client_Association
-# Scale: Small (1 Controller + 2 Agents + 5 Clients)
-# Validates that all clients remain associated to their respective Agents
-# throughout the test duration using iw dev station dump.
-
 import pytest
 import time
 
@@ -39,15 +34,23 @@ def test_em_scale_client_association(initialize):
     """
     report_logger.print_test("Entering test_em_scale_client_association")
     report_logger.print_step(
-        "Step 1: Discover scale agents and configured WLAN clients"
+        "STEP 1: Discover scale agents and configured WLAN clients"
     )
     agents = device_utils.get_enabled_extenders(initialize)
     clients = device_utils.get_enabled_clients(initialize)
+    report_logger.print_info(
+        f"INFO: Discovered {len(agents)} scale devices and "
+        f"{len(clients)} configured WLAN clients: agents={agents}, clients={clients}"
+    )
     if not clients:
-        pytest.skip("No clients are marked present in the database")
+        message = "No clients are marked present in the database"
+        report_logger.print_info(f"INFO: Skipping association test: {message}")
+        pytest.skip(message)
     report_logger.print_step(
-        f"Step 2: Connect every configured WLAN client before baseline capture: "
-        f"{clients}"
+        "STEP 2: Connect configured WLAN clients before baseline capture"
+    )
+    report_logger.print_info(
+        f"INFO: WLAN clients selected for connection: {clients}"
     )
     clients = connect_wlan_clients(initialize, clients)
     report_logger.print_success(
@@ -59,7 +62,7 @@ def test_em_scale_client_association(initialize):
     all_devices = ["controller"] + agents
 
     report_logger.print_step(
-        "Step 3: Verify each agent is reachable before association capture"
+        "STEP 3: Verify each device is reachable before association capture"
     )
     for agent in agents:
         for attempt in range(1, 7):
@@ -67,9 +70,12 @@ def test_em_scale_client_association(initialize):
                 output = initialize.get_iw_dev_info(agent)
                 if output:
                     report_logger.print_success(
-                        f"PASS: Agent '{agent}' is reachable"
+                        f"PASS: Device '{agent}' is reachable"
                     )
                     break
+                report_logger.print_info(
+                    f"INFO: Attempt {attempt}: no interface data from '{agent}' yet"
+                )
             except Exception as err:
                 report_logger.print_info(
                     f"INFO: Attempt {attempt}: '{agent}' not ready — {err}"
@@ -77,13 +83,13 @@ def test_em_scale_client_association(initialize):
             time.sleep(10)
         else:
             message = (
-                f"Agent '{agent}' did not become reachable before baseline capture"
+                f"Device '{agent}' did not become reachable before baseline capture"
             )
             report_logger.print_error(message)
             pytest.fail(message)
 
     report_logger.print_step(
-        "Step 4: Capture per-device fronthaul client MACs and validate the "
+        "STEP 4: Capture per-device fronthaul client MACs and validate the "
         "baseline client count"
     )
     baseline = collect_fronthaul_associations(initialize, all_devices)
@@ -101,7 +107,7 @@ def test_em_scale_client_association(initialize):
     )
 
     report_logger.print_step(
-        "Step 5: Periodically compare each device's client MAC associations "
+        "STEP 5: Periodically compare each device's client MAC associations "
         "with the baseline"
     )
     start_time = time.time()
@@ -110,7 +116,10 @@ def test_em_scale_client_association(initialize):
         elapsed_min = int((time.time() - start_time) / 60)
         poll_count += 1
         report_logger.print_step(
-            f"STEP: Poll #{poll_count} at ~{elapsed_min} min elapsed"
+            "STEP 5: Compare current associations with the baseline"
+        )
+        report_logger.print_info(
+            f"INFO: Poll #{poll_count} at ~{elapsed_min} min elapsed"
         )
 
         current = collect_fronthaul_associations(initialize, all_devices)
@@ -129,7 +138,7 @@ def test_em_scale_client_association(initialize):
         time.sleep(poll_interval_sec)
 
     report_logger.print_step(
-        "Step 6: Capture final per-device client associations and report any "
+        "STEP 6: Capture final per-device client associations and report any "
         "missing or unexpected client MACs"
     )
     final = collect_fronthaul_associations(initialize, all_devices)

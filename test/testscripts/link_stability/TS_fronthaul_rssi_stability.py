@@ -15,9 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Test Case: EM_Fronthaul_RSSI_Stability
-# Validates RSSI stability for configured clients on the MLO fronthaul interface.
-
 import time
 
 import pytest
@@ -35,17 +32,21 @@ def test_em_fronthaul_rssi_stability(initialize):
     """
     report_logger.print_test("Entering test_em_fronthaul_rssi_stability")
     report_logger.print_step(
-        "Step 1: Discover present WLAN clients and connect each client to a "
+        "STEP 1: Discover present WLAN clients and connect each client to a "
         "present mesh-device BSSID"
     )
     present_clients = device_utils.get_enabled_clients(initialize)
     if not present_clients:
-        pytest.fail("No fronthaul clients are marked present in the database")
+        message = "No fronthaul clients are marked present in the database"
+        report_logger.print_error(message)
+        pytest.fail(message)
     clients = connect_wlan_clients(
         initialize, present_clients, require_all=False
     )
     if not clients:
-        pytest.fail("No present WLAN clients could be connected")
+        message = "No present WLAN clients could be connected"
+        report_logger.print_error(message)
+        pytest.fail(message)
     skipped = [
         f"{client}: connection unavailable"
         for client in present_clients
@@ -58,7 +59,10 @@ def test_em_fronthaul_rssi_stability(initialize):
     test_duration_sec = TEST_DURATION_SEC
 
     report_logger.print_step(
-        f"Step 2: Capture and validate baseline RSSI for {len(clients)} client(s)"
+        "STEP 2: Capture and validate baseline RSSI"
+    )
+    report_logger.print_info(
+        f"INFO: Capturing baseline RSSI for {len(clients)} client(s)"
     )
     baseline_rssi = {}
     for client in clients:
@@ -84,9 +88,11 @@ def test_em_fronthaul_rssi_stability(initialize):
         )
     clients = list(baseline_rssi)
     if not clients:
-        pytest.fail("No WLAN clients were reachable for baseline validation")
-    report_logger.print_step(
-        f"STEP: Baseline captured for {len(clients)} client(s); "
+        message = "No WLAN clients were reachable for baseline validation"
+        report_logger.print_error(message)
+        pytest.fail(message)
+    report_logger.print_info(
+        f"INFO: Baseline captured for {len(clients)} client(s); "
         f"skipped {len(skipped)} present client(s)"
     )
     for item in skipped:
@@ -95,7 +101,7 @@ def test_em_fronthaul_rssi_stability(initialize):
         )
 
     report_logger.print_step(
-        "Step 3: Sample each client's RSSI and compare it with the baseline "
+        "STEP 3: Sample each client's RSSI and compare it with the baseline "
         "for the configured duration"
     )
     start_time = time.time()
@@ -104,7 +110,10 @@ def test_em_fronthaul_rssi_stability(initialize):
         poll_count += 1
         elapsed_sec = int(time.time() - start_time)
         report_logger.print_step(
-            f"STEP: RSSI poll #{poll_count} at {elapsed_sec}s elapsed"
+            "STEP 3: Sample client RSSI"
+        )
+        report_logger.print_info(
+            f"INFO: Poll #{poll_count} at {elapsed_sec}s elapsed"
         )
         for client in clients:
             try:
@@ -125,7 +134,7 @@ def test_em_fronthaul_rssi_stability(initialize):
         time.sleep(poll_interval_sec)
 
     report_logger.print_step(
-        "Step 4: Capture final per-client RSSI and enforce the allowed "
+        "STEP 4: Capture final per-client RSSI and enforce the allowed "
         "degradation limit"
     )
     for client in clients:

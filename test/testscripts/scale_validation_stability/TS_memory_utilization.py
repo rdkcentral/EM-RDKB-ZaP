@@ -34,7 +34,7 @@ def test_em_scale_memory_utilization(initialize):
 	used_history = {device: [] for device in devices}
 
 	report_logger.print_step(
-		"Step 1: Capture and validate baseline available and used memory for each device"
+		"STEP 1: Capture and validate baseline available and used memory for each device"
 	)
 	baseline = {}
 	for device in devices:
@@ -53,7 +53,7 @@ def test_em_scale_memory_utilization(initialize):
 	report_logger.print_info(f"INFO: Baseline memory snapshot: {baseline}")
 
 	report_logger.print_step(
-		"Step 2: Sample each device at the configured interval and compare memory "
+		"STEP 2: Sample each device at the configured interval and compare memory "
 		"usage with its baseline"
 	)
 	start_time = time.time()
@@ -78,7 +78,7 @@ def test_em_scale_memory_utilization(initialize):
 		time.sleep(poll_interval_sec)
 
 	report_logger.print_step(
-		"Step 3: Capture final per-device memory statistics and enforce all limits"
+		"STEP 3: Capture final per-device memory statistics and enforce all limits"
 	)
 	final = {}
 	for device in devices:

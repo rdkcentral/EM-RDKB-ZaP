@@ -15,13 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Test Case: EM_FronthaulLinkStability
-# Topology: Normal setup (1 Controller [+ Agents], each with its own fronthaul
-# WiFi client — not a scale setup). Validates that each configured, present
-# fronthaul client (controller_wlan_client_1, extender1_wlan_client_1, ...)
-# stays associated to a BSSID and can reach the controller gateway for the
-# configured test duration.
-
 import pytest
 import time
 
@@ -41,17 +34,21 @@ def test_em_fronthaul_link_stability(initialize):
     """
     report_logger.print_test("Entering test_em_fronthaul_link_stability")
     report_logger.print_step(
-        "Step 1: Discover present WLAN clients and connect each client to its "
+        "STEP 1: Discover present WLAN clients and connect each client to its "
         "owning device BSSID"
     )
     present_clients = device_utils.get_enabled_clients(initialize)
     if not present_clients:
-        pytest.fail("No fronthaul clients are marked present in the database")
+        message = "No fronthaul clients are marked present in the database"
+        report_logger.print_error(message)
+        pytest.fail(message)
     clients = connect_wlan_clients(
         initialize, present_clients, require_all=False
     )
     if not clients:
-        pytest.fail("No present WLAN clients could be connected")
+        message = "No present WLAN clients could be connected"
+        report_logger.print_error(message)
+        pytest.fail(message)
     skipped = [
         f"{client}: connection unavailable"
         for client in present_clients
@@ -68,7 +65,7 @@ def test_em_fronthaul_link_stability(initialize):
     # Step 2 — Capture baseline fronthaul state and connectivity
     # ------------------------------------------------------------------
     report_logger.print_step(
-        "Step 2: Validate each client's baseline BSSID association and "
+        "STEP 2: Validate each client's baseline BSSID association and "
         "controller gateway reachability"
     )
 
@@ -97,9 +94,11 @@ def test_em_fronthaul_link_stability(initialize):
         )
     clients = validated_clients
     if not clients:
-        pytest.fail("No WLAN clients were reachable for baseline validation")
-    report_logger.print_step(
-        f"STEP: Baseline captured for {len(clients)} client(s); "
+        message = "No WLAN clients were reachable for baseline validation"
+        report_logger.print_error(message)
+        pytest.fail(message)
+    report_logger.print_info(
+        f"INFO: Baseline captured for {len(clients)} client(s); "
         f"skipped {len(skipped)} present client(s)"
     )
     for item in skipped:
@@ -111,7 +110,7 @@ def test_em_fronthaul_link_stability(initialize):
     # Step 3 — Periodic fronthaul link checks
     # ------------------------------------------------------------------
     report_logger.print_step(
-        "Step 3: Revalidate every client's BSSID association and gateway "
+        "STEP 3: Revalidate every client's BSSID association and gateway "
         "reachability at each polling interval"
     )
 
@@ -122,7 +121,10 @@ def test_em_fronthaul_link_stability(initialize):
         elapsed_min = int((time.time() - start_time) / 60)
         poll_count += 1
         report_logger.print_step(
-            f"STEP: Poll #{poll_count} at ~{elapsed_min} min elapsed"
+            "STEP 3: Validate client connectivity"
+        )
+        report_logger.print_info(
+            f"INFO: Poll #{poll_count} at ~{elapsed_min} min elapsed"
         )
 
         for client in clients:
@@ -151,7 +153,7 @@ def test_em_fronthaul_link_stability(initialize):
     # Step 4 — Final fronthaul connectivity check
     # ------------------------------------------------------------------
     report_logger.print_step(
-        "Step 4: Perform the final per-client BSSID and gateway validation"
+        "STEP 4: Perform the final per-client BSSID and gateway validation"
     )
 
     for client in clients:

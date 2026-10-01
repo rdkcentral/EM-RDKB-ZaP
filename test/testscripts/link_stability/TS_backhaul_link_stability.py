@@ -28,12 +28,14 @@ def test_em_backhaul_link_stability(initialize):
     report_logger.print_test("Entering test_em_backhaul_link_stability")
     agents = device_utils.get_enabled_extenders(initialize)
     if not agents:
-        pytest.fail("No backhaul agents are marked present in the database")
+        message = "No backhaul agents are marked present in the database"
+        report_logger.print_error(message)
+        pytest.fail(message)
     interval = POLL_INTERVAL_SEC
     duration = TEST_DURATION_SEC
     interfaces = {}
 
-    report_logger.print_step("Step 1: Discover and capture managed backhaul links")
+    report_logger.print_step("STEP 1: Discover and capture managed backhaul links")
     baseline = {}
     skipped = []
     for agent in agents:
@@ -42,14 +44,14 @@ def test_em_backhaul_link_stability(initialize):
         except Exception as err:
             skipped.append(f"{agent}: interface discovery failed: {err}")
             report_logger.print_info(
-                f"INFO: Skipping unreachable agent '{agent}': "
+                f"INFO: Skipping unreachable device '{agent}': "
                 f"interface discovery failed: {err}"
             )
             continue
         if not interfaces[agent]:
             skipped.append(f"{agent}: no managed backhaul interface found")
             report_logger.print_info(
-                f"INFO: Skipping agent '{agent}': no managed backhaul interface found"
+                f"INFO: Skipping device '{agent}': no managed backhaul interface found"
             )
             continue
         for interface in interfaces[agent]:
@@ -61,7 +63,9 @@ def test_em_backhaul_link_stability(initialize):
                     f"INFO: Skipping unreachable link '{agent}/{interface}': {err}"
                 )
                 continue
-            report_logger.print_step(f"STEP: Baseline {agent}/{interface}: {state}")
+            report_logger.print_info(
+                f"INFO: Baseline {agent}/{interface}: {state}"
+            )
             if not state["connected"] or state["bssid"] is None:
                 skipped.append(f"{agent}/{interface}: unavailable baseline: {state}")
                 report_logger.print_info(
@@ -77,15 +81,17 @@ def test_em_backhaul_link_stability(initialize):
                 continue
             baseline[(agent, interface)] = state
     if not baseline:
-        pytest.fail("No reachable backhaul links were available for baseline validation")
-    report_logger.print_step(
-        f"STEP: Baseline captured for {len(baseline)} link(s); "
+        message = "No reachable backhaul links were available for baseline validation"
+        report_logger.print_error(message)
+        pytest.fail(message)
+    report_logger.print_info(
+        f"INFO: Baseline captured for {len(baseline)} link(s); "
         f"skipped {len(skipped)} present link/agent item(s)"
     )
     for item in skipped:
-        report_logger.print_info(f"INFO: Present backhaul item not monitored: {item}")
+        report_logger.print_info(f"INFO: Backhaul item not monitored: {item}")
 
-    report_logger.print_step("Step 2: Monitor backhaul connection continuity")
+    report_logger.print_step("STEP 2: Monitor backhaul connection continuity")
     start = time.time()
     poll = 0
     while time.time() - start < duration:
@@ -93,13 +99,17 @@ def test_em_backhaul_link_stability(initialize):
         failures = []
         for key, initial in baseline.items():
             agent, interface = key
+            failure_count = len(failures)
             try:
                 current = backhaul_state(initialize, agent, interface)
             except Exception as err:
                 failures.append(f"{agent}/{interface}: state collection failed: {err}")
                 continue
             report_logger.print_step(
-                f"STEP: Poll #{poll} {agent}/{interface}: {current}"
+                "STEP 2: Check backhaul connection continuity"
+            )
+            report_logger.print_info(
+                f"INFO: Poll #{poll}, {agent}/{interface}: {current}"
             )
             if not current["connected"]:
                 failures.append(f"Poll #{poll}: '{agent}/{interface}' disconnected")
@@ -115,13 +125,18 @@ def test_em_backhaul_link_stability(initialize):
                 )
             elif current["connected_time"] < initial["connected_time"]:
                 failures.append(f"Poll #{poll}: '{agent}/{interface}' connected time reset")
+            if len(failures) == failure_count:
+                report_logger.print_success(
+                    f"PASS: Step 2.{poll}: {agent}/{interface} remains connected "
+                    f"to BSSID {current['bssid']}"
+                )
         if failures:
             message = "Backhaul link failures:\n- " + "\n- ".join(failures)
             report_logger.print_error(message)
             pytest.fail(message)
         time.sleep(interval)
     report_logger.print_step(
-        "Step 3: Recheck each backhaul link and compare its final parent BSSID "
+        "STEP 3: Recheck each backhaul link and compare its final parent BSSID "
         "and connected time with the baseline"
     )
     final_failures = []
@@ -146,4 +161,7 @@ def test_em_backhaul_link_stability(initialize):
         message = "Final backhaul baseline comparison failed:\n- " + "\n- ".join(final_failures)
         report_logger.print_error(message)
         pytest.fail(message)
+    report_logger.print_success(
+        f"PASS: Final backhaul state matches baseline for {len(baseline)} links"
+    )
     report_logger.print_test("Exiting test_em_backhaul_link_stability")

@@ -35,11 +35,9 @@ def test_em_scale_cpu_utilization(initialize):
 	high_cpu_counts = {device: {} for device in devices}
 
 	report_logger.print_step(
-		"Step 1: Capture per-device baseline CPU idle, utilization, and process usage"
-	)
-	report_logger.print_step(
-		"STEP: Expected Result: Each device must have more than 20% idle CPU, "
-		"less than 80% utilization, and no sustained high-CPU process"
+		"STEP 1: Capture per-device baseline CPU idle, utilization, and process usage; "
+		"expect more than 20% idle CPU, less than 80% utilization, and no sustained "
+		"high-CPU process"
 	)
 	baseline = {}
 	for device in devices:
@@ -59,12 +57,11 @@ def test_em_scale_cpu_utilization(initialize):
 			pytest.fail(message)
 
 	report_logger.print_step(
-		"Step 2: Sample every device at the configured interval and compare CPU "
-		"usage with its baseline"
+		"STEP 2: Sample every device and compare CPU usage with its baseline"
 	)
-	report_logger.print_step(
-		f"STEP: Expected Result: CPU remains within limits for approximately "
-		f"{test_duration_sec} seconds, sampled every {poll_interval_sec} seconds"
+	report_logger.print_info(
+		f"INFO: Sampling for {test_duration_sec} seconds every "
+		f"{poll_interval_sec} seconds"
 	)
 	start_time = time.time()
 	sample_count = 0
@@ -89,7 +86,7 @@ def test_em_scale_cpu_utilization(initialize):
 		time.sleep(poll_interval_sec)
 
 	report_logger.print_step(
-		"Step 3: Capture final per-device CPU statistics and enforce all limits"
+		"STEP 3: Capture final per-device CPU statistics and enforce all limits"
 	)
 	final = {}
 	for device in devices:

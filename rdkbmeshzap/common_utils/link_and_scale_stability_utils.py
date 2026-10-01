@@ -19,8 +19,8 @@
 import re
 import pytest
 from rdkbmeshzap.common_utils import device_utils, report_logger
-POLL_INTERVAL_SEC = 60
-TEST_DURATION_SEC = 120
+POLL_INTERVAL_SEC = 600
+TEST_DURATION_SEC = 3600
 
 MAX_BASELINE_INCREASE_PERCENT = 20.0
 AVAILABLE_MEMORY_PERCENT = 20.0
@@ -455,9 +455,11 @@ def collect_fronthaul_associations(zaero_obj, devices: list) -> dict:
         try:
             output = zaero_obj.get_iw_dev_sta_dump(device, interface)
             associations[device] = set(parse_station_output(output, "macs"))
-            report_logger.print_step(
-                f"STEP: Observed {device}/{interface} fronthaul client MACs: "
-                f"{sorted(associations[device])}"
+            observed = ", ".join(sorted(associations[device]))
+            observation = observed or "no clients currently connected"
+            report_logger.print_info(
+                f"INFO: Observed {device}/{interface} fronthaul client MACs: "
+                f"{observation}"
             )
         except Exception as err:
             report_logger.print_error(
@@ -533,8 +535,9 @@ def capture_topology(zaero_obj, agents: list) -> dict:
         client_macs.update(all_stations(zaero_obj, agent))
 
     topology = {"agent_macs": agent_macs, "client_macs": client_macs}
-    report_logger.print_step(f"Topology snapshot: agents={topology['agent_macs']}, "
-               f"clients={len(topology['client_macs'])}")
+    report_logger.print_info(
+        f"INFO: Topology snapshot: agents={topology['agent_macs']}"
+    )
     return topology
 
 def compare_agent_presence(expected_count: int, baseline: dict, current: dict) -> list:
