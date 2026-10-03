@@ -14,15 +14,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import time
-
 import pytest
-
 from rdkbmeshzap.common_utils import device_utils, report_logger
 from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
-
-MAX_RSSI_DEGRADATION_DB = 10
-MIN_RSSI_DBM = -80
 
 def test_em_backhaul_rssi_stability(initialize):
     """
@@ -39,38 +35,44 @@ def test_em_backhaul_rssi_stability(initialize):
     baseline = {}
 
     report_logger.print_step("STEP 1: Capture baseline backhaul RSSI")
+    failures = []
     for agent in agents:
         try:
             interfaces = backhaul_interfaces(initialize, agent)
         except Exception as err:
             message = f"Unable to discover required backhaul interfaces on '{agent}': {err}"
             report_logger.print_error(message)
-            pytest.fail(message)
+            failures.append(message)
+            continue
         if not interfaces:
             message = f"No managed backhaul interface found on required agent '{agent}'"
             report_logger.print_error(message)
-            pytest.fail(message)
+            failures.append(message)
+            continue
         for interface in interfaces:
             try:
                 state = backhaul_state(initialize, agent, interface)
             except Exception as err:
                 message = f"Unable to capture required backhaul RSSI baseline for '{agent}/{interface}': {err}"
                 report_logger.print_error(message)
-                pytest.fail(message)
+                failures.append(message)
+                continue
             report_logger.print_info(
                 f"INFO: Baseline {agent}/{interface}: {state}"
             )
             if not state["connected"] or state["rssi_dbm"] is None:
                 message = f"RSSI baseline unavailable on required backhaul link '{agent}/{interface}': {state}"
                 report_logger.print_error(message)
-                pytest.fail(message)
+                failures.append(message)
+                continue
             if state["rssi_dbm"] < MIN_RSSI_DBM:
                 message = (
                     f"Baseline RSSI on required backhaul link '{agent}/{interface}' "
                     f"is {state['rssi_dbm']} dBm, below {MIN_RSSI_DBM} dBm"
                 )
                 report_logger.print_error(message)
-                pytest.fail(message)
+                failures.append(message)
+                continue
             baseline[(agent, interface)] = state["rssi_dbm"]
     report_logger.print_info(
         f"INFO: Baseline captured for {len(baseline)} link(s); "
@@ -82,13 +84,13 @@ def test_em_backhaul_rssi_stability(initialize):
     poll = 0
     while time.time() - start < duration:
         poll += 1
-        failures = []
+        poll_failures = []
         for (agent, interface), initial_rssi in baseline.items():
-            failure_count = len(failures)
+            failure_count = len(poll_failures)
             try:
                 state = backhaul_state(initialize, agent, interface)
             except Exception as err:
-                failures.append(f"{agent}/{interface}: state collection failed: {err}")
+                poll_failures.append(f"{agent}/{interface}: state collection failed: {err}")
                 continue
             report_logger.print_step(
                 "STEP 2: Check backhaul RSSI"
@@ -97,54 +99,51 @@ def test_em_backhaul_rssi_stability(initialize):
                 f"INFO: Poll #{poll}, {agent}/{interface}: {state}"
             )
             if not state["connected"] or state["rssi_dbm"] is None:
-                failures.append(f"{agent}/{interface}: RSSI unavailable: {state}")
+                poll_failures.append(f"{agent}/{interface}: RSSI unavailable: {state}")
                 continue
             if state["rssi_dbm"] < MIN_RSSI_DBM:
-                failures.append(
+                poll_failures.append(
                     f"{agent}/{interface}: RSSI {state['rssi_dbm']} dBm "
                     f"below {MIN_RSSI_DBM} dBm"
                 )
                 continue
             if initial_rssi - state["rssi_dbm"] > MAX_RSSI_DEGRADATION_DB:
-                failures.append(
+                poll_failures.append(
                     f"RSSI degraded by more than {MAX_RSSI_DEGRADATION_DB} dB "
                     f"for '{agent}/{interface}': {initial_rssi} -> {state['rssi_dbm']} dBm"
                 )
-            if len(failures) == failure_count:
+            if len(poll_failures) == failure_count:
                 report_logger.print_success(
                     f"PASS: Step 2.{poll}: {agent}/{interface} RSSI is "
                     f"{state['rssi_dbm']} dBm"
                 )
-        if failures:
-            message = "Backhaul RSSI failures:\n- " + "\n- ".join(failures)
-            report_logger.print_error(message)
-            pytest.fail(message)
+        if poll_failures:
+            failures.extend(poll_failures)
         time.sleep(interval)
     report_logger.print_step(
         "STEP 3: Recheck each backhaul link and compare final RSSI with its "
         "baseline and configured threshold"
     )
-    final_failures = []
     for (agent, interface), initial_rssi in baseline.items():
         try:
             state = backhaul_state(initialize, agent, interface)
         except Exception as err:
-            final_failures.append(f"{agent}/{interface}: final state collection failed: {err}")
+            failures.append(f"{agent}/{interface}: final state collection failed: {err}")
             continue
         current_rssi = state["rssi_dbm"]
         if not state["connected"] or current_rssi is None:
-            final_failures.append(f"{agent}/{interface}: latest RSSI unavailable: {state}")
+            failures.append(f"{agent}/{interface}: latest RSSI unavailable: {state}")
         elif current_rssi < MIN_RSSI_DBM:
-            final_failures.append(
+            failures.append(
                 f"{agent}/{interface}: latest RSSI {current_rssi} dBm below {MIN_RSSI_DBM} dBm"
             )
         elif initial_rssi - current_rssi > MAX_RSSI_DEGRADATION_DB:
-            final_failures.append(
+            failures.append(
                 f"{agent}/{interface}: baseline RSSI {initial_rssi} -> "
                 f"latest RSSI {current_rssi} dBm"
             )
-    if final_failures:
-        message = "Final backhaul RSSI comparison failed:\n- " + "\n- ".join(final_failures)
+    if failures:
+        message = "Backhaul RSSI Validation failed:\n- " + "\n- ".join(failures)
         report_logger.print_error(message)
         pytest.fail(message)
     report_logger.print_success(

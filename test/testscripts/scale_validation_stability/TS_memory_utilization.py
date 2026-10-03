@@ -14,12 +14,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import time
-
 import pytest
-
 from rdkbmeshzap.common_utils import device_utils, report_logger
-
 from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
 
 def test_em_scale_memory_utilization(initialize):
@@ -32,6 +30,7 @@ def test_em_scale_memory_utilization(initialize):
 	test_duration_sec = TEST_DURATION_SEC
 	devices = ["controller", *agents]
 	used_history = {device: [] for device in devices}
+	failures = []
 
 	report_logger.print_step(
 		"STEP 1: Capture and validate baseline available and used memory for each device"
@@ -49,7 +48,7 @@ def test_em_scale_memory_utilization(initialize):
 		except Exception as err:
 			message = f"Baseline memory collection failed on {device}: {err}"
 			report_logger.print_error(message)
-			pytest.fail(message)
+			failures.append(f"Baseline memory collection failed on {device}: {err}")
 	report_logger.print_info(f"INFO: Baseline memory snapshot: {baseline}")
 
 	report_logger.print_step(
@@ -74,7 +73,7 @@ def test_em_scale_memory_utilization(initialize):
 			except Exception as err:
 				message = f"Memory monitoring failed on {device}: {err}"
 				report_logger.print_error(message)
-				pytest.fail(message)
+				failures.append(f"Memory monitoring failed on sample #{sample_count} {device}: {err}")
 		time.sleep(poll_interval_sec)
 
 	report_logger.print_step(
@@ -90,7 +89,9 @@ def test_em_scale_memory_utilization(initialize):
 		except Exception as err:
 			message = f"Final memory collection failed on {device}: {err}"
 			report_logger.print_error(message)
-			pytest.fail(message)
+			failures.append(f"Final memory collection failed on {device}: {err}")
+	if failures:
+		pytest.fail("Memory utilization validation failed: " + "; ".join(failures))
 	report_logger.print_success(f"PASS: Final memory snapshot: {final}")
 	report_logger.print_success("PASS: Memory utilization remained within limits")
 	report_logger.print_test("Exiting test_em_scale_memory_utilization")

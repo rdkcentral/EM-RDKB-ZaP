@@ -17,20 +17,13 @@
 
 import pytest
 import time
-
 from rdkbmeshzap.common_utils import device_utils, report_logger
 from rdkbmeshzap.common_utils.client_utils import connect_wlan_clients
-
 from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
 
 def test_em_scale_client_association(initialize):
     """
-    EM_Scale_Client_Association — Small scale.
-
-    Steps:
       1. Verify all Agents are reachable; capture baseline associations.
-            2. Periodically verify the present client associations.
-            3. Capture final associations and assert they match the baseline.
     """
     report_logger.print_test("Entering test_em_scale_client_association")
     report_logger.print_step(
@@ -64,6 +57,7 @@ def test_em_scale_client_association(initialize):
     report_logger.print_step(
         "STEP 3: Verify each device is reachable before association capture"
     )
+    failures = []
     for agent in agents:
         for attempt in range(1, 7):
             try:
@@ -86,7 +80,9 @@ def test_em_scale_client_association(initialize):
                 f"Device '{agent}' did not become reachable before baseline capture"
             )
             report_logger.print_error(message)
-            pytest.fail(message)
+            failures.append(message)
+    if failures:
+        pytest.fail("Overall validation failed:\n- " + "\n- ".join(failures))
 
     report_logger.print_step(
         "STEP 4: Capture per-device fronthaul client MACs and validate the "

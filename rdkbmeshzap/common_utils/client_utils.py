@@ -47,7 +47,9 @@ def get_connected_client_bssid(initialize, client):
         return None
 
 def get_present_device_bssids(initialize):
-    """Return fronthaul BSSIDs belonging to present mesh devices."""
+    """
+    Return fronthaul BSSIDs belonging to present mesh devices.
+    """
     bssids = set()
     for device in initialize.get_testbed_devices():
         if device != "controller" and not re.fullmatch(r"extender\d+", device):
@@ -159,11 +161,9 @@ def connect_clients_to_extender(
             accepted_bssids,
         )
 
-
 def connect_wlan_clients(initialize, client_devices, require_all=True):
     """
     Connect clients to their owning device's fronthaul BSSID.
-
     Client names must use the ``<device>_wlan_client_<number>`` format. Each
     requested client is attempted once. When ``require_all`` is false, return
     clients that are connected after the attempt and log unavailable clients.
@@ -216,7 +216,6 @@ def connect_wlan_clients(initialize, client_devices, require_all=True):
             report_logger.print_info(
                 f"Client '{client}' connection attempt failed: {error}"
             )
-
     if not require_all:
         unavailable = [client for client in clients if client not in connected_clients]
         if unavailable:

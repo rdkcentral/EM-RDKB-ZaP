@@ -20,7 +20,6 @@ import time
 import pytest
 from rdkbmeshzap.common_utils import report_logger
 
-
 def parse_cpu_utilization_output(output: str) -> dict:
     """
     Syntax : parse_cpu_utilization_output(output)
@@ -74,20 +73,18 @@ def parse_cpu_utilization_output(output: str) -> dict:
         "high_cpu_processes": high_cpu_processes,
     }
 
-
-def get_device_cpu_utilization_output(zaero_obj, device: str) -> str:
+def get_device_cpu_utilization_output(initialize, device: str) -> str:
     """
-    Syntax : get_device_cpu_utilization_output(zaero_obj, device)
+    Syntax : get_device_cpu_utilization_output(initialize, device)
     Description : Fetches raw CPU utilization output for a device.
     Parameters :
-        zaero_obj - Testbed initialization object exposing feature APIs.
+        initialize - Testbed initialization object exposing feature APIs.
         device - Name of the target device.
     Return Value: Raw output from the device CPU utilization command.
     """
-    if output := zaero_obj.get_cpu_utilization(device):
+    if output := initialize.get_cpu_utilization(device):
         return output
     raise RuntimeError(f"top returned no output on {device}")
-
 
 def parse_memory_utilization_output(output: str) -> dict:
     """
@@ -126,17 +123,16 @@ def parse_memory_utilization_output(output: str) -> dict:
         "available_percent": available / total * 100.0,
     }
 
-
-def get_device_memory_utilization_output(zaero_obj, device: str) -> str:
+def get_device_memory_utilization_output(initialize, device: str) -> str:
     """
-    Syntax : get_device_memory_utilization_output(zaero_obj, device)
+    Syntax : get_device_memory_utilization_output(initialize, device)
     Description : Fetches raw memory utilization output for a device.
     Parameters :
-        zaero_obj - Testbed initialization object exposing feature APIs.
+        initialize - Testbed initialization object exposing feature APIs.
         device - Name of the target device.
     Return Value: Raw output from the device memory utilization command.
     """
-    if output := zaero_obj.get_memory_utilization(device):
+    if output := initialize.get_memory_utilization(device):
         return output
     raise RuntimeError(f"free returned no output on {device}")
 
@@ -388,3 +384,4 @@ def verify_extender_services(initialize, extender, deadline=None):
         ("onewifi", "ieee1905_em_agent", "em_agent"),
         deadline,
     ) 
+

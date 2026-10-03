@@ -14,12 +14,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import time
-
 import pytest
-
 from rdkbmeshzap.common_utils import device_utils, report_logger
-
 from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
 
 def test_em_scale_cpu_utilization(initialize):
@@ -33,7 +31,7 @@ def test_em_scale_cpu_utilization(initialize):
 	devices = ["controller", *agents]
 	consecutive_limit = 2
 	high_cpu_counts = {device: {} for device in devices}
-
+	failures = []
 	report_logger.print_step(
 		"STEP 1: Capture per-device baseline CPU idle, utilization, and process usage; "
 		"expect more than 20% idle CPU, less than 80% utilization, and no sustained "
@@ -54,7 +52,7 @@ def test_em_scale_cpu_utilization(initialize):
 		except Exception as err:
 			message = f"Baseline CPU collection failed on {device}: {err}"
 			report_logger.print_error(message)
-			pytest.fail(message)
+			failures.append(f"Baseline CPU collection failed on {device}: {err}")
 
 	report_logger.print_step(
 		"STEP 2: Sample every device and compare CPU usage with its baseline"
@@ -82,7 +80,7 @@ def test_em_scale_cpu_utilization(initialize):
 			except Exception as err:
 				message = f"CPU monitoring failed on {device}: {err}"
 				report_logger.print_error(message)
-				pytest.fail(message)
+				failures.append(f"CPU monitoring failed on sample #{sample_count} {device}: {err}")
 		time.sleep(poll_interval_sec)
 
 	report_logger.print_step(
@@ -104,8 +102,9 @@ def test_em_scale_cpu_utilization(initialize):
 		except Exception as err:
 			message = f"Final CPU collection failed on {device}: {err}"
 			report_logger.print_error(message)
-			pytest.fail(message)
-
+			failures.append(f"Final CPU collection failed on {device}: {err}")
+	if failures:
+		pytest.fail("CPU utilization validation failed: " + "; ".join(failures))
 	report_logger.print_success(
 		f"PASS: CPU utilization remained within configured limits for all "
 		f"{len(devices)} devices across {sample_count} monitoring samples"

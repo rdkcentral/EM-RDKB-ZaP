@@ -16,38 +16,23 @@
 # limitations under the License.
 
 import pytest
-
 from rdkbmeshzap.common_utils import device_utils, report_logger
-
 from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
-
 import time
 
 def test_em_scale_controller_agent_stability(initialize):
     """
-    EM_Scale_ControllerAgent_Stability — 1 Controller + N Agents.
-
-    Steps:
-            1. Verify all Agents are onboarded; capture baseline topology.
-      2. Confirm network stability at the start of the test duration.
-            3. Periodically verify the expected agents remain present for
-                 test_duration_sec, every poll_interval_sec.
-            4. Capture the final agent topology and verify it against the baseline.
+       Verify controller-agent topology remains stable with all expected agents present throughout the test duration.
     """
     report_logger.print_test("Entering test_em_scale_controller_agent_stability")
     AGENTS = device_utils.get_enabled_extenders(initialize)
     poll_interval_sec = POLL_INTERVAL_SEC
     test_duration_sec = TEST_DURATION_SEC
-
-    # ------------------------------------------------------------------
-    # Step 1 — Verify onboarding and capture baseline topology
-    # ------------------------------------------------------------------
     report_logger.print_step(
         "STEP 1: Verify every configured device responds to an iw interface query"
     )
-
     expected_agent_count = get_scale_setup(initialize)["expected_agent_count"]
-
+    failures = []
     # Verify each device is reachable (basic iw command check)
     for agent in AGENTS:
         for attempt in range(1, 7):
@@ -66,7 +51,9 @@ def test_em_scale_controller_agent_stability(initialize):
         else:
             msg = f"Device '{agent}' did not become reachable before baseline capture"
             report_logger.print_error(msg)
-            pytest.fail(msg)
+            failures.append(msg)
+    if failures:
+        pytest.fail("Overall validation failed:\n- " + "\n- ".join(failures))
 
     report_logger.print_step(
         "STEP 2: Capture controller and agent station MACs for the baseline topology"
@@ -86,18 +73,19 @@ def test_em_scale_controller_agent_stability(initialize):
     report_logger.print_success(
         f"PASS: Baseline captured: {len(baseline['agent_macs'])} agents"
     )
-
-    # ------------------------------------------------------------------
-    # Step 2 — Confirm initial network stability
-    # ------------------------------------------------------------------
     report_logger.print_step(
         "STEP 3: Confirm every agent has an active backhaul before monitoring"
     )
-
     for agent in AGENTS:
         for attempt in range(1, 13):
             try:
-                if backhaul_active(initialize, agent):
+                interfaces = backhaul_interfaces(initialize, agent)
+                if any(
+                    initialize.get_wireless_backhaul_connection_status(
+                        agent, interface
+                    )
+                    for interface in interfaces
+                ):
                     report_logger.print_success(
                         f"PASS: Device '{agent}' backhaul active"
                     )
@@ -112,21 +100,18 @@ def test_em_scale_controller_agent_stability(initialize):
         else:
             msg = f"Device '{agent}' backhaul is not stable at test start"
             report_logger.print_error(msg)
-            pytest.fail(msg)
-
-    # ------------------------------------------------------------------
-    # Step 3 — Periodic topology checks
-    # ------------------------------------------------------------------
+            failures.append(msg)
+    if failures:
+        pytest.fail("Overall validation failed:\n- " + "\n- ".join(failures))
     report_logger.print_step(
         "STEP 4: Periodically compare agent presence with the baseline topology"
     )
-
     start_time = time.time()
     poll_count = 0
-
     while time.time() - start_time < test_duration_sec:
         elapsed_min = int((time.time() - start_time) / 60)
         poll_count += 1
+        poll_failures = []
         report_logger.print_step(
             "STEP 4: Compare current topology with the baseline"
         )
@@ -144,44 +129,45 @@ def test_em_scale_controller_agent_stability(initialize):
                 f"Agent presence mismatch — {mismatches}"
             )
             report_logger.print_error(msg)
-            pytest.fail(msg)
+            poll_failures.append(msg)
+        if poll_failures:
+            failures.extend(poll_failures)
         report_logger.print_success(
             f"PASS: Poll #{poll_count}: Expected {expected_agent_count} agents "
             "remain present"
         )
 
         time.sleep(poll_interval_sec)
-
-    # ------------------------------------------------------------------
-    # Step 4 — Final topology comparison against baseline
-    # ------------------------------------------------------------------
     report_logger.print_step(
         "STEP 5: Capture final agent presence and verify every backhaul remains active"
     )
-
     final = capture_topology(initialize, AGENTS)
     report_logger.print_info(f"INFO: Final topology snapshot: {final}")
     final_mismatches = compare_agent_presence(
         expected_agent_count, baseline, final
     )
-
     if final_mismatches:
         msg = f"Final agent presence does not match baseline: {final_mismatches}"
         report_logger.print_error(msg)
-        pytest.fail(msg)
-
-    # Verify each Agent's backhaul is still active
+        failures.append(msg)
     for agent in AGENTS:
         try:
-            if not backhaul_active(initialize, agent):
+            interfaces = backhaul_interfaces(initialize, agent)
+            if not any(
+                initialize.get_wireless_backhaul_connection_status(
+                    agent, interface
+                )
+                for interface in interfaces
+            ):
                 msg = f"Device '{agent}' backhaul is down at end of test"
                 report_logger.print_error(msg)
-                pytest.fail(msg)
+                failures.append(msg)
         except Exception as err:
             msg = f"Device '{agent}' backhaul check failed at end of test: {err}"
             report_logger.print_error(msg)
-            pytest.fail(msg)
-
+            failures.append(msg)
+    if failures:
+        pytest.fail("Overall validation failed:\n- " + "\n- ".join(failures))
     report_logger.print_success(
         f"PASS: Final agent presence matches baseline: "
         f"{len(final['agent_macs'])} agents"

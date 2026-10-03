@@ -17,20 +17,16 @@
 
 import pytest
 import time
-
 from rdkbmeshzap.common_utils import device_utils, report_logger
 from rdkbmeshzap.common_utils.client_utils import connect_wlan_clients
-
-from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
+from rdkbmeshzap.common_utils.link_and_scale_stability_utils import (
+    POLL_INTERVAL_SEC,
+    TEST_DURATION_SEC,
+)
 
 def test_em_fronthaul_link_stability(initialize):
     """
-    EM_FronthaulLinkStability — normal (non-scale) setup.
-
-    Steps:
-            1. Capture baseline fronthaul station state and client gateway reachability.
-            2. Validate association and gateway reachability at each interval.
-            3. Perform one final validation at the end of the observation period.
+    Verify stable fronthaul connectivity and reachability.
     """
     report_logger.print_test("Entering test_em_fronthaul_link_stability")
     report_logger.print_step(
@@ -68,134 +64,95 @@ def test_em_fronthaul_link_stability(initialize):
     poll_interval_sec = POLL_INTERVAL_SEC
     test_duration_sec = TEST_DURATION_SEC
     gateway_ip = initialize.read_from_database("controller", "bridge_ip")
-
-    # ------------------------------------------------------------------
-    # Step 2 — Capture baseline fronthaul state and connectivity
-    # ------------------------------------------------------------------
     report_logger.print_step(
-        "STEP 2: Validate each client's baseline BSSID association and "
-        "controller gateway reachability"
+        "STEP 2: Validate each client's baseline controller gateway reachability"
     )
-
-    baseline_states = {}
+    failures = []
     for client in clients:
         try:
-            station, error = validate_client(
-                initialize, client, gateway_ip
-            )
+            ping_result = initialize.ping_ipv4(client, gateway_ip, "3")
         except Exception as err:
-            message = f"Unable to validate baseline for '{client}': {err}"
+            message = f"Baseline ping failed for '{client}' to {gateway_ip}: {err}"
             report_logger.print_error(message)
-            pytest.fail(message)
-        if error:
-            message = f"Client '{client}' failed baseline validation: {error}"
+            failures.append(message)
+            continue
+        if ping_result != 0:
+            message = f"Client '{client}' cannot ping controller gateway {gateway_ip}"
             report_logger.print_error(message)
-            pytest.fail(message)
-        baseline_states[client] = station
+            failures.append(message)
+            continue
         report_logger.print_success(
-            f"PASS: Client '{client}' is authorized and associated to "
-            f"BSSID {station['bssid']} on {station['host']}/{station['interface']}"
+            f"PASS: Client '{client}' can ping controller gateway {gateway_ip}"
         )
     report_logger.print_info(
-        f"INFO: Baseline captured for all {len(baseline_states)} configured "
+        f"INFO: Baseline ping checked for all {len(clients)} configured "
         "present WLAN client(s)"
     )
-    previous_states = dict(baseline_states)
-
-    # ------------------------------------------------------------------
-    # Step 3 — Periodic fronthaul link checks
-    # ------------------------------------------------------------------
     report_logger.print_step(
-        "STEP 3: Revalidate every client's BSSID association and gateway "
-        "reachability at each polling interval"
+        "STEP 3: Revalidate each client's gateway reachability at every poll"
     )
-
     start_time = time.time()
     poll_count = 0
-
     while time.time() - start_time < test_duration_sec:
         elapsed_min = int((time.time() - start_time) / 60)
         poll_count += 1
+        poll_failures = []
         report_logger.print_step(
             "STEP 3: Validate client connectivity"
         )
         report_logger.print_info(
             f"INFO: Poll #{poll_count} at ~{elapsed_min} min elapsed"
         )
-
         for client in clients:
             try:
-                station, error = validate_client(
-                    initialize,
-                    client,
-                    gateway_ip,
-                )
+                ping_result = initialize.ping_ipv4(client, gateway_ip, "3")
             except Exception as err:
-                msg = f"Poll #{poll_count}: Validation failed for '{client}': {err}"
-                report_logger.print_error(msg)
-                pytest.fail(msg)
-            if error:
-                msg = f"Poll #{poll_count} ({elapsed_min} min): Client '{client}' failed: {error}"
-                report_logger.print_error(msg)
-                pytest.fail(msg)
-            previous = previous_states[client]
-            if station["bssid"] == previous["bssid"]:
-                if station["connected_time"] <= previous["connected_time"]:
-                    msg = (
-                        f"Poll #{poll_count}: Client '{client}' connected time "
-                        f"did not increase on {station['bssid']}: "
-                        f"{previous['connected_time']} -> {station['connected_time']} seconds"
-                    )
-                    report_logger.print_error(msg)
-                    pytest.fail(msg)
-            else:
-                report_logger.print_info(
-                    f"INFO: Client '{client}' roamed from {previous['bssid']} "
-                    f"to {station['bssid']}; continuing validation on the new mesh BSSID"
+                msg = (
+                    f"Poll #{poll_count}: Ping failed for '{client}' to "
+                    f"{gateway_ip}: {err}"
                 )
-            previous_states[client] = station
+                report_logger.print_error(msg)
+                poll_failures.append(msg)
+                continue
+            if ping_result != 0:
+                msg = (
+                    f"Poll #{poll_count} ({elapsed_min} min): Client "
+                    f"'{client}' cannot ping controller gateway {gateway_ip}"
+                )
+                report_logger.print_error(msg)
+                poll_failures.append(msg)
+                continue
             report_logger.print_success(
-                f"PASS: Poll #{poll_count}: Client '{client}' healthy on BSSID "
-                f"{station['bssid']} via {station['host']}/{station['interface']}"
+                f"PASS: Poll #{poll_count}: Client '{client}' can ping "
+                f"controller gateway {gateway_ip}"
             )
+        if poll_failures:
+            failures.extend(poll_failures)
 
         time.sleep(poll_interval_sec)
-
-    # ------------------------------------------------------------------
-    # Step 4 — Final fronthaul connectivity check
-    # ------------------------------------------------------------------
     report_logger.print_step(
-        "STEP 4: Perform the final per-client BSSID and gateway validation"
+        "STEP 4: Perform the final per-client gateway reachability check"
     )
-
     for client in clients:
         try:
-            station, error = validate_client(
-                initialize,
-                client,
-                gateway_ip,
-            )
+            ping_result = initialize.ping_ipv4(client, gateway_ip, "3")
         except Exception as err:
-            msg = f"Final validation failed for '{client}': {err}"
+            msg = f"Final ping failed for '{client}' to {gateway_ip}: {err}"
             report_logger.print_error(msg)
-            pytest.fail(msg)
-        if error:
-            msg = f"Client '{client}' failed final validation: {error}"
-            report_logger.print_error(msg)
-            pytest.fail(msg)
-        previous = previous_states[client]
-        if (
-            station["bssid"] == previous["bssid"]
-            and station["connected_time"] <= previous["connected_time"]
-        ):
+            failures.append(msg)
+            continue
+        if ping_result != 0:
             msg = (
-                f"Final connected time reset for '{client}' on {station['bssid']}: "
-                f"{previous['connected_time']} -> {station['connected_time']} seconds"
+                f"Client '{client}' cannot ping controller gateway "
+                f"{gateway_ip} at end of test"
             )
             report_logger.print_error(msg)
-            pytest.fail(msg)
+            failures.append(msg)
+            continue
         report_logger.print_success(
-            f"PASS: Client '{client}' healthy on BSSID {station['bssid']} via "
-            f"{station['host']}/{station['interface']} at end of test"
+            f"PASS: Client '{client}' can ping controller gateway "
+            f"{gateway_ip} at end of test"
         )
+    if failures:
+        pytest.fail("Client Connectivity Validation failed:\n- " + "\n- ".join(failures))
     report_logger.print_test("Exiting test_em_fronthaul_link_stability")

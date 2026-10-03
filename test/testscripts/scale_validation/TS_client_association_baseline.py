@@ -14,11 +14,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import pytest
 
+import pytest
 from rdkbmeshzap.common_utils import device_utils, report_logger
 from rdkbmeshzap.common_utils.client_utils import connect_wlan_clients
-
 from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
 
 def test_em_scale_client_association_baseline(initialize):
@@ -76,7 +75,6 @@ def test_em_scale_client_association_baseline(initialize):
         )
         report_logger.print_error(message)
         pytest.fail(message)
-
     report_logger.print_success(
         f"PASS: Initial client-association baseline captured: "
         f"{observed_client_count} present clients observed"

@@ -14,20 +14,33 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Common helper utilities for Zaero-based tests."""
 
 import re
 import pytest
 from rdkbmeshzap.common_utils import device_utils, report_logger
-POLL_INTERVAL_SEC = 600
-TEST_DURATION_SEC = 3600
 
+# Polling interval (seconds) between consecutive stability checks.
+POLL_INTERVAL_SEC = 600
+# Total duration (seconds) for which stability monitoring is performed.
+TEST_DURATION_SEC = 3600
+# Maximum allowed percentage increase from the baseline metric value.
 MAX_BASELINE_INCREASE_PERCENT = 20.0
+# Minimum available memory percentage required for a healthy system.
 AVAILABLE_MEMORY_PERCENT = 20.0
+# Maximum memory utilization percentage allowed during the test.
 MAX_USED_MEMORY_PERCENT = 80.0
+# Number of consecutive samples required to detect monotonic memory growth.
 MONOTONIC_GROWTH_SAMPLES = 3
+# Minimum cumulative memory growth (MB) considered significant.
 MIN_MONOTONIC_GROWTH_MB = 50.0
+# Maximum allowed increase in used memory percentage from baseline.
 MAX_BASELINE_USED_INCREASE_PERCENT = 20.0
+# Maximum allowed PHY rate degradation relative to baseline (%).
+PHY_RATE_DROP_PERCENT = 50
+# Maximum allowed RSSI degradation from baseline (dB).
+MAX_RSSI_DEGRADATION_DB = 10
+# Minimum acceptable RSSI threshold (dBm) for a stable link.
+MIN_RSSI_DBM = -80
 
 def parse_iw_dev_output(output: str, value: str) -> list:
     """
@@ -177,30 +190,30 @@ def parse_station_output(output: str, value: str) -> list:
         ]
     return [match.group(groups) for match in pattern.finditer(output)]
 
-def collect_device_cpu_utilization(zaero_obj, device: str) -> dict:
+def collect_device_cpu_utilization(initialize, device: str) -> dict:
     """
-    Syntax : collect_device_cpu_utilization(zaero_obj, device)
+    Syntax : collect_device_cpu_utilization(initialize, device)
     Description : Collects one parsed CPU utilization snapshot for a device.
     Parameters :
-        zaero_obj - Testbed initialization object exposing feature APIs.
+        initialize - Testbed initialization object exposing feature APIs.
         device - Name of the target device.
     Return Value: A parsed CPU snapshot containing the device name.
     """
-    output = device_utils.get_device_cpu_utilization_output(zaero_obj, device)
+    output = device_utils.get_device_cpu_utilization_output(initialize, device)
     snapshot = device_utils.parse_cpu_utilization_output(output)
     snapshot["device"] = device
     return snapshot
 
-def collect_device_memory_utilization(zaero_obj, device: str) -> dict:
+def collect_device_memory_utilization(initialize, device: str) -> dict:
     """
-    Syntax : collect_device_memory_utilization(zaero_obj, device)
+    Syntax : collect_device_memory_utilization(initialize, device)
     Description : Collects one parsed memory utilization snapshot for a device.
     Parameters :
-        zaero_obj - Testbed initialization object exposing feature APIs.
+        initialize - Testbed initialization object exposing feature APIs.
         device - Name of the target device.
     Return Value: A parsed memory snapshot containing the device name.
     """
-    output = device_utils.get_device_memory_utilization_output(zaero_obj, device)
+    output = device_utils.get_device_memory_utilization_output(initialize, device)
     snapshot = device_utils.parse_memory_utilization_output(output)
     snapshot["device"] = device
     return snapshot
@@ -235,7 +248,6 @@ def validate_memory_utilization_limits(
                        f"{increase:.1f} percentage points")
             report_logger.print_error(message)
             pytest.fail(message)
-
     used_history.append(snapshot["used_mb"])
     recent = used_history[-MONOTONIC_GROWTH_SAMPLES:]
     if (
@@ -283,7 +295,6 @@ def validate_cpu_utilization_limits(
             )
             report_logger.print_error(message)
             pytest.fail(message)
-
     current_processes = set(snapshot["high_cpu_processes"])
     for process in list(high_cpu_counts):
         if process not in current_processes:
@@ -298,16 +309,16 @@ def validate_cpu_utilization_limits(
             report_logger.print_error(message)
             pytest.fail(message)
 
-def get_scale_setup(zaero_obj, scale: str = None) -> dict:
+def get_scale_setup(initialize, scale: str = None) -> dict:
     """
-    Syntax : get_scale_setup(zaero_obj, scale=None)
+    Syntax : get_scale_setup(initialize, scale=None)
     Description : Reads the requested or enabled scale settings from platform YAML.
     Parameters :
-        zaero_obj - Testbed initialization and database interface.
+        initialize - Testbed initialization and database interface.
         scale - Optional scale name such as `small`, `medium`, or `large`.
     Return Value: A dictionary containing the selected scale configuration.
     """
-    scale_setups = zaero_obj.read_from_database(
+    scale_setups = initialize.read_from_database(
         "test_parameters", "scalesetup"
     )
     if not isinstance(scale_setups, dict):
@@ -336,90 +347,107 @@ def get_scale_setup(zaero_obj, scale: str = None) -> dict:
         raise ValueError("No scale setup is enabled in platform YAML")
     return enabled_setup
 
-def fronthaul_interface(zaero_obj, device: str) -> str:
+def fronthaul_interface(initialize, device: str) -> str:
     """
-    Syntax : fronthaul_interface(zaero_obj, device)
+    Syntax : fronthaul_interface(initialize, device)
     Description : Builds the configured MLD fronthaul interface name.
     Parameters :
-        zaero_obj - Testbed initialization and database interface.
+        initialize - Testbed initialization and database interface.
         device - Name of the target mesh device.
     Return Value: The configured fronthaul interface name.
     """
-    mld_ifname = zaero_obj.read_from_database(device, "mld_ifname")
-    mld_iface_index = zaero_obj.read_from_database(device, "mld_iface_index")
+    mld_ifname = initialize.read_from_database(device, "mld_ifname")
+    mld_iface_index = initialize.read_from_database(device, "mld_iface_index")
     if not mld_ifname or mld_iface_index is None:
         raise ValueError(f"Missing MLD interface configuration for {device}")
     return f"{mld_ifname}{mld_iface_index}"
 
-def all_interfaces(zaero_obj, device: str) -> list:
+def all_interfaces(initialize, device: str) -> list:
     """
-    Syntax : all_interfaces(zaero_obj, device)
+    Syntax : all_interfaces(initialize, device)
     Description : Returns non-MLD wireless interfaces reported by `iw dev`.
     Parameters :
-        zaero_obj - Testbed initialization and database interface.
+        initialize - Testbed initialization and database interface.
         device - Name of the target mesh device.
     Return Value: A list of wireless interface names used for topology checks.
     """
     interfaces = parse_iw_dev_output(
-        zaero_obj.get_iw_dev_info(device), "interfaces"
+        initialize.get_iw_dev_info(device), "interfaces"
     )
     return [iface for iface in interfaces if not iface.lower().startswith("mld")]
 
-def managed_backhaul_records(zaero_obj, device: str) -> list:
-    """Return interface records for non-MLD managed backhaul interfaces."""
-    output = zaero_obj.get_iw_dev_info(device)
-    return [
-        (interface, details)
-        for interface, details in parse_iw_dev_output(output, "interface_records")
-        if not interface.lower().startswith("mld")
-        and re.search(
-            r"^\s*type\s+managed\s*$",
+def get_backhaul_info(initialize, agents: list, controller: str | None = None) -> dict:
+    """
+    Syntax : get_backhaul_info(initialize, agents, controller=None)
+    Description : Collects managed backhaul interfaces for the specified agents and, the controller-visible agent MAC addresses.
+    Parameters :
+    initialize - Testbed initialization and database interface.
+    agents - List of  agents to inspect.
+    controller - Controller device name used to retrieve visible agent MACs. Defaults to None.
+    Return Value: A dictionary containing managed backhaul interface records per agent and the corresponding controller-visible agent MAC set.
+    """ 
+    managed_records = {
+        agent: [
+            (interface, details)
+            for interface, details in parse_iw_dev_output(
+                initialize.get_iw_dev_info(agent), "interface_records"
+            )
+            if not interface.lower().startswith("mld")
+            and re.search(
+                r"^\s*type\s+managed\s*$",
+                details,
+                re.MULTILINE | re.IGNORECASE,
+            )
+        ]
+        for agent in agents
+    }
+    configured_agent_macs = {
+        mac.lower()
+        for records in managed_records.values()
+        for _, details in records
+        for mac in re.findall(
+            r"^\s*addr\s+([0-9a-f:]{17})",
             details,
             re.MULTILINE | re.IGNORECASE,
         )
-    ]
+    }
+    return {
+        "managed_records": managed_records,
+        "agent_macs": (
+            all_stations(initialize, controller) & configured_agent_macs
+            if controller
+            else set()
+        ),
+    }
 
-def backhaul_interfaces(zaero_obj, device: str) -> list:
+def backhaul_interfaces(initialize, device: str) -> list:
     """
-    Syntax : backhaul_interfaces(zaero_obj, device)
+    Syntax : backhaul_interfaces(initialize, device)
     Description : Finds non-MLD wireless interfaces operating in managed mode.
     Parameters :
-        zaero_obj - Testbed initialization and database interface.
+        initialize - Testbed initialization and database interface.
         device - Name of the target mesh device.
     Return Value: A list of managed backhaul interface names.
     """
     return [
         interface
-        for interface, _ in managed_backhaul_records(zaero_obj, device)
+        for interface, _ in get_backhaul_topology(
+            initialize, [device]
+        )["managed_records"][device]
     ]
 
-def controller_agent_stations(zaero_obj, agents: list) -> set:
-    """Return only controller stations matching configured agents' backhaul MACs."""
-    configured_agent_macs = set()
-    for agent in agents:
-        for _, details in managed_backhaul_records(zaero_obj, agent):
-            configured_agent_macs.update(
-                mac.lower()
-                for mac in re.findall(
-                    r"^\s*addr\s+([0-9a-f:]{17})",
-                    details,
-                    re.MULTILINE | re.IGNORECASE,
-                )
-            )
-    return all_stations(zaero_obj, "controller") & configured_agent_macs
-
-def backhaul_state(zaero_obj, device: str, interface: str) -> dict:
+def backhaul_state(initialize, device: str, interface: str) -> dict:
     """
-    Syntax : backhaul_state(zaero_obj, device, interface)
+    Syntax : backhaul_state(initialize, device, interface)
     Description : Collects link and station metrics for a backhaul interface.
     Parameters :
-        zaero_obj - Testbed initialization and database interface.
+        initialize - Testbed initialization and database interface.
         device - Name of the target mesh device.
         interface - Name of the managed backhaul interface.
     Return Value: A dictionary containing connection, signal, rate, and station data.
     """
-    link = zaero_obj.get_iw_dev_link_info(device, interface)
-    station = zaero_obj.get_iw_dev_sta_dump(device, interface)
+    link = initialize.get_iw_dev_link_info(device, interface)
+    station = initialize.get_iw_dev_sta_dump(device, interface)
     bssids = parse_link_output(link, "bssid")
     signals = parse_link_output(link, "signal")
     ssids = parse_link_output(link, "ssid")
@@ -444,38 +472,38 @@ def backhaul_state(zaero_obj, device: str, interface: str) -> dict:
         )
     return state
 
-def all_stations(zaero_obj, device: str) -> set:
+def all_stations(initialize, device: str) -> set:
     """
-    Syntax : all_stations(zaero_obj, device)
+    Syntax : all_stations(initialize, device)
     Description : Collects station MACs across all relevant device interfaces.
     Parameters :
-        zaero_obj - Testbed initialization and database interface.
+        initialize - Testbed initialization and database interface.
         device - Name of the target mesh device.
     Return Value: A set of associated station MAC addresses.
     """
     macs: set = set()
-    for iface in all_interfaces(zaero_obj, device):
+    for iface in all_interfaces(initialize, device):
         try:
-            output = zaero_obj.get_iw_dev_sta_dump(device, iface)
+            output = initialize.get_iw_dev_sta_dump(device, iface)
             macs.update(parse_station_output(output, "macs"))
         except Exception as err:
             report_logger.print_error(f"station dump failed on {device}/{iface}: {err}")
     return macs
 
-def collect_fronthaul_associations(zaero_obj, devices: list) -> dict:
+def collect_fronthaul_associations(initialize, devices: list) -> dict:
     """
-    Syntax : collect_fronthaul_associations(zaero_obj, devices)
+    Syntax : collect_fronthaul_associations(initialize, devices)
     Description : Collects fronthaul station MACs for each mesh device.
     Parameters :
-        zaero_obj - Testbed initialization and database interface.
+        initialize - Testbed initialization and database interface.
         devices - Names of the mesh devices to inspect.
     Return Value: A mapping of device names to associated station MAC sets.
     """
     associations = {}
     for device in devices:
-        interface = fronthaul_interface(zaero_obj, device)
+        interface = fronthaul_interface(initialize, device)
         try:
-            output = zaero_obj.get_iw_dev_sta_dump(device, interface)
+            output = initialize.get_iw_dev_sta_dump(device, interface)
             associations[device] = set(parse_station_output(output, "macs"))
             observed = ", ".join(sorted(associations[device]))
             observation = observed or "no clients currently connected"
@@ -530,34 +558,21 @@ def compare_associations(baseline: dict, current: dict) -> list:
             )
     return mismatches
 
-def backhaul_active(zaero_obj, device: str) -> bool:
+def capture_topology(initialize, agents: list) -> dict:
     """
-    Syntax : backhaul_active(zaero_obj, device)
-    Description : Checks whether a managed backhaul interface is connected.
-    Parameters :
-        zaero_obj - Testbed initialization and database interface.
-        device - Name of the target mesh device.
-    Return Value: True when at least one station is associated; otherwise False.
-    """
-    for interface in backhaul_interfaces(zaero_obj, device):
-        if zaero_obj.get_wireless_backhaul_connection_status(
-            device, interface
-        ):
-            return True
-    return False
-
-def capture_topology(zaero_obj, agents: list) -> dict:
-    """
-    Syntax : capture_topology(zaero_obj, agents)
+    Syntax : capture_topology(initialize, agents)
     Description : Captures controller and agent station topology using `iw` data.
     Parameters :
-        zaero_obj - Testbed initialization and database interface.
+        initialize - Testbed initialization and database interface.
         agents - Names of extender devices included in the topology.
     Return Value: A dictionary containing filtered agent MACs and fronthaul client MACs.
     """
-    agent_macs = controller_agent_stations(zaero_obj, agents)
+    backhaul_topology = get_backhaul_topology(
+        initialize, agents, controller="controller"
+    )
+    agent_macs = backhaul_topology["agent_macs"]
     fronthaul = collect_fronthaul_associations(
-        zaero_obj, ["controller", *agents]
+        initialize, ["controller", *agents]
     )
     client_macs = set().union(*fronthaul.values()) if fronthaul else set()
 
@@ -592,15 +607,22 @@ def compare_agent_presence(expected_count: int, baseline: dict, current: dict) -
 
     return mismatches
 
-def mesh_device_for_bssid(zaero_obj, bssid: str):
-    """Return the present mesh device advertising a BSSID, if any."""
+def mesh_device_for_bssid(initialize, bssid: str):
+    """
+    Syntax : mesh_device_for_bssid(initialize, bssid)
+    Description : Identifies the mesh device advertising the specified fronthaul BSSID.
+    Parameters :
+        initialize - Testbed initialization and database interface.
+        bssid - BSSID to locate within the mesh network.
+    Return Value: Device name advertising the BSSID, or None if not found.
+    """
     connected_bssid = bssid.lower()
-    devices = ["controller", *device_utils.get_enabled_extenders(zaero_obj)]
+    devices = ["controller", *device_utils.get_enabled_extenders(initialize)]
     for device in devices:
         try:
             bssids = {
                 bssid.lower()
-                for bssid in zaero_obj.get_fronthaul_bssids(device)
+                for bssid in initialize.get_fronthaul_bssids(device)
             }
         except Exception as err:
             report_logger.print_info(
@@ -611,109 +633,21 @@ def mesh_device_for_bssid(zaero_obj, bssid: str):
             return device
     return None
 
-def client_serving_device(zaero_obj, client: str):
-    """Find the present mesh device advertising the client's current BSSID."""
-    try:
-        connected_bssid = zaero_obj.get_association_status(client, "cli")
-    except RuntimeError:
-        return None
-    return mesh_device_for_bssid(zaero_obj, connected_bssid)
-
-def station_flags(details: str) -> dict:
+def client_wifi_macs(initialize, client: str) -> set:
     """
-    Syntax : station_flags(details)
-    Description : Extracts authorization and association flags from station details.
-    Parameters :
-        details - Raw details from one `iw` station record.
-    Return Value: A dictionary of boolean authorization, authentication, and association flags.
-    """
-    return {
-        state: bool(
-            re.search(
-                rf"^\s*{state}:\s*yes\s*$",
-                details,
-                re.MULTILINE | re.IGNORECASE,
-            )
-        )
-        for state in ("authorized", "authenticated", "associated")
-    }
-
-def client_wifi_macs(zaero_obj, client: str) -> set:
-    """
-    Syntax : client_wifi_macs(zaero_obj, client)
+    Syntax : client_wifi_macs(initialize, client)
     Description : Finds the MAC addresses of a client's wireless interfaces.
     Parameters :
-        zaero_obj - Testbed initialization and database interface.
+        initialize - Testbed initialization and database interface.
         client - Name of the WLAN client device.
     Return Value: A set of lowercase wireless-interface MAC addresses.
     """
     return {
         mac.lower()
         for mac in parse_iw_dev_output(
-            zaero_obj.get_iw_dev_info(client), "macs"
+            initialize.get_iw_dev_info(client), "macs"
         )
     }
-
-def station_validation_error(state, missing_message: str):
-    """
-    Syntax : station_validation_error(state, missing_message)
-    Description : Validates required station authorization and association flags.
-    Parameters :
-        state - Station-state dictionary to validate.
-        missing_message - Error text returned when station state is unavailable.
-    Return Value: An error message, or None when the station state is valid.
-    """
-    if state is None:
-        return missing_message
-    if not all(state[field] for field in ("authorized", "authenticated", "associated")):
-        return f"invalid station state: {state}"
-    return None
-
-def validate_client(zaero_obj, client: str, gateway_ip: str):
-    """
-    Syntax : validate_client(zaero_obj, client, gateway_ip)
-    Description : Validates serving-mesh station state, connected time, and gateway reachability.
-    Parameters :
-        zaero_obj - Testbed initialization and database interface.
-        client - Name of the WLAN client device.
-        gateway_ip - Controller gateway IP address to validate.
-    Return Value: A tuple containing station state and an optional error message.
-    """
-    try:
-        bssid = zaero_obj.get_association_status(client, "cli")
-    except RuntimeError:
-        return None, "client interface is not associated to any BSSID"
-    host = mesh_device_for_bssid(zaero_obj, bssid)
-    if host is None:
-        return None, f"client is associated to non-mesh BSSID {bssid}"
-
-    client_macs = client_wifi_macs(zaero_obj, client)
-    interface = fronthaul_interface(zaero_obj, host)
-    output = zaero_obj.get_iw_dev_sta_dump(host, interface)
-    station = None
-    for station_mac, details in parse_station_output(output, "records"):
-        if station_mac.lower() not in client_macs:
-            continue
-        connected_times = parse_station_output(details, "connected_time")
-        station = {
-            "host": host,
-            "interface": interface,
-            "bssid": bssid.lower(),
-            "mac": station_mac.lower(),
-            **station_flags(details),
-            "connected_time": int(connected_times[0]) if connected_times else None,
-        }
-        break
-    error = station_validation_error(
-        station, "client MAC is missing from the serving device station dump"
-    )
-    if error:
-        return None, error
-    if station["connected_time"] is None:
-        return None, f"client station record has no connected time: {station}"
-    if zaero_obj.ping_ipv4(client, gateway_ip, "3") != 0:
-        return None, f"cannot reach controller gateway {gateway_ip}"
-    return station, None
 
 def rate_to_mbps(rate: str, unit: str) -> float:
     """
@@ -732,22 +666,21 @@ def rate_to_mbps(rate: str, unit: str) -> float:
         return rate / 1000
     return rate
 
-def client_phy_rate(zaero_obj, client: str):
+def client_phy_rate(initialize, client: str, host: str | None):
     """
-    Syntax : client_phy_rate(zaero_obj, client)
+    Syntax : client_phy_rate(initialize, client, host)
     Description : Reads a client's primary transmit and receive PHY rates.
     Parameters :
-        zaero_obj - Testbed initialization and database interface.
+        initialize - Testbed initialization and database interface.
         client - Name of the configured WLAN client.
+        host - Present mesh device advertising the client's associated BSSID.
     Return Value: A PHY-rate state dictionary, or None when no station matches.
     """
-    host = client_serving_device(zaero_obj, client)
     if host is None:
         return None
-    client_macs = client_wifi_macs(zaero_obj, client)
-    interface = fronthaul_interface(zaero_obj, host)
-    output = zaero_obj.get_iw_dev_sta_dump(host, interface)
-
+    client_macs = client_wifi_macs(initialize, client)
+    interface = fronthaul_interface(initialize, host)
+    output = initialize.get_iw_dev_sta_dump(host, interface)
     for station_mac, details in parse_station_output(output, "records"):
         station_mac = station_mac.lower()
         if station_mac not in client_macs:
@@ -759,27 +692,27 @@ def client_phy_rate(zaero_obj, client: str):
             "host": host,
             "interface": interface,
             "mac": station_mac,
-            **station_flags(details),
             "tx_mbps": rate_to_mbps(*tx_rates[0]) if tx_rates else None,
             "rx_mbps": rate_to_mbps(*rx_rates[0]) if rx_rates else None,
         }
     return None
 
-def validate_phy_rate(state, baseline=None, drop_percent_limit=50):
+def validate_phy_rate(
+    state,
+    baseline=None,
+    drop_percent_limit=PHY_RATE_DROP_PERCENT,
+):
     """
-    Syntax : validate_phy_rate(state, baseline=None, drop_percent_limit=50)
-    Description : Validates station PHY rates and optional baseline degradation.
+    Syntax : validate_phy_rate(state, baseline=None, drop_percent_limit=PHY_RATE_DROP_PERCENT)
+    Description : Validates PHY rates and optional baseline degradation.
     Parameters :
         state - Current PHY-rate state dictionary.
         baseline - Optional baseline PHY-rate state.
         drop_percent_limit - Maximum allowed rate reduction percentage.
     Return Value: An error message, or None when the sample is valid.
     """
-    error = station_validation_error(
-        state, "client MAC is not associated on a present mesh-device fronthaul interface"
-    )
-    if error:
-        return error
+    if state is None:
+        return "client PHY-rate sample is unavailable"
     if state["tx_mbps"] is None or state["rx_mbps"] is None:
         return f"station record has no TX/RX PHY rate: {state}"
     if baseline is not None:
@@ -795,21 +728,21 @@ def validate_phy_rate(state, baseline=None, drop_percent_limit=50):
                 )
     return None
 
-def client_rssi(zaero_obj, client: str):
+def client_rssi(initialize, client: str, host: str | None):
     """
-    Syntax : client_rssi(zaero_obj, client)
+    Syntax : client_rssi(initialize, client, host)
     Description : Reads a client's fronthaul RSSI and station state.
     Parameters :
-        zaero_obj - Testbed initialization and database interface.
+        initialize - Testbed initialization and database interface.
         client - Name of the configured WLAN client.
+        host - Present mesh device advertising the client's associated BSSID.
     Return Value: An RSSI state dictionary, or None when no station matches.
     """
-    host = client_serving_device(zaero_obj, client)
     if host is None:
         return None
-    interface = fronthaul_interface(zaero_obj, host)
-    client_macs = client_wifi_macs(zaero_obj, client)
-    output = zaero_obj.get_iw_dev_sta_dump(host, interface)
+    interface = fronthaul_interface(initialize, host)
+    client_macs = client_wifi_macs(initialize, client)
+    output = initialize.get_iw_dev_sta_dump(host, interface)
 
     for station_mac, details in parse_station_output(output, "records"):
         station_mac = station_mac.lower()
@@ -821,27 +754,26 @@ def client_rssi(zaero_obj, client: str):
             "host": host,
             "interface": interface,
             "mac": station_mac,
-            **station_flags(details),
             "rssi_dbm": int(signals[0]) if signals else None,
         }
     return None
 
-def validate_rssi(client_state, previous_rssi=None, max_rssi_degradation_db=10):
+def validate_rssi(
+    client_state,
+    previous_rssi=None,
+    max_rssi_degradation_db=MAX_RSSI_DEGRADATION_DB,
+):
     """
-    Syntax : validate_rssi(client_state, previous_rssi=None, max_rssi_degradation_db=10)
-    Description : Validates station association and RSSI degradation.
+    Syntax : validate_rssi(client_state, previous_rssi=None, max_rssi_degradation_db=MAX_RSSI_DEGRADATION_DB)
+    Description : Validates RSSI data and degradation.
     Parameters :
         client_state - Current RSSI state dictionary.
         previous_rssi - Optional baseline or previous RSSI value in dBm.
         max_rssi_degradation_db - Maximum allowed RSSI degradation in dB.
     Return Value: An error message, or None when the sample is valid.
     """
-    error = station_validation_error(
-        client_state,
-        "client MAC is not associated on a present mesh-device fronthaul interface",
-    )
-    if error:
-        return error
+    if client_state is None:
+        return "client RSSI sample is unavailable"
     if client_state["rssi_dbm"] is None:
         return "station record has no primary signal value"
     if previous_rssi is not None:
@@ -852,4 +784,3 @@ def validate_rssi(client_state, previous_rssi=None, max_rssi_degradation_db=10):
                 f"to {client_state['rssi_dbm']} dBm"
             )
     return None
-
