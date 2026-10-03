@@ -37,65 +37,45 @@ def test_em_backhaul_rssi_stability(initialize):
     interval = POLL_INTERVAL_SEC
     duration = TEST_DURATION_SEC
     baseline = {}
-    skipped = []
 
     report_logger.print_step("STEP 1: Capture baseline backhaul RSSI")
     for agent in agents:
         try:
             interfaces = backhaul_interfaces(initialize, agent)
         except Exception as err:
-            skipped.append(f"{agent}: interface discovery failed: {err}")
-            report_logger.print_info(
-                f"INFO: Skipping unreachable device '{agent}': "
-                f"interface discovery failed: {err}"
-            )
-            continue
+            message = f"Unable to discover required backhaul interfaces on '{agent}': {err}"
+            report_logger.print_error(message)
+            pytest.fail(message)
         if not interfaces:
-            skipped.append(f"{agent}: no managed backhaul interface found")
-            report_logger.print_info(
-                f"INFO: Skipping device '{agent}': no managed backhaul interface found"
-            )
-            continue
+            message = f"No managed backhaul interface found on required agent '{agent}'"
+            report_logger.print_error(message)
+            pytest.fail(message)
         for interface in interfaces:
             try:
                 state = backhaul_state(initialize, agent, interface)
             except Exception as err:
-                skipped.append(f"{agent}/{interface}: state collection failed: {err}")
-                report_logger.print_info(
-                    f"INFO: Skipping unreachable link '{agent}/{interface}': {err}"
-                )
-                continue
+                message = f"Unable to capture required backhaul RSSI baseline for '{agent}/{interface}': {err}"
+                report_logger.print_error(message)
+                pytest.fail(message)
             report_logger.print_info(
                 f"INFO: Baseline {agent}/{interface}: {state}"
             )
             if not state["connected"] or state["rssi_dbm"] is None:
-                skipped.append(f"{agent}/{interface}: RSSI unavailable at baseline")
-                report_logger.print_info(
-                    f"INFO: Skipping unavailable link '{agent}/{interface}': "
-                    "RSSI unavailable"
-                )
-                continue
+                message = f"RSSI baseline unavailable on required backhaul link '{agent}/{interface}': {state}"
+                report_logger.print_error(message)
+                pytest.fail(message)
             if state["rssi_dbm"] < MIN_RSSI_DBM:
-                skipped.append(
-                    f"{agent}/{interface}: baseline RSSI {state['rssi_dbm']} dBm "
-                    f"below {MIN_RSSI_DBM} dBm"
+                message = (
+                    f"Baseline RSSI on required backhaul link '{agent}/{interface}' "
+                    f"is {state['rssi_dbm']} dBm, below {MIN_RSSI_DBM} dBm"
                 )
-                report_logger.print_info(
-                    f"INFO: Skipping link '{agent}/{interface}': baseline RSSI "
-                    f"{state['rssi_dbm']} dBm below {MIN_RSSI_DBM} dBm"
-                )
-                continue
+                report_logger.print_error(message)
+                pytest.fail(message)
             baseline[(agent, interface)] = state["rssi_dbm"]
-    if not baseline:
-        message = "No reachable backhaul links were available for baseline validation"
-        report_logger.print_error(message)
-        pytest.fail(message)
     report_logger.print_info(
         f"INFO: Baseline captured for {len(baseline)} link(s); "
-        f"skipped {len(skipped)} present link/agent item(s)"
+        "all configured agents and managed backhaul links are covered"
     )
-    for item in skipped:
-        report_logger.print_info(f"INFO: Backhaul item not monitored: {item}")
 
     report_logger.print_step("STEP 2: Monitor backhaul RSSI")
     start = time.time()

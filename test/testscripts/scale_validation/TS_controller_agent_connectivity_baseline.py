@@ -44,7 +44,7 @@ def test_em_scale_controller_agent_connectivity(initialize):
         f"{expected_agent_count} connected scale devices"
     )
 
-    connected_agent_macs = all_stations(initialize, "controller")
+    connected_agent_macs = controller_agent_stations(initialize, agents)
     actual_agent_count = len(connected_agent_macs)
 
     report_logger.print_info(

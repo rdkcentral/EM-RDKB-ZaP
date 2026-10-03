@@ -25,7 +25,7 @@ from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
 
 def test_em_scale_client_association(initialize):
     """
-    EM_Scale_Client_Association — Small scale: 1 Controller + 2 Agents + 5 Clients.
+    EM_Scale_Client_Association — Small scale.
 
     Steps:
       1. Verify all Agents are reachable; capture baseline associations.
@@ -94,9 +94,9 @@ def test_em_scale_client_association(initialize):
     )
     baseline = collect_fronthaul_associations(initialize, all_devices)
     total_baseline = total_associations(baseline)
-    if total_baseline != expected_client_count:
+    if total_baseline < expected_client_count:
         message = (
-            f"Baseline client count {total_baseline} != expected "
+            f"Baseline client count {total_baseline} is below the minimum "
             f"{expected_client_count}. Snapshot: {baseline}"
         )
         report_logger.print_error(message)

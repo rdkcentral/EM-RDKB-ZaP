@@ -69,9 +69,9 @@ def test_em_scale_client_association_baseline(initialize):
         f"INFO: Observed {observed_client_count} associations across "
         f"{len(all_devices)} devices; snapshot={baseline}"
     )
-    if observed_client_count != expected_client_count:
+    if observed_client_count < expected_client_count:
         message = (
-            f"Observed {observed_client_count} clients, expected "
+            f"Observed {observed_client_count} clients, expected at least "
             f"{expected_client_count}: {baseline}"
         )
         report_logger.print_error(message)

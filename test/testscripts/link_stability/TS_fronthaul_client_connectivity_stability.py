@@ -34,26 +34,34 @@ def test_em_fronthaul_link_stability(initialize):
     """
     report_logger.print_test("Entering test_em_fronthaul_link_stability")
     report_logger.print_step(
-        "STEP 1: Discover present WLAN clients and connect each client to its "
-        "owning device BSSID"
+        "STEP 1: Discover present WLAN clients and attempt connection to "
+        "their owning device"
     )
     present_clients = device_utils.get_enabled_clients(initialize)
     if not present_clients:
         message = "No fronthaul clients are marked present in the database"
         report_logger.print_error(message)
         pytest.fail(message)
-    clients = connect_wlan_clients(
-        initialize, present_clients, require_all=False
-    )
-    if not clients:
-        message = "No present WLAN clients could be connected"
+    try:
+        clients = connect_wlan_clients(
+            initialize, present_clients, require_all=False
+        )
+    except Exception as err:
+        message = f"Unable to prepare fronthaul clients for monitoring: {err}"
         report_logger.print_error(message)
         pytest.fail(message)
-    skipped = [
+    unavailable = [
         f"{client}: connection unavailable"
         for client in present_clients
         if client not in clients
     ]
+    if unavailable:
+        message = (
+            "Unable to establish or preserve a present-mesh association for "
+            f"all configured WLAN clients: {unavailable}"
+        )
+        report_logger.print_error(message)
+        pytest.fail(message)
     report_logger.print_success(
         f"PASS: Connected clients before stability test: {', '.join(clients)}"
     )
@@ -69,42 +77,30 @@ def test_em_fronthaul_link_stability(initialize):
         "controller gateway reachability"
     )
 
-    validated_clients = []
+    baseline_states = {}
     for client in clients:
         try:
             station, error = validate_client(
                 initialize, client, gateway_ip
             )
         except Exception as err:
-            skipped.append(f"{client}: baseline validation failed: {err}")
-            report_logger.print_info(
-                f"INFO: Skipping unreachable client '{client}' during baseline: {err}"
-            )
-            continue
+            message = f"Unable to validate baseline for '{client}': {err}"
+            report_logger.print_error(message)
+            pytest.fail(message)
         if error:
-            skipped.append(f"{client}: baseline validation failed: {error}")
-            report_logger.print_info(
-                f"INFO: Skipping client '{client}' during baseline: {error}"
-            )
-            continue
-        validated_clients.append(client)
+            message = f"Client '{client}' failed baseline validation: {error}"
+            report_logger.print_error(message)
+            pytest.fail(message)
+        baseline_states[client] = station
         report_logger.print_success(
-            f"PASS: Client '{client}' connected to BSSID {station['bssid']} "
-            f"on interface '{station['interface']}'"
+            f"PASS: Client '{client}' is authorized and associated to "
+            f"BSSID {station['bssid']} on {station['host']}/{station['interface']}"
         )
-    clients = validated_clients
-    if not clients:
-        message = "No WLAN clients were reachable for baseline validation"
-        report_logger.print_error(message)
-        pytest.fail(message)
     report_logger.print_info(
-        f"INFO: Baseline captured for {len(clients)} client(s); "
-        f"skipped {len(skipped)} present client(s)"
+        f"INFO: Baseline captured for all {len(baseline_states)} configured "
+        "present WLAN client(s)"
     )
-    for item in skipped:
-        report_logger.print_info(
-            f"INFO: Present fronthaul client not monitored: {item}"
-        )
+    previous_states = dict(baseline_states)
 
     # ------------------------------------------------------------------
     # Step 3 — Periodic fronthaul link checks
@@ -142,9 +138,25 @@ def test_em_fronthaul_link_stability(initialize):
                 msg = f"Poll #{poll_count} ({elapsed_min} min): Client '{client}' failed: {error}"
                 report_logger.print_error(msg)
                 pytest.fail(msg)
+            previous = previous_states[client]
+            if station["bssid"] == previous["bssid"]:
+                if station["connected_time"] <= previous["connected_time"]:
+                    msg = (
+                        f"Poll #{poll_count}: Client '{client}' connected time "
+                        f"did not increase on {station['bssid']}: "
+                        f"{previous['connected_time']} -> {station['connected_time']} seconds"
+                    )
+                    report_logger.print_error(msg)
+                    pytest.fail(msg)
+            else:
+                report_logger.print_info(
+                    f"INFO: Client '{client}' roamed from {previous['bssid']} "
+                    f"to {station['bssid']}; continuing validation on the new mesh BSSID"
+                )
+            previous_states[client] = station
             report_logger.print_success(
                 f"PASS: Poll #{poll_count}: Client '{client}' healthy on BSSID "
-                f"{station['bssid']} via interface '{station['interface']}'"
+                f"{station['bssid']} via {station['host']}/{station['interface']}"
             )
 
         time.sleep(poll_interval_sec)
@@ -171,8 +183,19 @@ def test_em_fronthaul_link_stability(initialize):
             msg = f"Client '{client}' failed final validation: {error}"
             report_logger.print_error(msg)
             pytest.fail(msg)
+        previous = previous_states[client]
+        if (
+            station["bssid"] == previous["bssid"]
+            and station["connected_time"] <= previous["connected_time"]
+        ):
+            msg = (
+                f"Final connected time reset for '{client}' on {station['bssid']}: "
+                f"{previous['connected_time']} -> {station['connected_time']} seconds"
+            )
+            report_logger.print_error(msg)
+            pytest.fail(msg)
         report_logger.print_success(
             f"PASS: Client '{client}' healthy on BSSID {station['bssid']} via "
-            f"interface '{station['interface']}' at end of test"
+            f"{station['host']}/{station['interface']} at end of test"
         )
     report_logger.print_test("Exiting test_em_fronthaul_link_stability")

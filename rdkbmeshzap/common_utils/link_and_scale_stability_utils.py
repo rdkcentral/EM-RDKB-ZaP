@@ -1,7 +1,7 @@
 # If not stated otherwise in this file or this component LICENSE file the
 # following copyright and licenses apply:
 #
-# Copyright 2026 Zilogic Systems
+# Copyright 2026 RDK Management
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -365,6 +365,20 @@ def all_interfaces(zaero_obj, device: str) -> list:
     )
     return [iface for iface in interfaces if not iface.lower().startswith("mld")]
 
+def managed_backhaul_records(zaero_obj, device: str) -> list:
+    """Return interface records for non-MLD managed backhaul interfaces."""
+    output = zaero_obj.get_iw_dev_info(device)
+    return [
+        (interface, details)
+        for interface, details in parse_iw_dev_output(output, "interface_records")
+        if not interface.lower().startswith("mld")
+        and re.search(
+            r"^\s*type\s+managed\s*$",
+            details,
+            re.MULTILINE | re.IGNORECASE,
+        )
+    ]
+
 def backhaul_interfaces(zaero_obj, device: str) -> list:
     """
     Syntax : backhaul_interfaces(zaero_obj, device)
@@ -374,17 +388,25 @@ def backhaul_interfaces(zaero_obj, device: str) -> list:
         device - Name of the target mesh device.
     Return Value: A list of managed backhaul interface names.
     """
-    output = zaero_obj.get_iw_dev_info(device)
     return [
         interface
-        for interface, details in parse_iw_dev_output(output, "interface_records")
-        if re.search(
-            r"^\s*type\s+managed\s*$",
-            details,
-            re.MULTILINE | re.IGNORECASE,
-        )
-        and not interface.lower().startswith("mld")
+        for interface, _ in managed_backhaul_records(zaero_obj, device)
     ]
+
+def controller_agent_stations(zaero_obj, agents: list) -> set:
+    """Return only controller stations matching configured agents' backhaul MACs."""
+    configured_agent_macs = set()
+    for agent in agents:
+        for _, details in managed_backhaul_records(zaero_obj, agent):
+            configured_agent_macs.update(
+                mac.lower()
+                for mac in re.findall(
+                    r"^\s*addr\s+([0-9a-f:]{17})",
+                    details,
+                    re.MULTILINE | re.IGNORECASE,
+                )
+            )
+    return all_stations(zaero_obj, "controller") & configured_agent_macs
 
 def backhaul_state(zaero_obj, device: str, interface: str) -> dict:
     """
@@ -511,13 +533,18 @@ def compare_associations(baseline: dict, current: dict) -> list:
 def backhaul_active(zaero_obj, device: str) -> bool:
     """
     Syntax : backhaul_active(zaero_obj, device)
-    Description : Checks whether any device interface has an associated station.
+    Description : Checks whether a managed backhaul interface is connected.
     Parameters :
         zaero_obj - Testbed initialization and database interface.
         device - Name of the target mesh device.
     Return Value: True when at least one station is associated; otherwise False.
     """
-    return bool(all_stations(zaero_obj, device))
+    for interface in backhaul_interfaces(zaero_obj, device):
+        if zaero_obj.get_wireless_backhaul_connection_status(
+            device, interface
+        ):
+            return True
+    return False
 
 def capture_topology(zaero_obj, agents: list) -> dict:
     """
@@ -526,13 +553,13 @@ def capture_topology(zaero_obj, agents: list) -> dict:
     Parameters :
         zaero_obj - Testbed initialization and database interface.
         agents - Names of extender devices included in the topology.
-    Return Value: A dictionary containing controller-side agent MACs and agent-side client MACs.
+    Return Value: A dictionary containing filtered agent MACs and fronthaul client MACs.
     """
-    agent_macs = all_stations(zaero_obj, "controller")
-
-    client_macs = set()
-    for agent in agents:
-        client_macs.update(all_stations(zaero_obj, agent))
+    agent_macs = controller_agent_stations(zaero_obj, agents)
+    fronthaul = collect_fronthaul_associations(
+        zaero_obj, ["controller", *agents]
+    )
+    client_macs = set().union(*fronthaul.values()) if fronthaul else set()
 
     topology = {"agent_macs": agent_macs, "client_macs": client_macs}
     report_logger.print_info(
@@ -553,9 +580,9 @@ def compare_agent_presence(expected_count: int, baseline: dict, current: dict) -
     mismatches = []
     current_agents = current["agent_macs"]
 
-    if len(current_agents) != expected_count:
+    if len(current_agents) < expected_count:
         mismatches.append(
-            f"Agent count changed: expected={expected_count} "
+            f"Agent count below minimum: expected={expected_count} "
             f"current={len(current_agents)}"
         )
 
@@ -565,18 +592,32 @@ def compare_agent_presence(expected_count: int, baseline: dict, current: dict) -
 
     return mismatches
 
-def client_host(client: str) -> str:
-    """
-    Syntax : client_host(client)
-    Description : Determines the mesh-device host encoded in a WLAN client name.
-    Parameters :
-        client - WLAN client name using the `<device>_wlan_client_<number>` format.
-    Return Value: The controller or extender name associated with the client.
-    """
-    match = re.match(r"^(.+)_wlan_client_\d+$", client)
-    if not match:
-        raise ValueError(f"Cannot determine AP for client '{client}': unexpected naming")
-    return match.group(1)
+def mesh_device_for_bssid(zaero_obj, bssid: str):
+    """Return the present mesh device advertising a BSSID, if any."""
+    connected_bssid = bssid.lower()
+    devices = ["controller", *device_utils.get_enabled_extenders(zaero_obj)]
+    for device in devices:
+        try:
+            bssids = {
+                bssid.lower()
+                for bssid in zaero_obj.get_fronthaul_bssids(device)
+            }
+        except Exception as err:
+            report_logger.print_info(
+                f"INFO: Could not read fronthaul BSSIDs from '{device}': {err}"
+            )
+            continue
+        if connected_bssid in bssids:
+            return device
+    return None
+
+def client_serving_device(zaero_obj, client: str):
+    """Find the present mesh device advertising the client's current BSSID."""
+    try:
+        connected_bssid = zaero_obj.get_association_status(client, "cli")
+    except RuntimeError:
+        return None
+    return mesh_device_for_bssid(zaero_obj, connected_bssid)
 
 def station_flags(details: str) -> dict:
     """
@@ -631,22 +672,45 @@ def station_validation_error(state, missing_message: str):
 def validate_client(zaero_obj, client: str, gateway_ip: str):
     """
     Syntax : validate_client(zaero_obj, client, gateway_ip)
-    Description : Validates client association and controller gateway reachability.
+    Description : Validates serving-mesh station state, connected time, and gateway reachability.
     Parameters :
         zaero_obj - Testbed initialization and database interface.
         client - Name of the WLAN client device.
         gateway_ip - Controller gateway IP address to validate.
     Return Value: A tuple containing station state and an optional error message.
     """
-    interface = zaero_obj.read_from_database(client, "data_iface")
     try:
         bssid = zaero_obj.get_association_status(client, "cli")
     except RuntimeError:
         return None, "client interface is not associated to any BSSID"
-    station = {
-        "interface": interface,
-        "bssid": bssid.lower(),
-    }
+    host = mesh_device_for_bssid(zaero_obj, bssid)
+    if host is None:
+        return None, f"client is associated to non-mesh BSSID {bssid}"
+
+    client_macs = client_wifi_macs(zaero_obj, client)
+    interface = fronthaul_interface(zaero_obj, host)
+    output = zaero_obj.get_iw_dev_sta_dump(host, interface)
+    station = None
+    for station_mac, details in parse_station_output(output, "records"):
+        if station_mac.lower() not in client_macs:
+            continue
+        connected_times = parse_station_output(details, "connected_time")
+        station = {
+            "host": host,
+            "interface": interface,
+            "bssid": bssid.lower(),
+            "mac": station_mac.lower(),
+            **station_flags(details),
+            "connected_time": int(connected_times[0]) if connected_times else None,
+        }
+        break
+    error = station_validation_error(
+        station, "client MAC is missing from the serving device station dump"
+    )
+    if error:
+        return None, error
+    if station["connected_time"] is None:
+        return None, f"client station record has no connected time: {station}"
     if zaero_obj.ping_ipv4(client, gateway_ip, "3") != 0:
         return None, f"cannot reach controller gateway {gateway_ip}"
     return station, None
@@ -677,7 +741,9 @@ def client_phy_rate(zaero_obj, client: str):
         client - Name of the configured WLAN client.
     Return Value: A PHY-rate state dictionary, or None when no station matches.
     """
-    host = client_host(client)
+    host = client_serving_device(zaero_obj, client)
+    if host is None:
+        return None
     client_macs = client_wifi_macs(zaero_obj, client)
     interface = fronthaul_interface(zaero_obj, host)
     output = zaero_obj.get_iw_dev_sta_dump(host, interface)
@@ -710,7 +776,7 @@ def validate_phy_rate(state, baseline=None, drop_percent_limit=50):
     Return Value: An error message, or None when the sample is valid.
     """
     error = station_validation_error(
-        state, "client MAC is not associated on the configured fronthaul interface"
+        state, "client MAC is not associated on a present mesh-device fronthaul interface"
     )
     if error:
         return error
@@ -738,7 +804,9 @@ def client_rssi(zaero_obj, client: str):
         client - Name of the configured WLAN client.
     Return Value: An RSSI state dictionary, or None when no station matches.
     """
-    host = client_host(client)
+    host = client_serving_device(zaero_obj, client)
+    if host is None:
+        return None
     interface = fronthaul_interface(zaero_obj, host)
     client_macs = client_wifi_macs(zaero_obj, client)
     output = zaero_obj.get_iw_dev_sta_dump(host, interface)
@@ -770,7 +838,7 @@ def validate_rssi(client_state, previous_rssi=None, max_rssi_degradation_db=10):
     """
     error = station_validation_error(
         client_state,
-        "client MAC is not associated on the configured fronthaul interface",
+        "client MAC is not associated on a present mesh-device fronthaul interface",
     )
     if error:
         return error

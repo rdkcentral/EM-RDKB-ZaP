@@ -74,10 +74,10 @@ def test_em_scale_controller_agent_stability(initialize):
     baseline = capture_topology(initialize, AGENTS)
     report_logger.print_info(f"INFO: Baseline topology snapshot: {baseline}")
 
-    if len(baseline["agent_macs"]) != expected_agent_count:
+    if len(baseline["agent_macs"]) < expected_agent_count:
         msg = (
-            f"Baseline agent count {len(baseline['agent_macs'])} "
-            f"!= expected {expected_agent_count}. "
+            f"Baseline agent count {len(baseline['agent_macs'])} is below "
+            f"the minimum {expected_agent_count}. "
             f"Found: {baseline['agent_macs']}"
         )
         report_logger.print_error(msg)

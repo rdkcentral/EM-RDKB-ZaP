@@ -58,9 +58,16 @@ def get_present_device_bssids(initialize):
             and present.strip().lower() in {"false", "no", "0", "off"}
         ):
             continue
-        bssids.update(
-            bssid.lower() for bssid in initialize.get_fronthaul_bssids(device)
-        )
+        try:
+            bssids.update(
+                bssid.lower()
+                for bssid in initialize.get_fronthaul_bssids(device)
+            )
+        except Exception as error:
+            report_logger.print_info(
+                f"Unable to read fronthaul BSSIDs from present device "
+                f"'{device}': {error}"
+            )
     return bssids
 
 def connect_client_to_bssid(
@@ -157,9 +164,9 @@ def connect_wlan_clients(initialize, client_devices, require_all=True):
     """
     Connect clients to their owning device's fronthaul BSSID.
 
-    Client names must use the ``<device>_wlan_client_<number>`` format. The
-    Each requested client is attempted once. When ``require_all`` is false,
-    return clients that remain connected and log unavailable clients.
+    Client names must use the ``<device>_wlan_client_<number>`` format. Each
+    requested client is attempted once. When ``require_all`` is false, return
+    clients that are connected after the attempt and log unavailable clients.
     """
     clients = list(client_devices)
     if not clients:

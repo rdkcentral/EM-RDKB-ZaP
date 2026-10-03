@@ -28,30 +28,39 @@ PHY_RATE_DROP_PERCENT = 50
 
 def test_em_fronthaul_phyrate_stability(initialize):
     """
-    Verify client TX/RX PHY rates remain within the allowed drop limit.
+    Verify client TX/RX PHY rates remain within the allowed drop limit,
+    following each client's current serving mesh device.
     """
     report_logger.print_test("Entering test_em_fronthaul_phyrate_stability")
     report_logger.print_step(
-        "STEP 1: Discover present WLAN clients and connect each client to a "
-        "present mesh-device BSSID"
+        "STEP 1: Discover present WLAN clients and attempt connection to "
+        "their owning device"
     )
     present_clients = device_utils.get_enabled_clients(initialize)
     if not present_clients:
         message = "No fronthaul clients are marked present in the database"
         report_logger.print_error(message)
         pytest.fail(message)
-    clients = connect_wlan_clients(
-        initialize, present_clients, require_all=False
-    )
-    if not clients:
-        message = "No present WLAN clients could be connected"
+    try:
+        clients = connect_wlan_clients(
+            initialize, present_clients, require_all=False
+        )
+    except Exception as err:
+        message = f"Unable to prepare fronthaul clients for PHY-rate monitoring: {err}"
         report_logger.print_error(message)
         pytest.fail(message)
-    skipped = [
+    unavailable = [
         f"{client}: connection unavailable"
         for client in present_clients
         if client not in clients
     ]
+    if unavailable:
+        message = (
+            "Unable to establish or preserve a present-mesh association for "
+            f"all configured WLAN clients: {unavailable}"
+        )
+        report_logger.print_error(message)
+        pytest.fail(message)
     report_logger.print_success(
         f"PASS: Connected clients before PHY-rate test: {', '.join(clients)}"
     )
@@ -70,36 +79,23 @@ def test_em_fronthaul_phyrate_stability(initialize):
             state = client_phy_rate(initialize, client)
             error = validate_phy_rate(state)
         except Exception as err:
-            skipped.append(f"{client}: baseline validation failed: {err}")
-            report_logger.print_info(
-                f"INFO: Skipping unreachable client '{client}' during baseline: {err}"
-            )
-            continue
+            message = f"Unable to capture baseline PHY rate for '{client}': {err}"
+            report_logger.print_error(message)
+            pytest.fail(message)
         if error:
-            skipped.append(f"{client}: baseline validation failed: {error}")
-            report_logger.print_info(
-                f"INFO: Skipping client '{client}' during baseline: {error}"
-            )
-            continue
+            message = f"Client '{client}' failed baseline PHY-rate validation: {error}"
+            report_logger.print_error(message)
+            pytest.fail(message)
         baseline_rates[client] = state
         report_logger.print_success(
             f"PASS: Client '{client}' baseline PHY rate: "
             f"TX {state['tx_mbps']:.1f} Mbps, RX {state['rx_mbps']:.1f} Mbps "
             f"on {state['host']}/{state['interface']}"
         )
-    clients = list(baseline_rates)
-    if not clients:
-        message = "No WLAN clients were reachable for baseline validation"
-        report_logger.print_error(message)
-        pytest.fail(message)
     report_logger.print_info(
-        f"INFO: Baseline captured for {len(clients)} client(s); "
-        f"skipped {len(skipped)} present client(s)"
+        f"INFO: Baseline captured for all {len(baseline_rates)} configured "
+        "present WLAN client(s)"
     )
-    for item in skipped:
-        report_logger.print_info(
-            f"INFO: Present fronthaul client not monitored: {item}"
-        )
 
     report_logger.print_step(
         "STEP 3: Sample each client's TX/RX PHY rates and compare them with "
@@ -130,7 +126,8 @@ def test_em_fronthaul_phyrate_stability(initialize):
                 pytest.fail(message)
             report_logger.print_success(
                 f"PASS: Client '{client}' PHY rate: TX {state['tx_mbps']:.1f} Mbps, "
-                f"RX {state['rx_mbps']:.1f} Mbps"
+                f"RX {state['rx_mbps']:.1f} Mbps on "
+                f"{state['host']}/{state['interface']}"
             )
         time.sleep(poll_interval_sec)
 
@@ -139,7 +136,12 @@ def test_em_fronthaul_phyrate_stability(initialize):
         "drop limit"
     )
     for client in clients:
-        state = client_phy_rate(initialize, client)
+        try:
+            state = client_phy_rate(initialize, client)
+        except Exception as err:
+            message = f"Final PHY-rate sample failed for '{client}': {err}"
+            report_logger.print_error(message)
+            pytest.fail(message)
         error = validate_phy_rate(state, baseline_rates[client], PHY_RATE_DROP_PERCENT)
         if error:
             message = f"Client '{client}' final PHY validation failed: {error}"
@@ -148,6 +150,7 @@ def test_em_fronthaul_phyrate_stability(initialize):
         report_logger.print_success(
             f"PASS: Client '{client}' final PHY rate: "
             f"TX {state['tx_mbps']:.1f} Mbps, "
-            f"RX {state['rx_mbps']:.1f} Mbps"
+            f"RX {state['rx_mbps']:.1f} Mbps on "
+            f"{state['host']}/{state['interface']}"
         )
     report_logger.print_test("Exiting test_em_fronthaul_phyrate_stability")
