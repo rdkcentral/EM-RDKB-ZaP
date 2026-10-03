@@ -384,4 +384,39 @@ def verify_extender_services(initialize, extender, deadline=None):
         ("onewifi", "ieee1905_em_agent", "em_agent"),
         deadline,
     ) 
-
+    
+def discover_macs(initialize):
+    """
+        Syntax: discover_macs(initialize)
+        Description: Discover 2G, 5G, and 6G fronthaul BSSIDs for the controller and all enabled extenders, validate that three BSSIDs are available for each device, and store the corresponding radio MAC addresses in the database.
+        Parameters: initialize - Testbed interface used to access devices and store discovered MAC addresses.
+        Return Value: None when radio MAC discovery is successful.
+        Example: discover_macs(initialize)
+        """
+    report_logger.print_info("Discovering radio MACs for controller and extenders")
+    try:
+        # Controller
+        devices = ["controller"]
+        # Enabled extenders
+        devices.extend(get_enabled_extenders(initialize))
+        report_logger.print_info(f"Devices found for MAC discovery: {devices}")
+        # Discover MACs for every device
+        for device in devices:
+            report_logger.print_info(f"Getting fronthaul BSSIDs for {device}")
+            bssids = initialize.get_fronthaul_bssids(device,"cli")
+            if len(bssids) < 3:
+                raise RuntimeError(f"Expected 3 BSSIDs for {device}, but found {len(bssids)}: {bssids}")
+            report_logger.print_info(f"{device} BSSIDs: {bssids}")
+            # 2G
+            initialize.db_obj.write_into_database(device,"2g_radio_mac",bssids[0])
+            # 5G
+            initialize.db_obj.write_into_database(device,"5g_radio_mac",bssids[1])
+            # 6G
+            initialize.db_obj.write_into_database(device,"6g_radio_mac",bssids[2])
+            report_logger.print_success(f"{device} 2G MAC: {bssids[0]}")
+            report_logger.print_success(f"{device} 5G MAC: {bssids[1]}")
+            report_logger.print_success(f"{device} 6G MAC: {bssids[2]}")
+    except Exception as e:
+        report_logger.print_error(f"Failed to discover radio MACs: {e}")
+        pytest.fail(f"Radio MAC discovery failed: {e}")
+        
