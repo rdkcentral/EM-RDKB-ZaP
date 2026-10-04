@@ -56,7 +56,7 @@ def test_stability_fronthaul_toggle_stress(initialize, common_setup):
             initialize.set_fronthaul_network_state("controller", "Home Network", enable=set_mld_status)
             report_logger.print_success(f"PASS: Successfully set MLD status to: {set_mld_status}")
         except Exception as e:
-            report_logger.print_error(f"Failed to set MLD status to: {set_mld_status}: {e}")
+            pytest.fail(f"Failed to set MLD status to: {set_mld_status}: {e}")
 
         fronthaul_toggle_current_count += 1
         time.sleep(FRONTHAUL_TOGGLE_WAITING_TIME)
@@ -78,5 +78,5 @@ def test_stability_fronthaul_toggle_stress(initialize, common_setup):
         initialize.set_fronthaul_network_state("controller", "Home Network", enable=True)
         report_logger.print_success(f"PASS: Successfully enabled MLD status for clearing any previous toggles")
     except Exception as e:
-        report_logger.print_error(f"Failed to enable MLD status for clearing any previous toggles: {e}")
+        pytest.fail(f"Failed to enable MLD status for clearing any previous toggles: {e}")
     report_logger.print_test(f"[{get_timestamp()}] Exiting test_stability_fronthaul_toggle_stress")

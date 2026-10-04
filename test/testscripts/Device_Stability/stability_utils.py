@@ -42,7 +42,7 @@ def common_setup(initialize):
             report_logger.print_info(f"Fronthaul is already enabled.")
             break
         else:
-            report_logger.print_info(f"Fronthaul is disabled, trying to enable it now.")
+            report_logger.print_error(f"Fronthaul is disabled, trying to enable it now.")
             initialize.set_fronthaul_network_state("controller", "Home Network", enable=True)
             fronthaul_enable_retries += 1
             time.sleep(10)

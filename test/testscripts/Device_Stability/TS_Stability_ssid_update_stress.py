@@ -65,14 +65,14 @@ def test_stability_ssid_update_stress(initialize, common_setup):
         ssid_update_current_count += 1
         ssid = initialize.get_random_ssid()
         report_logger.print_info(f"Iteration: {ssid_update_current_count}")
-        report_logger.print_step(f"step {step_count}.{sub_step_count}: Updating SSID to {ssid}")
+        report_logger.print_step(f"step {step_count}.{sub_step_count}: Updating SSID to {ssid} using RDKBCLI")
         try:
             initialize.set_ssid("controller", "mld_iface_index", ssid, 'gui')
             time.sleep(SSID_UPDATE_WAITING_TIME)
         except Exception as ERR:
-            pytest.fail(f"Failed to set SSID on controller: {ERR}")
+            pytest.fail(f"Failed to set SSID in RDKBCLI: {ERR}")
         else:
-            report_logger.print_success(f"PASS: SSID updated successfully on controller to {ssid}")
+            report_logger.print_success(f"PASS: SSID updated successfully in RDKBCLI to {ssid}")
         for device in devices[:]:
             try:
                 sub_step_count += 1

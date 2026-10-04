@@ -70,11 +70,15 @@ def test_stability_long_duration_validation(initialize, common_setup):
             if device != "controller":
                 report_logger.print_step(f"Step {step_count}.{sub_step_count}: Checking wireless backhaul status for {device}")
                 sub_step_count += 1
-                if not initialize.get_wireless_backhaul_connection_status(device):
-                    report_logger.print_error(f"[{get_timestamp()}] {device}: not connected to the backhaul.")
+                try:
+                    if not initialize.get_wireless_backhaul_connection_status(device):
+                        report_logger.print_error(f"[{get_timestamp()}] {device}: not connected to the backhaul.")
+                        devices.remove(device)
+                    else:
+                        report_logger.print_success(f"PASS: {device} is connected to the backhaul.")
+                except Exception as e:
+                    report_logger.print_error(f"[{get_timestamp()}] {device}: Error occurred while checking backhaul status: {e}")
                     devices.remove(device)
-                else:
-                    report_logger.print_success(f"PASS: {device} is connected to the backhaul.")
         time.sleep(30)
 
     step_count += 1
