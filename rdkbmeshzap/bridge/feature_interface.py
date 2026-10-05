@@ -287,7 +287,6 @@ class FeatureInterface(FeatureInterfaceModules):
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.start_service(device, service_name)
 
-
     def stop_service(self,
                     device: str,
                     service_name: str,

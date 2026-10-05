@@ -15,8 +15,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# If not stated otherwise in this file or this component LICENSE file the
+# following copyright and licenses apply:
+#
+# Copyright 2026 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from importlib.resources import path
 import re
 import shlex
+from paramiko import file
 from zaero.bridge.database_module import DatabaseModule
 from zaero.bridge.connection_modules import ConnectionModules
 from zaero.bridge.ui_modules import UiModules
@@ -303,7 +322,7 @@ class FeatureInterfaceCLI(DatabaseModule,
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
-        command = f"python3 -c \"import os, sys; print(os.path.exists(sys.argv[1]))\" {shlex.quote(file_path)}"
+        command = f"python3 -c \"import glob, sys; print(bool(glob.glob(sys.argv[1])))\" {shlex.quote(file_path)}"
         output, error = connection_obj.execute_command(command,
                                                    return_stderr=True)
         if error != '':
@@ -392,7 +411,13 @@ class FeatureInterfaceCLI(DatabaseModule,
             raise RuntimeError(
                 f"Command execution failed: {command}. stderr: {error.strip()}"
             )
-        return int(output.strip())
+        output = output.strip()
+        if not output:
+            raise RuntimeError(
+                f"No operating channel found for band {band} on device {device}. "
+                f"Command: {command}"
+            )
+        return int(output)
 
     def copy_file_to_remote(self,
                             device: str,
@@ -453,7 +478,6 @@ class FeatureInterfaceCLI(DatabaseModule,
             )
 
         return True
-
 
     def stop_service(self,
                     device: str,
