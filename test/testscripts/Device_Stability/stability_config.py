@@ -5,7 +5,7 @@ MAX_CPU_BASELINE = 20
 # Time to wait after SSID update, in seconds.
 SSID_UPDATE_WAITING_TIME = 100
 # Time to wait after channel update, in seconds.
-CHANNEL_UPDATE_WAITING_TIME = 60  
+CHANNEL_UPDATE_WAITING_TIME = 100  
 # Time to wait after fronthaul toggle, in seconds.
 FRONTHAUL_TOGGLE_WAITING_TIME = 100
 

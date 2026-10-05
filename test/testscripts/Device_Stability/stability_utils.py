@@ -36,10 +36,10 @@ def common_setup(initialize):
     """
     fronthaul_enable_retries = 0
     while True:
-        report_logger.print_info(f"Inside common_setup: checking fronthaul status..")
+        report_logger.print_step(f"Test Setup: checking fronthaul status..")
         fronthaul_status = initialize.get_mld_status("controller")
         if fronthaul_status:
-            report_logger.print_info(f"Fronthaul is already enabled.")
+            report_logger.print_success(f"Fronthaul is enabled.")
             break
         else:
             report_logger.print_error(f"Fronthaul is disabled, trying to enable it now.")
@@ -47,7 +47,9 @@ def common_setup(initialize):
             fronthaul_enable_retries += 1
             time.sleep(10)
             if fronthaul_enable_retries >= MAX_FRONTHAUL_ENABLE_RETRIES:
-                pytest.fail(f"common_setup: Failed to enable fronthaul after {MAX_FRONTHAUL_ENABLE_RETRIES} attempts.")
+                pytest.fail(f"RDKBCLI: Failed to enable fronthaul after {MAX_FRONTHAUL_ENABLE_RETRIES} attempts.")
+            else:
+                report_logger.print_info(f"Retrying to enable fronthaul (Attempt {fronthaul_enable_retries}/{MAX_FRONTHAUL_ENABLE_RETRIES})")
 
     monitoring_tool_path = Path(__file__).with_name("monitoring_tool.py")
     initialize.put_file("controller", str(monitoring_tool_path), "/nvram/")
@@ -56,12 +58,12 @@ def common_setup(initialize):
     report_logger.print_info(f"Common setup completed. Testbed devices: {devices}")
     yield devices
     # Cleanup code after the test is done
-    report_logger.print_info(f"Cleaning up after test.")
+    report_logger.print_step(f"Test Cleanup: Cleaning up after test.")
     initialize.execute_command("controller", "pkill -f monitoring_tool.py")
     for log_file in LOG_PATHS:
         if initialize.get_file_presence_status("controller", log_file):
             initialize.execute_command("controller", f"rm -f {log_file}")
-    report_logger.print_info(f"Cleanup completed.")
+    report_logger.print_success(f"Cleanup completed.")
 
 def get_timestamp() -> str:
     """
@@ -104,6 +106,9 @@ def analyse_device_log(csv_file):
     """
     with open(csv_file) as f:
         rows = list(csv.DictReader(f))
+
+    if not rows:
+        return None, None, None, None
 
     rss_values = [
         int(row["rss_kb"])
@@ -173,7 +178,9 @@ def log_analyzer(log_path, step_count, sub_step_count=1):
 
     report_logger.print_step(f"Step {step_count}.{sub_step_count}: Analyzing PID stability ")
     sub_step_count += 1
-    if pid_status:
+    if pid_status is None:
+        report_logger.print_error("controller: PID status unavailable.")
+    elif pid_status:
         report_logger.print_error(f"controller: PID Change Detected.")
     else:
         report_logger.print_success(f"PASS: [controller] PID is stable.")  
