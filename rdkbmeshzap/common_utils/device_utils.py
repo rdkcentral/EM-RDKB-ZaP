@@ -15,9 +15,126 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
 import time
 import pytest
 from rdkbmeshzap.common_utils import report_logger
+
+def parse_cpu_utilization_output(output: str) -> dict:
+    """
+    Syntax : parse_cpu_utilization_output(output)
+    Description : Parses CPU idle time and processes exceeding the CPU threshold.
+    Parameters :
+        output - Raw output from the `top` command.
+    Return Value: A dictionary containing idle, utilization, and high-CPU process data.
+    """
+    idle_match = re.search(
+        r"(?:%?Cpu\([^)]*\).*?(?P<cpu>[\d.]+)\s*id|"
+        r"\b(?P<idle>[\d.]+)%?\s*idle\b)",
+        output,
+        re.IGNORECASE,
+    )
+    if not idle_match:
+        raise ValueError("Could not find CPU idle percentage in top output")
+    idle_percent = float(idle_match.group("cpu") or idle_match.group("idle"))
+
+    lines = output.splitlines()
+    cpu_header = next(
+        (
+            fields
+            for line in lines
+            if "%CPU" in (fields := [value.upper() for value in line.split()])
+        ),
+        [],
+    )
+    high_cpu_processes = {}
+    if cpu_header:
+        cpu_column = next(
+            index for index, value in enumerate(cpu_header)
+            if value.upper() == "%CPU"
+        )
+        for line in lines:
+            fields = line.split()
+            if len(fields) <= cpu_column or not fields[0].isdigit():
+                continue
+            cpu_token = fields[cpu_column]
+            if not re.fullmatch(r"\d+(?:\.\d+)?%?", cpu_token):
+                continue
+            cpu_value = float(cpu_token.rstrip("%"))
+            if cpu_value > 50:
+                process_name = " ".join(fields[cpu_column + 1:])
+                high_cpu_processes[
+                    f"PID {fields[0]} ({process_name})"
+                ] = cpu_value
+
+    return {
+        "idle_percent": idle_percent,
+        "utilization_percent": 100.0 - idle_percent,
+        "high_cpu_processes": high_cpu_processes,
+    }
+
+def get_device_cpu_utilization_output(initialize, device: str) -> str:
+    """
+    Syntax : get_device_cpu_utilization_output(initialize, device)
+    Description : Fetches raw CPU utilization output for a device.
+    Parameters :
+        initialize - Testbed initialization object exposing feature APIs.
+        device - Name of the target device.
+    Return Value: Raw output from the device CPU utilization command.
+    """
+    if output := initialize.get_cpu_utilization(device):
+        return output
+    raise RuntimeError(f"top returned no output on {device}")
+
+def parse_memory_utilization_output(output: str) -> dict:
+    """
+    Syntax : parse_memory_utilization_output(output)
+    Description : Parses memory totals and percentages from `free -m` output.
+    Parameters :
+        output - Raw output from the `free -m` command.
+    Return Value: A dictionary containing total, used, available, and percentage values.
+    """
+    rows = [line.split() for line in output.splitlines() if line.split()]
+    header = next((row for row in rows if row[0].lower() == "total"), None)
+    values = next((row[1:] for row in rows if row[0].lower() == "mem:"), None)
+    if not header or not values or len(values) < len(header):
+        raise ValueError("Could not find a complete Mem row in free output")
+
+    columns = {
+        name.lower().rstrip(":"): float(value)
+        for name, value in zip(header, values)
+    }
+    total = columns.get("total")
+    used = columns.get("used")
+    if total is None or used is None or total <= 0:
+        raise ValueError("free output does not contain valid total and used values")
+    available = columns.get(
+        "available",
+        sum(
+            columns.get(name, 0.0)
+            for name in ("free", "buffers", "buff/cache", "cached")
+        ),
+    )
+    return {
+        "total_mb": total,
+        "used_mb": used,
+        "available_mb": available,
+        "used_percent": used / total * 100.0,
+        "available_percent": available / total * 100.0,
+    }
+
+def get_device_memory_utilization_output(initialize, device: str) -> str:
+    """
+    Syntax : get_device_memory_utilization_output(initialize, device)
+    Description : Fetches raw memory utilization output for a device.
+    Parameters :
+        initialize - Testbed initialization object exposing feature APIs.
+        device - Name of the target device.
+    Return Value: Raw output from the device memory utilization command.
+    """
+    if output := initialize.get_memory_utilization(device):
+        return output
+    raise RuntimeError(f"free returned no output on {device}")
 
 def validate_device_accessibility(initialize):
     """
@@ -56,11 +173,17 @@ def get_enabled_clients(initialize):
     Return Value: A list of enabled client device names.
     Example: get_enabled_clients(initialize)
     """
-    return [
-        device
-        for device in initialize.get_testbed_devices()
-        if "_wlan_client_" in device
-    ]
+    enabled_clients = []
+    for device in initialize.get_testbed_devices():
+        if "_wlan_client_" not in device:
+            continue
+        present = initialize.read_from_database(device, "device_present")
+        if present is None or (
+            isinstance(present, str)
+            and present.strip().lower() in {"true", "yes", "1", "on"}
+        ) or (not isinstance(present, str) and bool(present)):
+            enabled_clients.append(device)
+    return enabled_clients
 
 def normalize_security( value: str) -> str:
     """
@@ -261,39 +384,4 @@ def verify_extender_services(initialize, extender, deadline=None):
         ("onewifi", "ieee1905_em_agent", "em_agent"),
         deadline,
     ) 
-    
-def discover_macs(initialize):
-    """
-        Syntax: discover_macs(initialize)
-        Description: Discover 2G, 5G, and 6G fronthaul BSSIDs for the controller and all enabled extenders, validate that three BSSIDs are available for each device, and store the corresponding radio MAC addresses in the database.
-        Parameters: initialize - Testbed interface used to access devices and store discovered MAC addresses.
-        Return Value: None when radio MAC discovery is successful.
-        Example: discover_macs(initialize)
-        """
-    report_logger.print_info("Discovering radio MACs for controller and extenders")
-    try:
-        # Controller
-        devices = ["controller"]
-        # Enabled extenders
-        devices.extend(get_enabled_extenders(initialize))
-        report_logger.print_info(f"Devices found for MAC discovery: {devices}")
-        # Discover MACs for every device
-        for device in devices:
-            report_logger.print_info(f"Getting fronthaul BSSIDs for {device}")
-            bssids = initialize.get_fronthaul_bssids(device,"cli")
-            if len(bssids) < 3:
-                raise RuntimeError(f"Expected 3 BSSIDs for {device}, but found {len(bssids)}: {bssids}")
-            report_logger.print_info(f"{device} BSSIDs: {bssids}")
-            # 2G
-            initialize.db_obj.write_into_database(device,"2g_radio_mac",bssids[0])
-            # 5G
-            initialize.db_obj.write_into_database(device,"5g_radio_mac",bssids[1])
-            # 6G
-            initialize.db_obj.write_into_database(device,"6g_radio_mac",bssids[2])
-            report_logger.print_success(f"{device} 2G MAC: {bssids[0]}")
-            report_logger.print_success(f"{device} 5G MAC: {bssids[1]}")
-            report_logger.print_success(f"{device} 6G MAC: {bssids[2]}")
-    except Exception as e:
-        report_logger.print_error(f"Failed to discover radio MACs: {e}")
-        pytest.fail(f"Radio MAC discovery failed: {e}")
-        
+
