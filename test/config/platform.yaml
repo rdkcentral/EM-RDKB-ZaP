@@ -132,3 +132,17 @@ test_parameters:
         ssid_update_max_count: 100                              # Stability test Maximum number of SSID updates during the test
         channel_update_max_count: 100                           # Stability test Maximum number of channel updates during the test
         fronthaul_toggle_max_count: 100                         # Stability test Maximum number of fronthaul toggles during the test
+    scalesetup:
+      small:
+        enabled: true                                        # Enable the small scale setup
+        expected_agent_count: 2                              # Number of expected agents in the small scale setup
+        expected_client_count: 1                             # Number of expected clients in the small scale setup
+      medium:
+        enabled: false                                       # Enable the medium scale setup
+        expected_agent_count: 5                              # Number of expected agents in the medium scale setup
+        expected_client_count: 25                            # Number of expected clients in the medium scale setup
+      large:
+        enabled: false
+        expected_agent_count: 10                             # Number of expected agents in the large scale setup   
+        expected_client_count: 50                            # Number of expected clients in the large scale setup
+
