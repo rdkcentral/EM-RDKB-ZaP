@@ -16,37 +16,31 @@
 # limitations under the License.
 
 import time
+import re
 import pytest
 from rdkbmeshzap.common_utils import report_logger
 
-def validate_device_accessibility(initialize):
+def get_extender_parent_device(initialize, extender, devices):
     """
-    Validate SSH accessibility for every configured testbed device.
-    Parameters: initialize - Testbed initialization and device interface.
-    Return Value: A list of devices that failed accessibility validation.
-    Example: validate_device_accessibility(initialize)
+    Syntax: get_extender_parent_device(initialize, extender, devices)
+    Description: Identify the testbed device providing the extender's connected backhaul BSSID.
+    Parameters: initialize - Testbed interface; extender - Extender name; devices - Candidate parent devices.
+    Return Value: A tuple containing the parent device name and connected BSSID, or None values when unavailable.
+    Example: get_extender_parent_device(initialize, "extender1", ["controller", "extender1"])
     """
-    devices = initialize.get_testbed_devices()
-    failures = []
-    report_logger.print_info(
-        f"INFO: Validating accessibility of {len(devices)} configured devices"
-    )
+    link_output = initialize.get_iw_dev_link_info(extender, "wifi1.3")
+    match = re.search(r"Connected to\s+([0-9a-fA-F:]{17})", str(link_output), re.IGNORECASE)
+    if not match:
+        return None, None
+    bssid = match.group(1).lower()
     for device in devices:
-        report_logger.print_info(f"INFO: Connecting to {device}")
         try:
-            connected = initialize.connect_with_device(device)
-            if connected is False:
-                raise RuntimeError("connection API returned False")
-        except Exception as error:
-            failures.append(device)
-            report_logger.print_error(
-                f"{device} accessibility validation failed: {error}"
-            )
-        else:
-            report_logger.print_success(
-                f"{device} is accessible over SSH"
-            )
-    return failures
+            output = initialize.get_iw_dev_interface_info(device, "wifi1.1")
+        except Exception:
+            continue
+        if re.search(rf"\baddr\s+{re.escape(bssid)}\b", str(output), re.IGNORECASE):
+            return device, bssid
+    return None, bssid
 
 def get_enabled_clients(initialize):
     """
@@ -206,7 +200,7 @@ def verify_services(initialize, device, service_names, deadline=None):
     Description: Verify required services with retries bounded by an optional deadline.
     Parameters: initialize - Testbed interface; device - Device name; service_names - Services to verify;
                 deadline - Optional monotonic deadline.
-    Return Value: None when all services are active; raises pytest failure otherwise.
+    Return Value: True when all services are active, otherwise False after logging the error.
     Example: verify_services(initialize, "controller", ("onewifi",))
     """
     if not service_names:
@@ -221,7 +215,7 @@ def verify_services(initialize, device, service_names, deadline=None):
         try:
             for service_name in service_names:
                 initialize.verify_service_status(device, service_name)
-            return
+            return True
         except Exception as error:
             last_error = error
             remaining = deadline - time.monotonic()
@@ -229,8 +223,10 @@ def verify_services(initialize, device, service_names, deadline=None):
                 break
             time.sleep(min(2, remaining))
     if attempts == 0:
-        pytest.fail(f"{device}: service validation deadline expired before an attempt")
-    pytest.fail(f"{device}: services did not become active after {attempts} attempts: {last_error}")
+        report_logger.print_error(f"{device}: service validation deadline expired before an attempt")
+    else:
+        report_logger.print_error(f"{device}: services did not become active after {attempts} attempts: {last_error}")
+    return False
 
 def verify_controller_services(initialize, deadline=None):
     """
@@ -240,7 +236,7 @@ def verify_controller_services(initialize, deadline=None):
     Return Value: None when controller services are active.
     Example: verify_controller_services(initialize)
     """
-    verify_services(
+    return verify_services(
         initialize,
         "controller",
         ("onewifi", "ieee1905_em_agent", "ieee1905_em_ctrl", "em_ctrl"),
@@ -255,45 +251,44 @@ def verify_extender_services(initialize, extender, deadline=None):
     Return Value: None when extender services are active.
     Example: verify_extender_services(initialize, "extender1")
     """
-    verify_services(
+    return verify_services(
         initialize,
         extender,
         ("onewifi", "ieee1905_em_agent", "em_agent"),
         deadline,
     ) 
     
-def discover_macs(initialize):
+def retrieve_and_store_radio_macs(initialize):
     """
-        Syntax: discover_macs(initialize)
+        Syntax: retrieve_and_store_radio_macs(initialize)
         Description: Discover 2G, 5G, and 6G fronthaul BSSIDs for the controller and all enabled extenders, validate that three BSSIDs are available for each device, and store the corresponding radio MAC addresses in the database.
         Parameters: initialize - Testbed interface used to access devices and store discovered MAC addresses.
         Return Value: None when radio MAC discovery is successful.
-        Example: discover_macs(initialize)
+        Example: retrieve_and_store_radio_macs(initialize)
         """
-    report_logger.print_info("Discovering radio MACs for controller and extenders")
+    report_logger.print_title("Update the database with radio MAC addresses for the controller and enabled extenders")
     try:
         # Controller
         devices = ["controller"]
         # Enabled extenders
         devices.extend(get_enabled_extenders(initialize))
-        report_logger.print_info(f"Devices found for MAC discovery: {devices}")
-        # Discover MACs for every device
+        report_logger.print_title(f"Radio MAC retrieval and storage started for {len(devices)} device(s): {', '.join(devices)}")
         for device in devices:
-            report_logger.print_info(f"Getting fronthaul BSSIDs for {device}")
-            bssids = initialize.get_fronthaul_bssids(device,"cli")
+            report_logger.print_info(f"[{device}] Retrieving 2G, 5G, and 6G fronthaul BSSIDs")
+            bssids = initialize.get_fronthaul_bssids(device, "cli")
             if len(bssids) < 3:
-                raise RuntimeError(f"Expected 3 BSSIDs for {device}, but found {len(bssids)}: {bssids}")
-            report_logger.print_info(f"{device} BSSIDs: {bssids}")
-            # 2G
-            initialize.db_obj.write_into_database(device,"2g_radio_mac",bssids[0])
-            # 5G
-            initialize.db_obj.write_into_database(device,"5g_radio_mac",bssids[1])
-            # 6G
-            initialize.db_obj.write_into_database(device,"6g_radio_mac",bssids[2])
-            report_logger.print_success(f"{device} 2G MAC: {bssids[0]}")
-            report_logger.print_success(f"{device} 5G MAC: {bssids[1]}")
-            report_logger.print_success(f"{device} 6G MAC: {bssids[2]}")
+                report_logger.print_error(f"Expected 3 fronthaul BSSIDs for {device}, but found {len(bssids)}: {bssids}")
+                return False
+            radio_macs = {
+                "2g_radio_mac": bssids[0],
+                "5g_radio_mac": bssids[1],
+                "6g_radio_mac": bssids[2],
+            }
+            report_logger.print_info(f"[{device}] Fronthaul BSSIDs received: {bssids}")
+            for radio_key, mac_address in radio_macs.items():
+                initialize.db_obj.write_into_database(device, radio_key, mac_address)
+                report_logger.print_success(f"[{device}] Stored {radio_key} = {mac_address}")
+        report_logger.print_success(f"Successfully retrieved and stored radio MAC addresses in the database for {len(devices)} device(s)")
     except Exception as e:
-        report_logger.print_error(f"Failed to discover radio MACs: {e}")
-        pytest.fail(f"Radio MAC discovery failed: {e}")
-        
+        report_logger.print_error(f"Radio MAC retrieval and storage failed: {e}")        
+        return False

@@ -27,11 +27,15 @@ _WHITE_REPORT_STYLE = (
     "<style>"
     ".logwrapper, .logwrapper .log, "
     ".logwrapper .logexpander { background-color: #fff !important; }"
-    ".setup-accessibility { margin-bottom: 10px; }"
-    ".setup-accessibility summary { cursor: pointer; font-weight: bold; "
+    ".setup-accessibility, .global-test-setup, .setup-readiness { margin-bottom: 10px; }"
+    ".setup-accessibility summary, .global-test-setup summary, .setup-readiness summary { cursor: pointer; font-weight: bold; "
     "color: #0055aa; padding: 4px 0; }"
     "</style>"
 )
+
+def _format_report_message(message, label):
+    message = str(message).lstrip()
+    return message if message.startswith(label) else f"{label} {message}"
 
 def format_report_line(line):
     """
@@ -41,6 +45,7 @@ def format_report_line(line):
     Return Value: HTML span containing the formatted report line.
     Example: format_report_line("PASS: Capture completed")
     """
+    is_title = "\033[1m\033[30m" in line
     plain_line = _ANSI_ESCAPE.sub("", line)
     plain_line = re.sub(r"</?span[^>]*>", "", plain_line, flags=re.IGNORECASE)
     if plain_line.lstrip().lower().startswith(("entering test", "exiting test")):
@@ -49,6 +54,8 @@ def format_report_line(line):
         color, weight = "#007a8a", "bold"
     elif plain_line.lstrip().startswith(("Step", "STEP")):
         color, weight = "#8a5a00", "bold"
+    elif is_title:
+        color, weight = "black", "bold"
     elif "PASS:" in plain_line or plain_line.lstrip().startswith("Pass:"):
         color, weight = "green", "bold"
     elif (
@@ -113,6 +120,11 @@ def print_step(message):
     print(f"\033[1m\033[94m{message}\033[0m")
     return f'<span style="color:#0055aa; font-weight:bold;">{message}</span>'
 
+def print_title(message):
+    """Print a bold black report title."""
+    print(f"\033[1m\033[30m{message}\033[0m")
+    return f'<span style="color:black; font-weight:bold;">{message}</span>'
+
 def print_info(message):
     """
     Syntax: print_info(message)
@@ -121,8 +133,9 @@ def print_info(message):
     Return Value: Styled HTML for the message.
     Example: print_info("INFO: Capture started")
     """
-    print(f"\033[1m\033[96m{message}\033[0m")
-    return f'<span style="color:#007a8a; font-weight:bold;">{message}</span>'
+    formatted_message = _format_report_message(message, "INFO:")
+    print(f"\033[1m\033[96m{formatted_message}\033[0m")
+    return f'<span style="color:#007a8a; font-weight:bold;">{formatted_message}</span>'
 
 def print_test(message):
     """
@@ -143,8 +156,9 @@ def print_success(message):
     Return Value: Styled HTML for the passing message.
     Example: print_success("PASS: Capture completed")
     """
-    print(f"\033[92m{message}\033[0m")
-    return f'<span style="color:green; font-weight:bold;">{message}</span>'
+    formatted_message = _format_report_message(message, "PASS:")
+    print(f"\033[92m{formatted_message}\033[0m")
+    return f'<span style="color:green; font-weight:bold;">{formatted_message}</span>'
 
 def print_error(message, log_error=True):
     """
@@ -154,9 +168,7 @@ def print_error(message, log_error=True):
     Return Value: Styled HTML for the failure message.
     Example: print_error("FAIL: Capture was empty")
     """
-    formatted_message = (
-        message if message.lstrip().startswith("FAIL:") else f"FAIL: {message}"
-    )
+    formatted_message = _format_report_message(message, "FAIL:")
     print(f"\033[91m{formatted_message}\033[0m")
     if log_error:
         _error_logs.append(formatted_message)

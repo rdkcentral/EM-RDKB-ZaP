@@ -29,6 +29,8 @@ controller:
     mld_ifname: 'mld'                                       # Multi-Link Device interface name
     iperf_version: 3                                        # iperf version used for traffic testing
     default_ssid: private_ssid                              # Default Wi-Fi SSID
+    mesh_backhaul_ssid: mesh_backhaul                       # Mesh backhaul SSID
+    iot_ssids: iot_ssid                                     # IoT SSID
     passphrase_1: CHANGEME                                  # First Wi-Fi security passphrase
     passphrase_2: CHANGEME1                                 # Second Wi-Fi security passphrase
     controller_device_index: 1                              # Controller Device index

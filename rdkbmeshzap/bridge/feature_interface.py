@@ -56,6 +56,15 @@ class FeatureInterface(FeatureInterfaceModules):
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.get_iw_dev_interface_info(device, iface)
 
+    def get_iw_interface_details(
+        self, device: str, interface: str, method: str = 'cli') -> dict:
+        """
+        Return normalized details for a Wi-Fi interface from ``iw dev`` output.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_iw_interface_details(device, interface)
+
     def get_iw_dev_sta_dump(self, device: str, iface: str, method: str = 'cli') -> str:
         """
         Get `iw dev <interface> station dump` output for a device.

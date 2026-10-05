@@ -82,6 +82,41 @@ class FeatureInterfaceCLI(DatabaseModule,
             raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
         return str(output).strip()
 
+    def get_iw_interface_details(self, device: str, interface: str) -> dict:
+        """
+        Return normalized interface, link, MAC, and radio details from ``iw dev`` output.
+        """
+        output = self.get_iw_dev_interface_info(device, interface)
+        lines = [line.strip() for line in str(output or "").splitlines()]
+        fields = {
+            key: value.strip()
+            for line in lines if " " in line
+            for key, value in [line.split(" ", 1)]
+        }
+        link_ids = {
+            int(match.group(1))
+            for line in lines
+            if (match := re.match(r"- link ID\s+(\d+)\s+link addr\s+\S+", line))
+        }
+        link_macs = {}
+        for line in lines:
+            match = re.match(r"- link ID\s+(\d+)\s+link addr\s+(\S+)", line)
+            if match:
+                link_macs[int(match.group(1))] = match.group(2).lower()
+        radios = set()
+        for line in lines:
+            if line.startswith("Radios:"):
+                radios = {int(radio) for radio in line.split(":", 1)[1].split()}
+                break
+        return {
+            "device": device, "interface": interface,
+            "exists": f"Interface {interface}" in lines,
+            "ssid": fields.get("ssid", ""), "addr": fields.get("addr", "").lower(),
+            "type": fields.get("type", ""), "four_addr": fields.get("4addr:", ""),
+            "lines": lines,
+            "link_ids": link_ids, "link_macs": link_macs, "radios": radios,
+        }
+
     def get_iw_dev_sta_dump(self, device: str, iface: str) -> str:
         """
         Get `iw dev <interface> station dump` output for the device.

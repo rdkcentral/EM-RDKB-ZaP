@@ -81,6 +81,8 @@ def test_controller_recovery_extender_reconnection(initialize):
         )
         if isinstance(controller_result, Exception):
             raise controller_result
+        if controller_result is False:
+            pytest.fail("controller: services did not become active within the KPI")
 
         report_logger.print_step(
             "STEP 5: Verify all extenders in parallel for recovery and record recovery times"
@@ -194,7 +196,7 @@ def test_controller_recovery_extender_reconnection(initialize):
         topology_devices = ["controller", *extenders]
         for extender in recovered_extenders:
             try:
-                parent, bssid = cr_utils.get_extender_parent(
+                parent, bssid = device_utils.get_extender_parent_device(
                     initialize, extender, topology_devices
                 )
                 if parent:

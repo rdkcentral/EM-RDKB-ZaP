@@ -65,7 +65,7 @@ def test_controller_recovery_consecutive_reboots(initialize):
             cycle_start = time.monotonic()
             initialize.reboot_device("controller", method="cli")
             report_logger.print_info("INFO: Controller reboot initiated")
-            time.sleep(10)
+            time.sleep(30)
             controller_result = cr_utils.recover_device(
                 initialize,
                 "controller",
@@ -78,6 +78,10 @@ def test_controller_recovery_consecutive_reboots(initialize):
                 report_logger.print_error(
                     f"controller: recovery failed: {controller_result}"
                 )
+                continue
+            if controller_result is False:
+                cycle_success = False
+                report_logger.print_error("controller: services did not become active within the KPI")
                 continue
             if controller_result >= CONTROLLER_RECOVERY_KPI_SECONDS:
                 cycle_success = False
@@ -145,6 +149,12 @@ def test_controller_recovery_consecutive_reboots(initialize):
                     f"{extender}: recovery failed after controller cycle "
                     f"{cr_utils.REBOOT_CYCLES}: {recovery_result}"
                 )
+                continue
+            if recovery_result is False:
+                validation_errors.append(
+                    f"{extender}: services did not become active within the KPI"
+                )
+                report_logger.print_error(validation_errors[-1])
                 continue
             if recovery_result is None:
                 validation_errors.append(f"{extender}: recovery result is unavailable")
@@ -236,7 +246,7 @@ def test_controller_recovery_consecutive_reboots(initialize):
         topology_devices = ["controller", *extenders]
         for extender in recovered_extenders:
             try:
-                parent, bssid = cr_utils.get_extender_parent(
+                parent, bssid = device_utils.get_extender_parent_device(
                     initialize, extender, topology_devices
                 )
                 if parent:
