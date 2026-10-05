@@ -22,7 +22,6 @@ from stability_utils import *
 from datetime import datetime
 from rdkbmeshzap.common_utils import report_logger
 
-
 def test_stability_channel_change_stress(initialize, common_setup):
     """
     Test to verify the stability of channel updates over multiple iterations and ensure that all devices correctly reflect the updated channel.
@@ -35,7 +34,6 @@ def test_stability_channel_change_stress(initialize, common_setup):
         pytest.fail("channel_update_max_count must be greater than 0. please update the configuration \"channel_update_max_count\".")
     report_logger.print_info(f"Channel update max count: {channel_update_max_count}")
     report_logger.print_success("PASS: Successfully retrieved test parameter")
-    
     devices = common_setup
     channel_update_current_count = 0
     report_logger.print_step("Step 2: Starting channel update procedure")
@@ -51,11 +49,9 @@ def test_stability_channel_change_stress(initialize, common_setup):
             report_logger.print_error(f"Failed to retrieve current operating channel from the controller: {e}")
             pytest.fail(f"Failed to retrieve current operating channel from the controller: {e}")
         report_logger.print_success(f"PASS: Retrieved current operating channel from the controller: {operating_channel}")
-        
         sub_step_count += 1
         if initial_channel_number is None:
             initial_channel_number = operating_channel
-
         operating_channel_to_set = 6 if operating_channel != 6 else 1
         report_logger.print_step(f"Step{step_count}.{sub_step_count}: Setting operating channel to {operating_channel_to_set}")
         try:
@@ -64,8 +60,6 @@ def test_stability_channel_change_stress(initialize, common_setup):
             report_logger.print_error(f"Failed to set operating channel to {operating_channel_to_set}: {e}")
         else:
             report_logger.print_success(f"PASS: Successfully set operating channel to {operating_channel_to_set}")
-            
-
         channel_update_current_count += 1
         time.sleep(CHANNEL_UPDATE_WAITING_TIME)
         for device in devices[:]:
@@ -83,7 +77,6 @@ def test_stability_channel_change_stress(initialize, common_setup):
                 devices.remove(device)
         if not devices:
             break
-
     step_count += 1
     sub_step_count=1
     report_logger.print_step(f"Step {step_count}: Reverting channel number")
@@ -94,7 +87,6 @@ def test_stability_channel_change_stress(initialize, common_setup):
         report_logger.print_error(f"Failed to fetch current operating channel from the controller: {e}")
     else:
         report_logger.print_success(f"PASS: Fetched current operating channel from the controller: {operating_channel}")
-
     sub_step_count += 1
     if initial_channel_number is not None and initial_channel_number != operating_channel:
         try:

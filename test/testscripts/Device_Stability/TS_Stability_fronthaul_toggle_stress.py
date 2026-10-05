@@ -14,13 +14,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import pytest
 import time
 from stability_config import FRONTHAUL_TOGGLE_WAITING_TIME
 from stability_utils import *
 from datetime import datetime
 from rdkbmeshzap.common_utils import report_logger
-
 
 def test_stability_fronthaul_toggle_stress(initialize, common_setup):
     """
@@ -35,7 +35,6 @@ def test_stability_fronthaul_toggle_stress(initialize, common_setup):
         pytest.fail("fronthaul_toggle_max_count must be greater than 0. please update the configuration \"fronthaul_toggle_max_count\".")
     report_logger.print_info(f"Fronthaul toggle max count: {fronthaul_toggle_max_count}")
     report_logger.print_success("Successfully retrieved test parameter")
-
     fronthaul_toggle_current_count = 0
     report_logger.print_step("Step2: Starting fronthaul toggle procedure")
     step_count = 2
@@ -48,7 +47,6 @@ def test_stability_fronthaul_toggle_stress(initialize, common_setup):
         if initial_mld_status is None:
             initial_mld_status = current_mld_status
         report_logger.print_success(f"PASS: Retrieved current MLD status from the controller: {current_mld_status}")
-
         set_mld_status = not current_mld_status
         sub_step_count += 1
         report_logger.print_step(f"Step{step_count}.{sub_step_count}: Setting MLD status to: {set_mld_status}")
@@ -57,7 +55,6 @@ def test_stability_fronthaul_toggle_stress(initialize, common_setup):
             report_logger.print_success(f"PASS: Successfully set MLD status to: {set_mld_status}")
         except Exception as e:
             pytest.fail(f"Failed to set MLD status to: {set_mld_status}: {e}")
-
         fronthaul_toggle_current_count += 1
         time.sleep(FRONTHAUL_TOGGLE_WAITING_TIME)
         for device in devices[:]:
@@ -71,7 +68,6 @@ def test_stability_fronthaul_toggle_stress(initialize, common_setup):
                 report_logger.print_success(f"PASS: Fronthaul network profile toggle succeeded in {device}")
         if not devices:
             break
-
     step_count += 1
     report_logger.print_step(f"Step{step_count}: Enabling MLD status for clearing any previous toggles")
     try:

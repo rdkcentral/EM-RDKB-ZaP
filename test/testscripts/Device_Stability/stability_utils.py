@@ -106,10 +106,8 @@ def analyse_device_log(csv_file):
     """
     with open(csv_file) as f:
         rows = list(csv.DictReader(f))
-
     if not rows:
         return None, None, None, None
-
     rss_values = [
         int(row["rss_kb"])
         for row in rows
@@ -119,7 +117,6 @@ def analyse_device_log(csv_file):
         mem_percent = round(((rss_values[-1] - rss_values[0]) / rss_values[0]) * 100, 2)
     else:
         mem_percent = None
-
     cpu_values = [
         float(row["cpu_percent"])
         for row in rows
@@ -131,7 +128,6 @@ def analyse_device_log(csv_file):
     else:
         avg_cpu = None
         max_cpu = None
-
     initial_pid = rows[0]["pid"]
     pid_status = any(row["pid"] != initial_pid for row in rows[1:])
     return mem_percent,avg_cpu, max_cpu,pid_status
@@ -146,7 +142,6 @@ def log_analyzer(log_path, step_count, sub_step_count=1):
         sub_step_count - The current sub-step count in the test script.
     Return Value: None. It logs pass/fail messages for each analyzed log file.
     """
-
     report_logger.print_step(f"Step {step_count}: Analyzing log file: {log_path}")
     mem_usage,avg_cpu, max_cpu,pid_status = analyse_device_log(log_path)
     report_logger.print_step(f"Step {step_count}.{sub_step_count}: Analyzing memory usage ")
@@ -157,7 +152,6 @@ def log_analyzer(log_path, step_count, sub_step_count=1):
         report_logger.print_error(f"controller: High Memory Usage :{mem_usage}% variation detected.")
     else:
         report_logger.print_success(f"PASS: [controller] Memory usage normal : {mem_usage}% variation detected.")
-
     report_logger.print_step(f"Step {step_count}.{sub_step_count}: Analyzing Average CPU usage ")
     sub_step_count += 1
     if avg_cpu is None:
@@ -166,7 +160,6 @@ def log_analyzer(log_path, step_count, sub_step_count=1):
         report_logger.print_error(f"controller: High Average CPU Detected : {avg_cpu}% .")
     else:
         report_logger.print_success(f"PASS: [controller] Average CPU usage normal : {avg_cpu}%.")
-
     report_logger.print_step(f"Step {step_count}.{sub_step_count}: Analyzing Max CPU usage ")
     sub_step_count += 1
     if max_cpu is None:
@@ -175,7 +168,6 @@ def log_analyzer(log_path, step_count, sub_step_count=1):
         report_logger.print_error(f"controller: High Max CPU Detected : {max_cpu}% .")
     else:
         report_logger.print_success(f"PASS: [controller] Max CPU usage normal : {max_cpu}%.")
-
     report_logger.print_step(f"Step {step_count}.{sub_step_count}: Analyzing PID stability ")
     sub_step_count += 1
     if pid_status is None:

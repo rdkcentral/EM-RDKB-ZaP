@@ -135,7 +135,6 @@ def log_process(proc_name, data):
         writer = csv.writer(f)
         writer.writerow(data)
 
-
 def main():
     """
     Syntax : main()

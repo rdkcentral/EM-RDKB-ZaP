@@ -23,7 +23,6 @@ from stability_utils import *
 from datetime import datetime
 from rdkbmeshzap.common_utils import report_logger
 
-
 def test_stability_ssid_update_stress(initialize, common_setup):
     """
     Test to verify the stability of SSID updates over multiple iterations and ensure that all devices correctly reflect the updated SSID.
@@ -35,7 +34,6 @@ def test_stability_ssid_update_stress(initialize, common_setup):
     if ssid_update_max_count <= 0:
         pytest.fail("ssid_update_max_count must be greater than 0. please update the configuration \"ssid_update_max_count\".")
     report_logger.print_info(f"Retrieved ssid_update_max_count: {ssid_update_max_count}")
-
     ctrl_local_dir = initialize.read_from_database("controller", "local_log_directory")
     if ctrl_local_dir == "</replace/with/local/path>":
         pytest.fail("Local log directory  is not set. Please update the configuration \"local_log_directory\".")
@@ -44,11 +42,9 @@ def test_stability_ssid_update_stress(initialize, common_setup):
         pytest.fail(f"Local log directory {ctrl_local_dir} does not exist. Please create it or update the configuration.")
     report_logger.print_info(f"Local log directory {ctrl_local_dir} exists.")
     report_logger.print_success("PASS: Successfully retrieved local log directory and test parameters")
-
     report_logger.print_step("Step 2: Start monitor_service in controller")
     initialize.execute_command("controller", "python3 /nvram/monitoring_tool.py &")
     report_logger.print_success("PASS: Monitoring script started in controller")
-
     ssid_update_current_count = 0
     report_logger.print_step("Step3: Fetching initial SSID from controller")
     try:
@@ -56,7 +52,6 @@ def test_stability_ssid_update_stress(initialize, common_setup):
     except Exception as ERR:
         pytest.fail(f"Failed to get initial SSID from controller: {ERR}")
     report_logger.print_success(f"PASS: Initial SSID retrieved successfully: {initial_ssid}")
-
     report_logger.print_step("Step 4: Starting repeated SSID update procedure")
     step_count = 4
     sub_step_count = 0
@@ -85,7 +80,6 @@ def test_stability_ssid_update_stress(initialize, common_setup):
                 report_logger.print_success(f"PASS: SSID matched successfully in {device}")
         if not devices:
             break
-
     step_count += 1
     report_logger.print_step(f"Step {step_count}: Stopping monitoring script in controller")
     initialize.execute_command("controller", "pkill -f monitoring_tool.py")
@@ -94,7 +88,6 @@ def test_stability_ssid_update_stress(initialize, common_setup):
     ctrl_local_dir = os.path.join(ctrl_local_dir, "test_stability_ssid_update_stress_" + str(timestamp))
     if not os.path.exists(ctrl_local_dir):
         os.makedirs(ctrl_local_dir)
-
     step_count += 1
     sub_step_count = 0
     available_log_files = []
@@ -116,7 +109,6 @@ def test_stability_ssid_update_stress(initialize, common_setup):
         step_count += 1
         log_file_path = os.path.join(ctrl_local_dir, log_file)
         log_analyzer(log_file_path, step_count)
-
     step_count += 1
     report_logger.print_step(f"Step {step_count}: Restoring initial SSID on controller")
     try:

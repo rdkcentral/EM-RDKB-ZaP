@@ -22,7 +22,6 @@ from stability_utils import *
 from datetime import datetime
 from rdkbmeshzap.common_utils import report_logger
 
-
 def test_stability_long_duration_validation(initialize, common_setup):
     """
     Test to verify the stability of the system over a 24-hour period.
@@ -34,24 +33,20 @@ def test_stability_long_duration_validation(initialize, common_setup):
     if timeout <= 0:
         pytest.fail("long duration test timeout must be greater than 0. please update the configuration \"Endurance_test_duration_in_seconds\".")
     report_logger.print_info(f"Retrieved long duration stability test timeout: {timeout} seconds")
-
     ctrl_local_dir = initialize.read_from_database("controller", "local_log_directory")
     if ctrl_local_dir == "</replace/with/local/path>":
         pytest.fail("Local log directory  is not set. Please update the configuration \"local_log_directory\".")
     else:
         report_logger.print_info(f"Retrieved local_log_directory: {ctrl_local_dir}")
-        
     if not os.path.exists(ctrl_local_dir):
         pytest.fail(f"Local log directory {ctrl_local_dir} does not exist. Please create it or update the configuration.")
     else:
         report_logger.print_info(f"Local log directory {ctrl_local_dir} exists.")
     report_logger.print_success("PASS: Successfully retrieved local log directory and test duration")
-
     report_logger.print_step("Step 2: Start monitoring script in controller")
     initialize.execute_command("controller", "python3 /nvram/monitoring_tool.py &")
     time.sleep(5)
     report_logger.print_success("PASS: Monitoring script started in controller")
-
     start_time = time.time()
     report_logger.print_step("Step 3: Starting long duration stability check loop for verifying core dump and backhaul status")
     step_count = 3
@@ -65,7 +60,6 @@ def test_stability_long_duration_validation(initialize, common_setup):
         else:
             report_logger.print_success(f"PASS: No core dump found on controller.")
         sub_step_count += 1
-
         for device in devices[:]:
             if device != "controller":
                 report_logger.print_step(f"Step {step_count}.{sub_step_count}: Checking wireless backhaul status for {device}")
@@ -80,7 +74,6 @@ def test_stability_long_duration_validation(initialize, common_setup):
                     report_logger.print_error(f"[{get_timestamp()}] {device}: Error occurred while checking backhaul status: {e}")
                     devices.remove(device)
         time.sleep(30)
-
     step_count += 1
     report_logger.print_step(f"Step {step_count}: Stopping monitoring script in controller")
     initialize.execute_command("controller", "pkill -f monitoring_tool.py")
@@ -89,7 +82,6 @@ def test_stability_long_duration_validation(initialize, common_setup):
     ctrl_local_dir = os.path.join(ctrl_local_dir, "test_stability_long_duration_validation_" + str(timestamp))
     if not os.path.exists(ctrl_local_dir):
         os.makedirs(ctrl_local_dir)
-
     step_count += 1
     sub_step_count = 0
     available_log_files = []
