@@ -17,7 +17,7 @@
 
 import pytest
 from rdkbmeshzap.common_utils import device_utils, report_logger
-from rdkbmeshzap.common_utils.link_and_scale_stability_utils import get_scale_setup
+from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
 
 def test_em_scale_controller_agent_connectivity(initialize):
     """
@@ -32,7 +32,8 @@ def test_em_scale_controller_agent_connectivity(initialize):
         f"INFO: Discovered {len(agents)} configured scale devices: {agents}"
     )
     expected_agent_count = get_scale_setup(initialize)["expected_agent_count"]
-    actual_agent_count = len(agents)
+    presence = capture_agent_presence(initialize, agents)
+    actual_agent_count = presence["agent_count"]
     report_logger.print_step("STEP 2: Validate the configured scale device count")
     report_logger.print_info(
         f"INFO: Expected result: {expected_agent_count} configured scale devices"
@@ -41,11 +42,11 @@ def test_em_scale_controller_agent_connectivity(initialize):
         f"INFO: Observed result: {actual_agent_count} configured scale devices"
     )
     if actual_agent_count != expected_agent_count:
-        message = (
-            f"Expected {expected_agent_count} configured scale devices, "
-            f"but found {actual_agent_count}: {agents}"
+        report_logger.print_error(
+            f"Expected {expected_agent_count} connected agents, "
+            f"but found {actual_agent_count}: "
+            f"{sorted(presence['agents'])}"
         )
-        report_logger.print_error(message)
     else:
         report_logger.print_success(
             f"PASS: Found the expected {actual_agent_count} configured scale devices"

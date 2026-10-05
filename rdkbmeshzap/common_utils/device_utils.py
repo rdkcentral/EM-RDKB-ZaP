@@ -385,3 +385,75 @@ def verify_extender_services(initialize, extender, deadline=None):
         deadline,
     ) 
 
+def discover_macs(initialize):
+    """
+    Syntax: discover_macs(initialize)
+    Description:
+        Discover 2G, 5G, and 6G fronthaul BSSIDs for the controller
+        and all enabled extenders.
+        Compare every BSSID returned by get_fronthaul_bssids()
+        against the MAC addresses of wifi0, wifi1 and wifi2.
+        The order of BSSIDs returned by get_fronthaul_bssids()
+        is not assumed to match the interface order.
+        Store the validated MAC addresses in the database.
+    Parameters:
+        initialize - Testbed interface used to access devices.
+    Return Value:
+        None when radio MAC discovery is successful.
+    """
+    report_logger.print_info("Discovering radio MACs for controller and extenders")
+    try:
+        # Controller
+        devices = ["controller"]
+        # Enabled extenders
+        devices.extend(get_enabled_extenders(initialize))
+        report_logger.print_info(f"Devices found for MAC discovery: {devices}")
+        interfaces = ["wifi0", "wifi1", "wifi2"]
+        radio_db_keys = {
+            "wifi0": "2g_radio_mac",
+            "wifi1": "5g_radio_mac",
+            "wifi2": "6g_radio_mac"
+        }
+        for device in devices:
+            report_logger.print_info(f"Getting fronthaul BSSIDs for {device}")
+            bssids = initialize.get_fronthaul_bssids(device,"cli")
+            if len(bssids) < 3:
+                raise RuntimeError(f"Expected 3 BSSIDs for {device}, but found {len(bssids)}: {bssids}")
+            report_logger.print_info(f"{device} BSSIDs: {bssids}")
+            # Normalize BSSIDs
+            bssids = [
+                mac.strip().lower()
+                for mac in bssids]
+            interface_macs = {}
+            for iface in interfaces:
+                iw_output = initialize.get_iw_dev_interface_info(device,iface)
+                actual_mac = None
+                for line in iw_output.splitlines():
+                    line = line.strip()
+                    if line.startswith("addr "):
+                        actual_mac = line.split()[1].strip().lower()
+                        break
+                if actual_mac is None:
+                    raise RuntimeError(f"Could not find MAC address for {device} interface {iface}")
+                interface_macs[iface] = actual_mac
+            matched = {}
+            for bssid in bssids:
+                matching_interface = None
+                for iface, interface_mac in interface_macs.items():
+                    if bssid == interface_mac:
+                        matching_interface = iface
+                        break
+                if matching_interface is None:
+                    raise RuntimeError(f"{device}: BSSID {bssid} was not found in any radio interface. Interface MACs: {interface_macs}")
+                matched[matching_interface] = bssid
+            if len(matched) != 3:
+                raise RuntimeError(f"{device}: Expected 3 unique radio MAC matches, but found {len(matched)}. Matches: {matched}")
+            initialize.db_obj.write_into_database(device,"2g_radio_mac",matched["wifi0"])
+            initialize.db_obj.write_into_database(device,"5g_radio_mac",matched["wifi1"])
+            initialize.db_obj.write_into_database(device,"6g_radio_mac", matched["wifi2"])
+            report_logger.print_info(f"{device} 2G MAC: {matched['wifi0']}")
+            report_logger.print_info(f"{device} 5G MAC: {matched['wifi1']}")
+            report_logger.print_info(f"{device} 6G MAC: {matched['wifi2']}")
+    except Exception as e:
+        report_logger.print_error(f"Failed to discover radio MACs: {e}")
+        pytest.fail(f"Radio MAC discovery failed: {e}") 

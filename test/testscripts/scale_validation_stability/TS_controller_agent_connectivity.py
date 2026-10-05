@@ -17,15 +17,7 @@
 
 from rdkbmeshzap.common_utils import device_utils, report_logger
 import time
-
-from rdkbmeshzap.common_utils.link_and_scale_stability_utils import (
-    POLL_INTERVAL_SEC,
-    TEST_DURATION_SEC,
-    backhaul_interfaces,
-    capture_topology,
-    compare_agent_presence,
-    get_scale_setup,
-)
+from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
 
 def test_em_scale_controller_agent_stability(initialize):
     """
@@ -54,7 +46,7 @@ def test_em_scale_controller_agent_stability(initialize):
             report_logger.print_error(f"Device '{agent}' reachability check failed: {err}")
 
     report_logger.print_step("STEP 3: Capture the baseline topology")
-    baseline = capture_topology(initialize, agents)
+    baseline = capture_agent_presence(initialize, agents)
     report_logger.print_info(f"INFO: Baseline topology snapshot: {baseline}")
     baseline_mismatches = compare_agent_presence(
         expected_agent_count, baseline, baseline
@@ -63,28 +55,12 @@ def test_em_scale_controller_agent_stability(initialize):
         report_logger.print_error(
             f"Baseline topology validation failed: {baseline_mismatches}"
         )
-
-    report_logger.print_step("STEP 4: Verify every agent has an active backhaul")
-    for agent in agents:
-        try:
-            interfaces = backhaul_interfaces(initialize, agent)
-            if not any(
-                initialize.get_wireless_backhaul_connection_status(
-                    agent, interface
-                )
-                for interface in interfaces
-            ):
-                report_logger.print_error(f"Device '{agent}' backhaul is not active")
-            report_logger.print_success(f"PASS: Device '{agent}' backhaul active")
-        except Exception as err:
-            report_logger.print_error(f"Device '{agent}' backhaul check failed: {err}")
-
-    report_logger.print_step("STEP 5: Monitor topology and backhaul stability")
+    report_logger.print_step("STEP 4: Monitor agent presence stability")
     end_time = time.time() + TEST_DURATION_SEC
     poll_count = 0
     while time.time() < end_time:
         poll_count += 1
-        current = capture_topology(initialize, agents)
+        current = capture_agent_presence(initialize, agents)
         mismatches = compare_agent_presence(
             expected_agent_count, baseline, current
         )
@@ -118,24 +94,10 @@ def test_em_scale_controller_agent_stability(initialize):
         if remaining_time > 0:
             time.sleep(min(POLL_INTERVAL_SEC, remaining_time))
 
-    final = capture_topology(initialize, agents)
+    final = capture_agent_presence(initialize, agents)
     final_mismatches = compare_agent_presence(
         expected_agent_count, baseline, final
     )
     if final_mismatches:
         report_logger.print_error(f"Final topology mismatch: {final_mismatches}")
-    report_logger.print_step("STEP 6: Verify final backhaul activity")
-    for agent in agents:
-        try:
-            interfaces = backhaul_interfaces(initialize, agent)
-            if not any(
-                initialize.get_wireless_backhaul_connection_status(
-                    agent, interface
-                )
-                for interface in interfaces
-            ):
-                report_logger.print_error(f"Device '{agent}' backhaul is not active")
-            report_logger.print_success(f"PASS: Device '{agent}' backhaul active")
-        except Exception as err:
-            report_logger.print_error(f"Device '{agent}' backhaul check failed: {err}")
     report_logger.print_test("Exiting test_em_scale_controller_agent_stability")

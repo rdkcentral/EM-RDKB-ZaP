@@ -37,6 +37,7 @@ def test_em_fronthaul_link_stability(initialize):
     if not present_clients:
         message = "No fronthaul clients are marked present in the database"
         report_logger.print_error(message)
+        pytest.fail(message)
     try:
         clients = connect_wlan_clients(
             initialize, present_clients, require_all=False

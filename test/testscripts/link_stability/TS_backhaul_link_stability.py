@@ -29,6 +29,7 @@ def test_em_backhaul_link_stability(initialize):
     if not agents:
         message = "No backhaul agents are marked present in the database"
         report_logger.print_error(message)
+        pytest.fail(message)
     interval = POLL_INTERVAL_SEC
     duration = TEST_DURATION_SEC
     interfaces = {}

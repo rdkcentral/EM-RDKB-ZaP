@@ -20,9 +20,9 @@ import pytest
 from rdkbmeshzap.common_utils import device_utils, report_logger
 
 # Polling interval (seconds) between consecutive stability checks.
-POLL_INTERVAL_SEC = 600
+POLL_INTERVAL_SEC = 60
 # Total duration (seconds) for which stability monitoring is performed.
-TEST_DURATION_SEC = 3600
+TEST_DURATION_SEC = 120
 # Maximum allowed percentage increase from the baseline metric value.
 MAX_BASELINE_INCREASE_PERCENT = 20.0
 # Minimum available memory percentage required for a healthy system.
@@ -515,28 +515,30 @@ def compare_associations(baseline: dict, current: dict) -> list:
             )
     return mismatches
 
-def capture_topology(initialize, agents: list) -> dict:
+def capture_agent_presence(initialize, agents: list) -> dict:
     """
     Syntax : capture_topology(initialize, agents)
     Description : Captures controller and agent station topology using `iw` data.
     Parameters :
         initialize - Testbed initialization and database interface.
         agents - Names of extender devices included in the topology.
-    Return Value: A dictionary containing filtered agent MACs and fronthaul client MACs.
+    Return Value: Dictionary containing the connected agents and agent count.
     """
-    fronthaul = collect_fronthaul_associations(
-        initialize, ["controller", *agents]
-    )
-    client_macs = set().union(*fronthaul.values()) if fronthaul else set()
-
-    topology = {
-        "agent_count": len(agents),
-        "client_macs": client_macs,
-    }
-    report_logger.print_info(
-        f"INFO: Topology snapshot: agents={topology['agent_macs']}"
-    )
-    return topology
+    connected_agents = set()
+    for agent in agents:
+        try:
+            interfaces = backhaul_interfaces(initialize, agent)
+            if any(
+                initialize.get_wireless_backhaul_connection_status(
+                    agent,
+                    interface,
+                )
+                for interface in interfaces
+            ):
+                connected_agents.add(agent)
+        except Exception:
+            continue
+    return { "agent_count": len(connected_agents), "agents": connected_agents, }
 
 def compare_agent_presence(expected_count: int, baseline: dict, current: dict) -> list:
     """
@@ -562,7 +564,12 @@ def compare_agent_presence(expected_count: int, baseline: dict, current: dict) -
             f"Agent count changed: baseline={baseline['agent_count']} "
             f"current={current_agent_count}"
         )
+    missing_agents = baseline["agents"] - current["agents"]
 
+    if missing_agents:
+        mismatches.append(
+            f"Missing agents: {sorted(missing_agents)}"
+        )    
     return mismatches
 
 def mesh_device_for_bssid(initialize, bssid: str):

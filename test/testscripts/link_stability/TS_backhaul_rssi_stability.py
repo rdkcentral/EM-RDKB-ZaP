@@ -29,6 +29,7 @@ def test_em_backhaul_rssi_stability(initialize):
     if not agents:
         message = "No backhaul agents are marked present in the database"
         report_logger.print_error(message)
+        pytest.fail(message)
     interval = POLL_INTERVAL_SEC
     duration = TEST_DURATION_SEC
     baseline = {}
@@ -76,7 +77,7 @@ def test_em_backhaul_rssi_stability(initialize):
     poll = 0
     while time.time() - start < duration:
         poll += 1
-        poll_failure = 1
+        poll_failure = 0
         for (agent, interface), initial_rssi in baseline.items():
             try:
                 state = backhaul_state(initialize, agent, interface)
