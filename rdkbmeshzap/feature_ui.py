@@ -15,6 +15,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# If not stated otherwise in this file or this component LICENSE file the
+# following copyright and licenses apply:
+#
+# Copyright 2026 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from zaero.bridge.database_module import DatabaseModule
 import zaero.utils.zi_logger as zi_logger
 
@@ -398,6 +415,7 @@ class FeatureUi(DatabaseModule):
             raise Exception(f"Timeout while toggling profile: {profile}")
         except Exception as ERR:
             zi_logger.log(f"Failed to toggle profile {profile}: {ERR}")
+            raise
             
     def ui_get_input_value(self, profile, field):
         zi_logger.print_context()
