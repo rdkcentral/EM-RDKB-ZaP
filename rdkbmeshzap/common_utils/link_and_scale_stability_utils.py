@@ -20,9 +20,9 @@ import pytest
 from rdkbmeshzap.common_utils import device_utils, report_logger
 
 # Polling interval (seconds) between consecutive stability checks.
-POLL_INTERVAL_SEC = 60
+POLL_INTERVAL_SEC = 600
 # Total duration (seconds) for which stability monitoring is performed.
-TEST_DURATION_SEC = 120
+TEST_DURATION_SEC = 3600
 # Maximum allowed percentage increase from the baseline metric value.
 MAX_BASELINE_INCREASE_PERCENT = 20.0
 # Minimum available memory percentage required for a healthy system.
