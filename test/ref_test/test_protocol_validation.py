@@ -25,7 +25,7 @@ from packet_analyzer.ieee1905_utils import *
 from packet_analyzer.protocol_validation import *
 
 
-def test_config_ssid(initialize,protocol_validation,request):
+def test_config_ssid(initialize,request):
     ssid = initialize.get_random_ssid()
     initialize.set_ssid("controller", "mld_iface_index", ssid, 'gui')
     for i in range(1, 31):
