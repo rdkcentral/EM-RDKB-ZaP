@@ -172,7 +172,7 @@ def pytest_html_results_summary(prefix, summary, postfix):
 		)
 
 
-@pytest.fixture
+@pytest.fixture(scope="function", autouse=True)
 def protocol_validation(request, initialize):
 	capture_name = f"{request.node.name}.pcap"
 	report_logger.print_step("========== Start Frame Capture ==========")
