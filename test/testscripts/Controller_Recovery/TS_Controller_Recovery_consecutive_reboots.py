@@ -39,9 +39,7 @@ def test_controller_recovery_consecutive_reboots(initialize):
     capture_validation_errors = []
 
     try:
-        report_logger.print_step(
-            f"STEP 1: Start IEEE 1905 capture on enabled extenders: {extenders}"
-        )
+        report_logger.print_step(f"STEP 1: Start IEEE 1905 capture on enabled extenders: {extenders}")
         for index, extender in enumerate(extenders, start=1):
             capture_names[extender] = device_utils.start_capture(
                 initialize,
@@ -54,10 +52,7 @@ def test_controller_recovery_consecutive_reboots(initialize):
         report_logger.print_success("PASS: Packet capture started on all enabled extenders")
 
         for cycle in range(1, cr_utils.REBOOT_CYCLES + 1):
-            report_logger.print_step(
-                f"STEP {cycle + 1}: Reboot the controller for recovery cycle "
-                f"{cycle}/{cr_utils.REBOOT_CYCLES} and measure recovery time"
-            )
+            report_logger.print_step(f"STEP {cycle + 1}: Reboot the controller for recovery cycle {cycle}/{cr_utils.REBOOT_CYCLES} and measure recovery time")
             report_logger.print_info(
                 f"INFO: Executing controller recovery cycle {cycle}/{cr_utils.REBOOT_CYCLES}"
             )
@@ -106,9 +101,7 @@ def test_controller_recovery_consecutive_reboots(initialize):
         extender_threads = []
         final_cycle_start = cycle_start
 
-        report_logger.print_step(
-            f"STEP 7: Check extender reachability after controller cycle {cr_utils.REBOOT_CYCLES}"
-        )
+        report_logger.print_step(f"STEP 7: Check extender reachability after controller cycle {cr_utils.REBOOT_CYCLES}")
         for index, extender in enumerate(extenders, start=1):
             thread = threading.Thread(
                 target=cr_utils.recover_device,
@@ -129,15 +122,11 @@ def test_controller_recovery_consecutive_reboots(initialize):
             "INFO: All extender recovery threads have completed"
         )
 
-        report_logger.print_step(
-            "STEP 8: Identify recovered extenders and validate their recovery KPI"
-        )
+        report_logger.print_step("STEP 8: Identify recovered extenders and validate their recovery KPI")
         recovered_extenders = []
         validation_errors = []
         for index, extender in enumerate(extenders, start=1):
-            report_logger.print_step(
-                f"STEP 8.{index}: Validate {extender} recovery and reachability"
-            )
+            report_logger.print_step(f"STEP 8.{index}: Validate {extender} recovery and reachability")
             recovery_result = extender_results.get(extender)
             if isinstance(recovery_result, BaseException):
                 recovery_errors[extender] = recovery_result
@@ -186,22 +175,16 @@ def test_controller_recovery_consecutive_reboots(initialize):
                 + "; ".join(validation_errors)
             )
 
-        report_logger.print_step(
-            "STEP 9: Wait for topology packets to propagate before stopping captures"
-        )
+        report_logger.print_step("STEP 9: Wait for topology packets to propagate before stopping captures")
         time.sleep(60)
         report_logger.print_info(
             "INFO: Topology propagation wait completed before capture validation"
         )
 
-        report_logger.print_step(
-            "STEP 10: Stop and collect captures from recovered extenders"
-        )
+        report_logger.print_step("STEP 10: Stop and collect captures from recovered extenders")
         packets_by_extender = {}
         for index, extender in enumerate(recovered_extenders, start=1):
-            report_logger.print_step(
-                f"STEP 10.{index}: Stop and collect capture for {extender}"
-            )
+            report_logger.print_step(f"STEP 10.{index}: Stop and collect capture for {extender}")
             try:
                 local_path = device_utils.stop_and_collect_capture(
                     initialize, extender, capture_names[extender]
@@ -219,9 +202,7 @@ def test_controller_recovery_consecutive_reboots(initialize):
         for index, (extender, local_path) in enumerate(
             packets_by_extender.items(), start=1
         ):
-            report_logger.print_step(
-                f"STEP 11.{index}: Validate topology traffic for {extender}"
-            )
+            report_logger.print_step(f"STEP 11.{index}: Validate topology traffic for {extender}")
             try:
                 packets = reassemble_packets(local_path)
                 queries = check_message_presence(packets, MSG_TYPE_AP_TOPOLOGY_QUERY) or []
@@ -240,9 +221,7 @@ def test_controller_recovery_consecutive_reboots(initialize):
                 capture_validation_errors.append(error_message)
                 report_logger.print_error(error_message)
 
-        report_logger.print_step(
-            "STEP 12: Verify each recovered extender parent using iw dev wifi1.3 link output"
-        )
+        report_logger.print_step("STEP 12: Verify each recovered extender parent using iw dev wifi1.3 link output")
         topology_devices = ["controller", *extenders]
         for extender in recovered_extenders:
             try:

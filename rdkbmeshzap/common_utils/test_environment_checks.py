@@ -42,6 +42,78 @@ def validate_device_accessibility(initialize):
             report_logger.print_success(f"{device} is accessible over SSH")
     return validation_result
 
+def retrieve_and_store_radio_macs(initialize):
+    """
+    Syntax: retrieve_and_store_radio_macs(initialize)
+    Description:
+        Discover 2G, 5G, and 6G fronthaul BSSIDs for the controller
+        and all enabled extenders.
+        Match every BSSID returned by get_fronthaul_bssids() against
+        the MAC addresses of wifi0, wifi1, and wifi2, then store the
+        validated radio MAC addresses in the database.
+    Parameters:
+        initialize - Testbed interface used to access devices.
+    Return Value:
+        None on success; False when retrieval or validation fails.
+    """
+    report_logger.print_title("Update the database with radio MAC addresses for the controller and enabled extenders")
+    try:
+        # Controller
+        devices = ["controller"]
+        # Enabled extenders
+        devices.extend(device_utils.get_enabled_extenders(initialize))
+        report_logger.print_title(f"Radio MAC retrieval and storage started for {len(devices)} device(s): {', '.join(devices)}")
+        interfaces = ["wifi0", "wifi1", "wifi2"]
+        radio_db_keys = {
+            "wifi0": "2g_radio_mac",
+            "wifi1": "5g_radio_mac",
+            "wifi2": "6g_radio_mac"
+        }
+        for device in devices:
+            report_logger.print_info(f"[{device}] Retrieving 2G, 5G, and 6G fronthaul BSSIDs")
+            bssids = initialize.get_fronthaul_bssids(device, "cli")
+            if len(bssids) < 3:
+                report_logger.print_error(f"Expected 3 fronthaul BSSIDs for {device}, but found {len(bssids)}: {bssids}")
+                return False
+            report_logger.print_info(f"[{device}] Fronthaul BSSIDs received: {bssids}")
+            bssids = [
+                mac.strip().lower()
+                for mac in bssids]
+            interface_macs = {}
+            for iface in interfaces:
+                iw_output = initialize.get_iw_dev_interface_info(device,iface)
+                actual_mac = None
+                for line in iw_output.splitlines():
+                    line = line.strip()
+                    if line.startswith("addr "):
+                        actual_mac = line.split()[1].strip().lower()
+                        break
+                if actual_mac is None:
+                    raise RuntimeError(f"Could not find MAC address for {device} interface {iface}")
+                interface_macs[iface] = actual_mac
+            matched = {}
+            for bssid in bssids:
+                matching_interface = None
+                for iface, interface_mac in interface_macs.items():
+                    if bssid == interface_mac:
+                        matching_interface = iface
+                        break
+                if matching_interface is None:
+                    raise RuntimeError(f"{device}: BSSID {bssid} was not found in any radio interface. Interface MACs: {interface_macs}")
+                matched[matching_interface] = bssid
+            if len(matched) != 3:
+                raise RuntimeError(f"{device}: Expected 3 unique radio MAC matches, but found {len(matched)}. Matches: {matched}")
+            initialize.db_obj.write_into_database(device,"2g_radio_mac",matched["wifi0"])
+            initialize.db_obj.write_into_database(device,"5g_radio_mac",matched["wifi1"])
+            initialize.db_obj.write_into_database(device,"6g_radio_mac", matched["wifi2"])
+            report_logger.print_success(f"[{device}] Stored 2g_radio_mac = {matched['wifi0']}")
+            report_logger.print_success(f"[{device}] Stored 5g_radio_mac = {matched['wifi1']}")
+            report_logger.print_success(f"[{device}] Stored 6g_radio_mac = {matched['wifi2']}")
+        report_logger.print_success(f"Successfully retrieved and stored radio MAC addresses in the database for {len(devices)} device(s)")
+    except Exception as e:
+        report_logger.print_error(f"Radio MAC retrieval and storage failed: {e}")
+        return False
+
 def validate_mld0_vap_configurations(initialize):
     """
     Syntax: validate_mld0_vap_configurations(initialize)
@@ -223,7 +295,7 @@ def validate_mesh_service_status(initialize):
     """
     report_logger.print_title("Environment Check 6: Validate mesh services on all enabled devices")
     validation_result = True
-    report_logger.print_info("INFO: Validating controller services")
+    report_logger.print_info("INFO: Validating services on controller")
     if device_utils.verify_controller_services(initialize) is False:
         validation_result = False
     else:

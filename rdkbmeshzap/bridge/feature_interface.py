@@ -15,6 +15,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# If not stated otherwise in this file or this component LICENSE file the
+# following copyright and licenses apply:
+#
+# Copyright 2026 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from rdkbmeshzap.bridge.feature_interface_modules import FeatureInterfaceModules
 import zaero.utils.zi_logger as zi_logger
 
@@ -56,15 +73,6 @@ class FeatureInterface(FeatureInterfaceModules):
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.get_iw_dev_interface_info(device, iface)
 
-    def get_iw_interface_details(
-        self, device: str, interface: str, method: str = 'cli') -> dict:
-        """
-        Return normalized details for a Wi-Fi interface from ``iw dev`` output.
-        """
-        zi_logger.print_context()
-        iface_obj = self.get_feature_interface_module_object(method)
-        return iface_obj.get_iw_interface_details(device, interface)
-
     def get_iw_dev_sta_dump(self, device: str, iface: str, method: str = 'cli') -> str:
         """
         Get `iw dev <interface> station dump` output for a device.
@@ -80,6 +88,15 @@ class FeatureInterface(FeatureInterfaceModules):
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.get_iw_dev_link_info(device, iface)
+
+    def get_iw_interface_details(
+        self, device: str, interface: str, method: str = 'cli') -> dict:
+        """
+        Return normalized details for a Wi-Fi interface from ``iw dev`` output.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_iw_interface_details(device, interface)
 
     def get_cpu_utilization(self, device: str, method: str = 'cli') -> str:
         """

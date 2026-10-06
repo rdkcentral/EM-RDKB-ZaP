@@ -20,28 +20,6 @@ import re
 import pytest
 from rdkbmeshzap.common_utils import report_logger
 
-def get_extender_parent_device(initialize, extender, devices):
-    """
-    Syntax: get_extender_parent_device(initialize, extender, devices)
-    Description: Identify the testbed device providing the extender's connected backhaul BSSID.
-    Parameters: initialize - Testbed interface; extender - Extender name; devices - Candidate parent devices.
-    Return Value: A tuple containing the parent device name and connected BSSID, or None values when unavailable.
-    Example: get_extender_parent_device(initialize, "extender1", ["controller", "extender1"])
-    """
-    link_output = initialize.get_iw_dev_link_info(extender, "wifi1.3")
-    match = re.search(r"Connected to\s+([0-9a-fA-F:]{17})", str(link_output), re.IGNORECASE)
-    if not match:
-        return None, None
-    bssid = match.group(1).lower()
-    for device in devices:
-        try:
-            output = initialize.get_iw_dev_interface_info(device, "wifi1.1")
-        except Exception:
-            continue
-        if re.search(rf"\baddr\s+{re.escape(bssid)}\b", str(output), re.IGNORECASE):
-            return device, bssid
-    return None, bssid
-
 def get_enabled_clients(initialize):
     """
     Syntax: get_enabled_clients(initialize)
@@ -257,76 +235,25 @@ def verify_extender_services(initialize, extender, deadline=None):
         ("onewifi", "ieee1905_em_agent", "em_agent"),
         deadline,
     ) 
-    
-def retrieve_and_store_radio_macs(initialize):
+
+def get_extender_parent_device(initialize, extender, devices):
     """
-    Syntax: discover_macs(initialize)
-    Description:
-        Discover 2G, 5G, and 6G fronthaul BSSIDs for the controller
-        and all enabled extenders.
-        Compare every BSSID returned by get_fronthaul_bssids()
-        against the MAC addresses of wifi0, wifi1 and wifi2.
-        The order of BSSIDs returned by get_fronthaul_bssids()
-        is not assumed to match the interface order.
-        Store the validated MAC addresses in the database.
-    Parameters:
-        initialize - Testbed interface used to access devices.
-    Return Value:
-        None when radio MAC discovery is successful.
+    Syntax: get_extender_parent_device(initialize, extender, devices)
+    Description: Identify the testbed device providing the extender's connected backhaul BSSID.
+    Parameters: initialize - Testbed interface; extender - Extender name; devices - Candidate parent devices.
+    Return Value: A tuple containing the parent device name and connected BSSID, or None values when unavailable.
+    Example: get_extender_parent_device(initialize, "extender1", ["controller", "extender1"])
     """
-    report_logger.print_info("Discovering radio MACs for controller and extenders")
-    try:
-        # Controller
-        devices = ["controller"]
-        # Enabled extenders
-        devices.extend(get_enabled_extenders(initialize))
-        report_logger.print_info(f"Devices found for MAC discovery: {devices}")
-        interfaces = ["wifi0", "wifi1", "wifi2"]
-        radio_db_keys = {
-            "wifi0": "2g_radio_mac",
-            "wifi1": "5g_radio_mac",
-            "wifi2": "6g_radio_mac"
-        }
-        for device in devices:
-            report_logger.print_info(f"[{device}] Retrieving 2G, 5G, and 6G fronthaul BSSIDs")
-            bssids = initialize.get_fronthaul_bssids(device, "cli")
-            if len(bssids) < 3:
-                raise RuntimeError(f"Expected 3 BSSIDs for {device}, but found {len(bssids)}: {bssids}")
-            report_logger.print_info(f"{device} BSSIDs: {bssids}")
-            # Normalize BSSIDs
-            bssids = [
-                mac.strip().lower()
-                for mac in bssids]
-            interface_macs = {}
-            for iface in interfaces:
-                iw_output = initialize.get_iw_dev_interface_info(device,iface)
-                actual_mac = None
-                for line in iw_output.splitlines():
-                    line = line.strip()
-                    if line.startswith("addr "):
-                        actual_mac = line.split()[1].strip().lower()
-                        break
-                if actual_mac is None:
-                    raise RuntimeError(f"Could not find MAC address for {device} interface {iface}")
-                interface_macs[iface] = actual_mac
-            matched = {}
-            for bssid in bssids:
-                matching_interface = None
-                for iface, interface_mac in interface_macs.items():
-                    if bssid == interface_mac:
-                        matching_interface = iface
-                        break
-                if matching_interface is None:
-                    raise RuntimeError(f"{device}: BSSID {bssid} was not found in any radio interface. Interface MACs: {interface_macs}")
-                matched[matching_interface] = bssid
-            if len(matched) != 3:
-                raise RuntimeError(f"{device}: Expected 3 unique radio MAC matches, but found {len(matched)}. Matches: {matched}")
-            initialize.db_obj.write_into_database(device,"2g_radio_mac",matched["wifi0"])
-            initialize.db_obj.write_into_database(device,"5g_radio_mac",matched["wifi1"])
-            initialize.db_obj.write_into_database(device,"6g_radio_mac", matched["wifi2"])
-            report_logger.print_info(f"{device} 2G MAC: {matched['wifi0']}")
-            report_logger.print_info(f"{device} 5G MAC: {matched['wifi1']}")
-            report_logger.print_info(f"{device} 6G MAC: {matched['wifi2']}")
-    except Exception as e:
-        report_logger.print_error(f"Failed to discover radio MACs: {e}")
-        pytest.fail(f"Radio MAC discovery failed: {e}") 
+    link_output = initialize.get_iw_dev_link_info(extender, "wifi1.3")
+    match = re.search(r"Connected to\s+([0-9a-fA-F:]{17})", str(link_output), re.IGNORECASE)
+    if not match:
+        return None, None
+    bssid = match.group(1).lower()
+    for device in devices:
+        try:
+            output = initialize.get_iw_dev_interface_info(device, "wifi1.1")
+        except Exception:
+            continue
+        if re.search(rf"\baddr\s+{re.escape(bssid)}\b", str(output), re.IGNORECASE):
+            return device, bssid
+    return None, bssid

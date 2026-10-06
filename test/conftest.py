@@ -15,6 +15,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# If not stated otherwise in this file or this component LICENSE file the
+# following copyright and licenses apply:
+#
+# Copyright 2026 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import io
 import pytest
 import time
@@ -26,7 +43,7 @@ import zaero
 from zaero.utils import zi_logger
 from zaero.utils.database import Database
 from packet_analyzer.protocol_validation import common_protocol_validation
-from rdkbmeshzap.common_utils import device_utils, report_logger, test_environment_checks
+from rdkbmeshzap.common_utils import report_logger, test_environment_checks
 
 _setup_sections = {
 	"setup_accessibility": "",
@@ -70,14 +87,18 @@ def validate_setup_accessibility(initialize):
 
 @pytest.fixture(scope="session", autouse=True)
 def update_runtime_database(initialize, validate_setup_accessibility):
+	global _setup_failure
 	captured_output = io.StringIO()
 	with redirect_stdout(captured_output):
-		device_utils.retrieve_and_store_radio_macs(initialize)
+		database_update_result = test_environment_checks.retrieve_and_store_radio_macs(initialize)
 	_setup_sections["database_update"] = captured_output.getvalue()
 	print(_setup_sections["database_update"], end="")
+	if database_update_result is False:
+		_setup_failure = "Runtime Database Configuration Update failed"
 
 @pytest.fixture(scope="session", autouse=True)
 def verify_test_environment(initialize, update_runtime_database):
+	global _setup_failure
 	validation_result = True
 	failed_checks = []
 	captured_output = io.StringIO()
@@ -101,16 +122,20 @@ def verify_test_environment(initialize, update_runtime_database):
 				failed_checks.append(f"{check.__name__}: {error}")
 	_setup_sections["test_environment_check"] = captured_output.getvalue()
 	print(_setup_sections["test_environment_check"], end="")
-	if validation_result is False:
-		global _setup_failure
-		_setup_failure = "Test Environment Check failed: " + "; ".join(failed_checks)
+	if validation_result is False or _setup_failure:
+		failure_messages = failed_checks
+		if validation_result is False:
+			failure_messages.append("Test Environment Check failed")
+		if _setup_failure:
+			failure_messages.append(_setup_failure)
+		_setup_failure = "; ".join(failure_messages)
 		pytest.exit(_setup_failure, returncode=1)
 	initialize.setup_validated = True
 
 @pytest.fixture(scope="function", autouse=True)
 def test_setup(initialize, verify_test_environment):
 	if not getattr(initialize, "setup_validated", False):
-		pytest.skip("Global setup validation did not pass")
+		pytest.skip("Test Environment validation did not pass")
 
 	initialize.set_sniffer_log_location("controller", initialize.pcap_log_dir)
 	playwright_started = browser_started = False
@@ -214,14 +239,10 @@ def pytest_html_results_summary(prefix, summary, postfix):
 			"</details>"
 		)
 		if section_name == "test_environment_check" and _setup_failure:
-			failure_prefix = "Test Environment Check failed:"
-			failed_scenarios = _setup_failure.removeprefix(failure_prefix).strip()
 			postfix.append(
 				f'<div style="margin:10px 0;">'
-				f'<strong style="color:red;">{failure_prefix}</strong> '
-				f'<strong style="color:black;">{escape(failed_scenarios)}</strong></div>'
+				f'<strong style="color:red;">{escape(_setup_failure)}</strong></div>'
 			)
-
 
 @pytest.fixture
 def protocol_validation(request, initialize):
