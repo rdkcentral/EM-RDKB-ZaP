@@ -90,9 +90,12 @@ def recover_device(initialize, device, started_at, results, step):
         recovery_kpi = get_controller_recovery_kpi(initialize)
         deadline = started_at + recovery_kpi
         if device == "controller":
-            device_utils.verify_controller_services(initialize, deadline)
+            services_active = device_utils.verify_controller_services(initialize, deadline)
         else:
-            device_utils.verify_extender_services(initialize, device, deadline)
+            services_active = device_utils.verify_extender_services(initialize, device, deadline)
+        if not services_active:
+            report_logger.print_error(f"{device}: services did not become active within {recovery_kpi}s KPI")
+            return False
         recovery_time = time.monotonic() - started_at
         if recovery_time >= recovery_kpi:
             raise RuntimeError(
@@ -133,41 +136,3 @@ def validate_topology_capture(packets, extender, extender_al_mac=None):
                 f"PASS: {message_name} was found in the recovery capture for {extender}"
             )
 
-def get_parent_device_by_backhaul_bssid(initialize, devices, bssid):
-    """
-    Syntax: get_parent_device_by_backhaul_bssid(initialize, devices, bssid)
-    Description: Return the device whose backhaul interface owns the BSSID.
-    Parameters: initialize - Testbed interface; devices - Devices to inspect; bssid - Backhaul BSSID.
-    Return Value: Matching device name, or None.
-    Example: get_parent_device_by_backhaul_bssid(initialize, devices, bssid)
-    """
-    normalized_bssid = (bssid or "").lower()
-    for device in devices:
-        try:
-            output = initialize.get_iw_dev_interface_info(device, "wifi1.1")
-        except Exception:
-            continue
-        if re.search(
-            rf"\baddr\s+{re.escape(normalized_bssid)}\b",
-            str(output),
-            re.IGNORECASE,
-        ):
-            return device
-    return None
-
-def get_extender_parent(initialize, extender, devices):
-    """
-    Syntax: get_extender_parent(initialize, extender, devices)
-    Description: Return the parent device associated with the extender.
-    Parameters: initialize - Testbed interface; extender - Extender name; devices - Devices to inspect.
-    Return Value: A parent-device and BSSID tuple, or (None, None).
-    Example: get_extender_parent(initialize, "extender1", devices)
-    """
-    link_output = initialize.get_iw_dev_link_info(extender, "wifi1.3")
-    match = re.search(
-        r"Connected to\s+([0-9a-fA-F:]{17})", str(link_output), re.IGNORECASE
-    )
-    if not match:
-        return None, None
-    bssid = match.group(1).lower()
-    return get_parent_device_by_backhaul_bssid(initialize, devices, bssid), bssid

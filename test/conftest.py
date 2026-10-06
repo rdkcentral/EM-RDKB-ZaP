@@ -15,8 +15,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# If not stated otherwise in this file or this component LICENSE file the
+# following copyright and licenses apply:
+#
+# Copyright 2026 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import io
 import pytest
 import time
+from contextlib import redirect_stdout
 from html import escape
 from pathlib import Path
 
@@ -24,9 +43,14 @@ import zaero
 from zaero.utils import zi_logger
 from zaero.utils.database import Database
 from packet_analyzer.protocol_validation import common_protocol_validation
-from rdkbmeshzap.common_utils import device_utils, report_logger
+from rdkbmeshzap.common_utils import report_logger, test_environment_checks
 
-_setup_output = ""
+_setup_sections = {
+	"setup_accessibility": "",
+	"database_update": "",
+	"test_environment_check": "",
+}
+_setup_failure = ""
 
 @pytest.fixture(scope="session", autouse=True)
 def initialize():
@@ -45,25 +69,73 @@ def initialize():
 	zaero_obj.pcap_log_dir = pcap_log_dir
 	yield zaero_obj
 
-
 @pytest.fixture(scope="session", autouse=True)
 def validate_setup_accessibility(initialize):
-	failures = device_utils.validate_device_accessibility(initialize)
-	if failures:
-		pytest.fail(
-			"Accessibility validation failed for: " + ", ".join(failures)
-		)
+	captured_output = io.StringIO()
+	with redirect_stdout(captured_output):
+		accessibility_result = test_environment_checks.validate_device_accessibility(initialize)
+	_setup_sections["setup_accessibility"] = captured_output.getvalue()
+	print(_setup_sections["setup_accessibility"], end="")
+	if accessibility_result is False:
+		global _setup_failure
+		_setup_failure = "Setup Accessibility validation failed"
+		pytest.exit(_setup_failure, returncode=1)
 	initialize.accessibility_validated = True
 	report_logger.print_success(
 		"PASS: All configured devices passed accessibility validation"
 	)
-	device_utils.discover_macs(initialize)
 
+@pytest.fixture(scope="session", autouse=True)
+def update_runtime_database(initialize, validate_setup_accessibility):
+	global _setup_failure
+	captured_output = io.StringIO()
+	with redirect_stdout(captured_output):
+		database_update_result = test_environment_checks.retrieve_and_store_radio_macs(initialize)
+	_setup_sections["database_update"] = captured_output.getvalue()
+	print(_setup_sections["database_update"], end="")
+	if database_update_result is False:
+		_setup_failure = "Runtime Database Configuration Update failed"
+
+@pytest.fixture(scope="session", autouse=True)
+def verify_test_environment(initialize, update_runtime_database):
+	global _setup_failure
+	validation_result = True
+	failed_checks = []
+	captured_output = io.StringIO()
+	with redirect_stdout(captured_output):
+		report_logger.print_title("Test Environment Prerequisite Check")
+		for check in (
+			test_environment_checks.validate_mld0_vap_configurations,
+			test_environment_checks.validate_mesh_and_iot_vap_configurations,
+			test_environment_checks.validate_mld0_links_to_private_vaps,
+			test_environment_checks.verify_mesh_backhaul_interfaces,
+			test_environment_checks.validate_extender_parent_connections,
+			test_environment_checks.validate_mesh_service_status,
+		):
+			try:
+				check_result = check(initialize)
+				if check_result is False:
+					validation_result = False
+					failed_checks.append(check.__name__)
+			except Exception as error:
+				validation_result = False
+				failed_checks.append(f"{check.__name__}: {error}")
+	_setup_sections["test_environment_check"] = captured_output.getvalue()
+	print(_setup_sections["test_environment_check"], end="")
+	if validation_result is False or _setup_failure:
+		failure_messages = failed_checks
+		if validation_result is False:
+			failure_messages.append("Test Environment Check failed")
+		if _setup_failure:
+			failure_messages.append(_setup_failure)
+		_setup_failure = "; ".join(failure_messages)
+		pytest.exit(_setup_failure, returncode=1)
+	initialize.setup_validated = True
 
 @pytest.fixture(scope="function", autouse=True)
-def test_setup(initialize):
-	if not getattr(initialize, "accessibility_validated", False):
-		pytest.skip("Setup accessibility validation did not pass")
+def test_setup(initialize, verify_test_environment):
+	if not getattr(initialize, "setup_validated", False):
+		pytest.skip("Test Environment validation did not pass")
 
 	initialize.set_sniffer_log_location("controller", initialize.pcap_log_dir)
 	playwright_started = browser_started = False
@@ -99,25 +171,17 @@ def test_setup(initialize):
 			except Exception:
 				pass
 
-
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_setup(item):
 	report_logger.clear_error_logs()
 	zi_logger.clear_error_logs()
 	yield
 
-
-@pytest.hookimpl(hookwrapper=True)
+@pytest.hookimpl(hookwrapper=True, trylast=True)
 def pytest_runtest_makereport(item, call):
-	global _setup_output
 	outcome = yield
 	report = outcome.get_result()
-	if report.when == "setup" and not _setup_output:
-		_setup_output = "\n".join(
-			content
-			for section_name, content in getattr(report, "sections", [])
-			if section_name in ("Captured stdout setup", "Captured log setup")
-		)
+	if report.when == "setup":
 		return
 	if report.when != "call":
 		return
@@ -159,18 +223,26 @@ def pytest_html_results_table_row(report, cells):
 
 def pytest_html_results_summary(prefix, summary, postfix):
 	prefix.append(report_logger.get_report_style())
-	if _setup_output:
-		setup_html = "<br>".join(
+	for section_name, title in (
+		("setup_accessibility", "Setup Accessibility Validation"),
+		("database_update", "Runtime Database Configuration Update"),
+		("test_environment_check", "Test Environment Prerequisite Check"),
+	):
+		section_html = "<br>".join(
 			report_logger.format_report_line(line)
-			for line in _setup_output.splitlines()
+			for line in _setup_sections[section_name].splitlines()
 		)
 		postfix.append(
-			"<details class=\"setup-accessibility\">"
-			"<summary>Setup Accessibility Validation</summary>"
-			f"<div>{setup_html}</div>"
+			f'<details class="{section_name}" style="margin-bottom:10px;">'
+			f'<summary><strong style="color:#003366;">{title}</strong></summary>'
+			f"<div>{section_html}</div>"
 			"</details>"
 		)
-
+		if section_name == "test_environment_check" and _setup_failure:
+			postfix.append(
+				f'<div style="margin:10px 0;">'
+				f'<strong style="color:red;">{escape(_setup_failure)}</strong></div>'
+			)
 
 @pytest.fixture(scope="function", autouse=True)
 def protocol_validation(request, initialize):
