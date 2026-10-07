@@ -38,6 +38,9 @@ def test_em_scale_controller_agent_stability(initialize):
 
     report_logger.print_step("STEP 2: Verify every agent responds to an iw query")
     for agent in agents:
+        report_logger.print_step(
+            f" STEP 2.1 : Checking backhaul status for device '{agent}'"
+            )
         try:
             if not initialize.get_iw_dev_info(agent):
                 report_logger.print_error(f"Device '{agent}' returned empty iw output")
@@ -73,6 +76,9 @@ def test_em_scale_controller_agent_stability(initialize):
         )
         for agent in agents:
             try:
+                report_logger.print_step(
+                    f" STEP 5.1 : Checking backhaul status for device '{agent}'"
+                )
                 interfaces = backhaul_interfaces(initialize, agent)
                 if not any(
                     initialize.get_wireless_backhaul_connection_status(

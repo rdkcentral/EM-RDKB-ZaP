@@ -22,7 +22,16 @@ from rdkbmeshzap.common_utils import report_logger
 
 def get_client_bssids(client, ssid, ssh):
     """
-    Return scan results matching the requested SSID.
+    Syntax: get_client_bssids(client, ssid, ssh)
+    Description: 
+        Scans for the specified SSID on the client device and returns
+        the matching BSSID(s).
+    Parameters:
+        client : Client device name.
+        ssid : SSID to search for.
+        ssh : SSH handler object. 
+    Return Value:
+        list: Matching BSSID(s) in lowercase format.
     """
     ssh.switch_connection(client)
     result = ssh.execute_command(
@@ -39,7 +48,12 @@ def get_client_bssids(client, ssid, ssh):
 
 def get_connected_client_bssid(initialize, client):
     """
-    Return the BSSID currently used by a client Wi-Fi interface.
+    Syntax: get_connected_client_bssid(initialize, client)
+    Description: Returns the BSSID currently associated with the client's Wi-Fi interface.
+    Parameters: 
+        initialize : Test initialization object.
+        client : Client device name.
+    Return Value: str | None: Connected BSSID in lowercase format, or None if unavailable.
     """
     try:
         return initialize.get_association_status(client, "cli").lower()
@@ -48,7 +62,11 @@ def get_connected_client_bssid(initialize, client):
 
 def get_present_device_bssids(initialize):
     """
-    Return fronthaul BSSIDs belonging to present mesh devices.
+    Syntax: get_present_device_bssids(initialize)
+    Description: Returns the fronthaul BSSIDs of all present mesh devices in the topology. 
+    Parameters: 
+        initialize : Test initialization object.
+    Return Value: set: Fronthaul BSSIDs of present mesh devices in lowercase format.
     """
     bssids = set()
     for device in initialize.get_testbed_devices():
@@ -75,8 +93,18 @@ def get_present_device_bssids(initialize):
 def connect_client_to_bssid(
     initialize, client, ssid, passphrase, bssid, ssh, allowed_bssids=None
 ):
-    """
-    Connect a client Wi-Fi interface to a specific BSSID.
+    """"
+    Syntax: connect_client_to_bssid( initialize, client, ssid, passphrase, bssid, ssh, allowed_bssids=None
+    Description: Connects a client to the specified BSSID and verifies the resulting association. 
+    Parameters:
+        initialize : Test initialization object.
+        client : Client device name.
+        ssid : Target SSID.
+        passphrase : Wi-Fi passphrase.
+        bssid : Preferred BSSID to connect.
+        ssh : SSH handler object.
+        allowed_bssids : Optional set/list of acceptable BSSIDs.
+    Return Value: None
     """
     client_password = initialize.read_from_database(client, "password")
     wifi_interface = initialize.read_from_database(client, "data_iface")
@@ -113,7 +141,14 @@ def connect_clients_to_extender(
     initialize, client_devices, extender, allowed_bssids=None
 ):
     """
-    Connect WLAN clients to an extender's visible fronthaul BSSID.
+    Syntax: connect_clients_to_extender(initialize, client_devices, extender,allowed_bssids=None) 
+    Description: Connects WLAN clients to a visible fronthaul BSSID advertised by the specified extender and verifies successful association.
+     Parameters:
+        initialize : Test initialization object.
+        client_devices : List of client device names.
+        extender : Target extender device name.
+        allowed_bssids : Optional set/list of acceptable BSSIDs.
+    Return Value: None
     """
     ssh = initialize.get_connection_module_object("ssh")
     ssid, passphrase = initialize.get_fronthaul_credentials("controller")
@@ -163,10 +198,14 @@ def connect_clients_to_extender(
 
 def connect_wlan_clients(initialize, client_devices, require_all=True):
     """
-    Connect clients to their owning device's fronthaul BSSID.
-    Client names must use the ``<device>_wlan_client_<number>`` format. Each
-    requested client is attempted once. When ``require_all`` is false, return
-    clients that are connected after the attempt and log unavailable clients.
+    Syntax: connect_wlan_clients(initialize, client_devices,require_all=True)
+    Description: Connects WLAN clients to the fronthaul BSSID of their owning mesh device and verifies successful association.
+    Parameters:
+        initialize : Test initialization object.
+        client_devices : List of WLAN client device names.
+        require_all : If True, all clients must connect successfully.
+        If False, returns only successfully connected clients.
+    Return Value: list: Connected client devices.
     """
     clients = list(client_devices)
     if not clients:

@@ -38,9 +38,7 @@ def test_em_scale_controller_agent_connectivity(initialize):
     report_logger.print_info(
         f"INFO: Expected result: {expected_agent_count} configured scale devices"
     )
-    report_logger.print_info(
-        f"INFO: Observed result: {actual_agent_count} configured scale devices"
-    )
+
     if actual_agent_count != expected_agent_count:
         report_logger.print_error(
             f"Expected {expected_agent_count} connected agents, "
