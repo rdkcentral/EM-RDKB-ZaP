@@ -328,6 +328,8 @@ class FeatureInterfaceDE(DatabaseModule,
         return output.partition('Value')[2].lstrip(' :').split()[0]
 
     def get_controller_id(self, device: str) -> str:
+        """
+        Get the Controller ID for the specific device."""
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)

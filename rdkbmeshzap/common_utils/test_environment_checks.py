@@ -311,6 +311,12 @@ def validate_mesh_service_status(initialize):
     return validation_result
 
 def retrieve_and_store_device_indexes(initialize):
+    """
+    Syntax: retrieve_and_store_device_indexes(initialize)
+    Description: Retrieve device indexes for the controller and all enabled extenders, then store them in the database.
+    Parameters: initialize - Testbed initialization and device interface.
+    Return Value: None on success; False when retrieval or storage fails.
+    Example: retrieve_and_store_device_indexes(initialize)"""
     report_logger.print_title("Update the database with device indexes for the controller and enabled extenders")
     # Device Index
     devices = ["controller"] + device_utils.get_enabled_extenders(initialize)
