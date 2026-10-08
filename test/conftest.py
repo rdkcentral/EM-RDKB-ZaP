@@ -98,7 +98,7 @@ def update_runtime_database(initialize, validate_setup_accessibility):
 		with redirect_stdout(captured_output):
 			result = step(initialize)
 		print(captured_output.getvalue()[start:], end="")
-		if result is False and _setup_failure is None:
+		if result is False and not _setup_failure:
 			_setup_failure = "Runtime Database Configuration Update failed"
 	_setup_sections["database_update"] = captured_output.getvalue()
 
