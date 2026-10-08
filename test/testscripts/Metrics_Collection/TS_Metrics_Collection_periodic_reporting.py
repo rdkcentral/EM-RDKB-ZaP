@@ -31,7 +31,7 @@ def test_ap_metrics_periodic_reporting(initialize):
 
     try:
         report_logger.print_step(
-            "Step 1: Identify enabled controller and extender AL MAC addresses to validate the packet capture"
+            "STEP 1: Identify enabled controller and extender AL MAC addresses to validate the packet capture"
         )
         expected_device_macs = device_utils.get_enabled_device_al_macs(initialize)
         report_logger.print_success(
@@ -39,7 +39,7 @@ def test_ap_metrics_periodic_reporting(initialize):
         )
 
         report_logger.print_step(
-            "Step 2: Configure the AP Metrics reporting interval to "
+            "STEP 2: Configure the AP Metrics reporting interval to "
             f"{mc_utils.REPORTING_INTERVAL}s"
         )
         initialize.set_ap_metrics_reporting_interval("controller", mc_utils.REPORTING_INTERVAL, apply_scope="all")
@@ -47,7 +47,7 @@ def test_ap_metrics_periodic_reporting(initialize):
             f"{mc_utils.REPORTING_INTERVAL}s")
 
         report_logger.print_step(
-            "Step 3: Verify the configured AP Metrics reporting interval"
+            "STEP 3: Verify the configured AP Metrics reporting interval"
         )
         configured_interval = initialize.get_ap_metrics_reporting_interval("controller")
         if str(configured_interval).strip() != str(mc_utils.REPORTING_INTERVAL):
@@ -66,7 +66,7 @@ def test_ap_metrics_periodic_reporting(initialize):
         capture_started = True
 
         report_logger.print_step(
-            "Step 5: Wait for the observation period while capturing IEEE 1905 traffic "
+            "STEP 5: Wait for the observation period while capturing IEEE 1905 traffic "
             f"for {mc_utils.OBSERVATION_SECONDS}s"
         )
         time.sleep(mc_utils.OBSERVATION_SECONDS)
@@ -75,7 +75,7 @@ def test_ap_metrics_periodic_reporting(initialize):
         )
 
         report_logger.print_step(
-            "Step 6: Stop and collect capture from controller"
+            "STEP 6: Stop and collect capture from controller"
         )
         try:
             local_path = device_utils.stop_and_collect_capture(

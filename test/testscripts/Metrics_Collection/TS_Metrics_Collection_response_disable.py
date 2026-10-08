@@ -30,28 +30,20 @@ def test_ap_metrics_response_disable(initialize):
     capture_started = False
 
     try:
-        report_logger.print_step(
-            "Step 1: Identify enabled controller and extender AL MAC addresses "
-            "to validate the packet capture"
-        )
+        report_logger.print_step("STEP 1: Identify enabled controller and extender AL MAC addresses to validate the packet capture")
         expected_device_macs = device_utils.get_enabled_device_al_macs(initialize)
         report_logger.print_success(
             f"PASS: Identified AL MAC addresses for {len(expected_device_macs)} devices"
         )
 
-        report_logger.print_step(
-            "Step 2: Disable AP Metrics reporting by setting the "
-            f"interval to {mc_utils.DISABLED_INTERVAL}s"
-        )
+        report_logger.print_step(f"STEP 2: Disable AP Metrics reporting by setting the interval to {mc_utils.DISABLED_INTERVAL}s")
         initialize.set_ap_metrics_reporting_interval(
             "controller", mc_utils.DISABLED_INTERVAL, apply_scope="all"
         )
         disable_time = time.time()
         report_logger.print_success("PASS: AP Metrics reporting disable setting applied")
 
-        report_logger.print_step(
-            "Step 3: Verify the configured AP Metrics reporting interval is 0s"
-        )
+        report_logger.print_step("STEP 3: Verify the configured AP Metrics reporting interval is 0s")
         configured_interval = initialize.get_ap_metrics_reporting_interval("controller")
         if str(configured_interval).strip() != str(mc_utils.DISABLED_INTERVAL):
             pytest.fail(
@@ -60,10 +52,7 @@ def test_ap_metrics_response_disable(initialize):
             )
         report_logger.print_success("PASS: Configured interval confirms AP Metrics reporting is disabled")
 
-        report_logger.print_step(
-            "Step 4: Wait "
-            f"{mc_utils.DRAIN_SECONDS}s for in-flight AP Metrics responses to drain"
-        )
+        report_logger.print_step(f"STEP 4: Wait {mc_utils.DRAIN_SECONDS}s for in-flight AP Metrics responses to drain")
         report_logger.print_info(
             "INFO: Waiting for in-flight AP Metrics responses to drain"
         )
@@ -77,18 +66,13 @@ def test_ap_metrics_response_disable(initialize):
         )
         capture_started = True
 
-        report_logger.print_step(
-            "Step 6: Monitor IEEE 1905 traffic for "
-            f"{mc_utils.OBSERVATION_SECONDS}s"
-        )
+        report_logger.print_step(f"STEP 6: Monitor IEEE 1905 traffic for {mc_utils.OBSERVATION_SECONDS}s")
         report_logger.print_info(
             "INFO: Monitoring IEEE 1905 traffic while AP Metrics reporting is disabled"
         )
         time.sleep(mc_utils.OBSERVATION_SECONDS)
 
-        report_logger.print_step(
-            "Step 7: Stop the capture and download from Controller"
-        )
+        report_logger.print_step("STEP 7: Stop the capture and download from Controller")
         try:
             local_path = device_utils.stop_and_collect_capture(
                 initialize, "controller", capture_filename

@@ -64,7 +64,7 @@ def validate_periodic_ap_metrics_capture(packets, expected_device_macs, step):
     Example: validate_periodic_ap_metrics_capture(packets, device_macs, 1)
     """
     report_logger.print_step(
-        f"Step {step}: Validate AP Metrics Response presence and AP Metrics TLVs"
+        f"STEP {step}: Validate AP Metrics Response presence and AP Metrics TLVs"
     )
     expected_device_macs = {
         device: mac
@@ -96,7 +96,7 @@ def validate_periodic_ap_metrics_capture(packets, expected_device_macs, step):
         )
 
     report_logger.print_step(
-        f"Step {step+1}: Validate that AP Metrics responses were reported "
+        f"STEP {step+1}: Validate that AP Metrics responses were reported "
         f"periodically at the configured {REPORTING_INTERVAL}-second interval"
     )
     response_times_by_source = {
@@ -151,7 +151,7 @@ def validate_disabled_ap_metrics_capture(
     Example: validate_disabled_ap_metrics_capture(packets, disabled_at, 10, device_macs, 1)
     """
     report_logger.print_step(
-        f"Step {step}: Validate that no AP Metrics responses were reported "
+        f"STEP {step}: Validate that no AP Metrics responses were reported "
         "after reporting was disabled"
     )
     expected_device_macs = {
