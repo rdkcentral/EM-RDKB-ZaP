@@ -500,3 +500,11 @@ class FeatureInterface(FeatureInterfaceModules):
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.get_default_route(device)
+
+    def get_controller_id(self, device: str, method='de') -> str:
+        """
+        Get the controller ID of the device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_controller_id(device)
