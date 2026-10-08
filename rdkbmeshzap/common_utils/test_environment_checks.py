@@ -313,26 +313,25 @@ def validate_mesh_service_status(initialize):
 def retrieve_and_store_device_indexes(initialize):
     report_logger.print_title("Update the database with device indexes for the controller and enabled extenders")
     # Device Index
-    devices = initialize.get_testbed_devices()
+    devices = ["controller"] + device_utils.get_enabled_extenders(initialize)
     for device in devices:
-        if device != "pdu" and "wlan_client" not in device:
-            al_mac = initialize.get_al_mac_address(device)
-            report_logger.print_step(f"{device} AL MAC: {al_mac}")
-            device_index = None
-            if device == "controller":
-                for i in range(1, 10):
-                    controller_al_mac_de = initialize.get_controller_id("controller", "de")
-                    if al_mac.lower() == controller_al_mac_de.lower():
-                        device_index = i
-                        break
-            else:
-                for i in range(1, 10):
-                    extender_al_mac_de = initialize.get_device_id("controller", str(i), "de")
-                    if al_mac.lower() == extender_al_mac_de.lower():
-                        device_index = i
-                        break
-            if device_index is None:
-                report_logger.print_error(f"ERROR: AL MAC {al_mac} not found")
-            else:
-                initialize.write_into_database("controller",f"{device}_device_index",str(device_index))
-                report_logger.print_success(f"PASS: {device} Device Index = {device_index}")
+        al_mac = initialize.get_al_mac_address(device)
+        report_logger.print_step(f"{device} AL MAC: {al_mac}")
+        device_index = None
+        if device == "controller":
+            for i in range(1, 10):
+                controller_al_mac_de = initialize.get_controller_id("controller", "de")
+                if al_mac.lower() == controller_al_mac_de.lower():
+                    device_index = i
+                    break
+        else:
+            for i in range(1, 10):
+                extender_al_mac_de = initialize.get_device_id("controller", str(i), "de")
+                if al_mac.lower() == extender_al_mac_de.lower():
+                    device_index = i
+                    break
+        if device_index is None:
+            report_logger.print_error(f"ERROR: AL MAC {al_mac} not found")
+        else:
+            initialize.write_into_database("controller",f"{device}_device_index",str(device_index))
+            report_logger.print_success(f"PASS: {device} Device Index = {device_index}")
