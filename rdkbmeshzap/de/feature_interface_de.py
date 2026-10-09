@@ -341,3 +341,22 @@ class FeatureInterfaceDE(DatabaseModule,
               raise RuntimeError(f"Failed to get controller ID: {output.strip()}")      
          # 'Value' found -> extract and return just the value
         return output.partition('Value')[2].lstrip(' :').split()[0]
+
+    def get_device_index(self, device: str, device_mac: str) -> int:
+        """
+        Get the device index using the MAC address from DataElements
+        and store it in the database.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        cutval = '{print $6}'
+        cmd = (f"rbuscli get Device.WiFi.DataElements. | "f"grep -i -B 2 {device_mac} | "f"grep 'Name' | awk -F. '{cutval}' | sort -u")
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+        if error:
+            raise RuntimeError(f"Failed to get device index for {device}: {output.strip()}")
+        device_index = int(output.strip())
+        # Store the retrieved index in the database
+        self.db_obj.write_into_database("controller",f"{device}_device_index",device_index)
+        return device_index

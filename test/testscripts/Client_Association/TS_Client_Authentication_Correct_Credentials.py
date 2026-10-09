@@ -25,6 +25,12 @@ def test_client_association_authentication_correct_credentials(initialize):
     Verify that  Wi-Fi client devices can successfully authenticate and associate to the EasyMesh SSID using correct credentials, whether it associates to the Controller or to any of the 3 Agents.
     """
     report_logger.print_test(" Entering EM_Client_Association_Authentication_Correct_Credentials")
+    report_logger.print_info(f"INFO: Retrieving and storing device index into the database for controller and enabled extenders")
+    devices = ["controller"] + device_utils.get_enabled_extenders(initialize)
+    for device in devices:
+        device_mac = initialize.read_from_database(device, "2g_radio_mac")
+        device_index = initialize.get_device_index("controller", device_mac, "de")   
+        report_logger.print_info(f"INFO: Device index for {device}: {device_index}")
     report_logger.print_step("STEP 1: Get SSID AKM Configuration from DataElements")
     try:
         ssid_akm = initialize.get_ssid_AKMAllowed( "controller","controller_device_index",'de')
