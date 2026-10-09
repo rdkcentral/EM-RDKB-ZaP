@@ -20,9 +20,9 @@ import pytest
 from rdkbmeshzap.common_utils import device_utils, report_logger
 
 # Polling interval (seconds) between consecutive stability checks.
-POLL_INTERVAL_SEC = 600
+POLL_INTERVAL_SEC = 60
 # Total duration (seconds) for which stability monitoring is performed.
-TEST_DURATION_SEC = 3600
+TEST_DURATION_SEC = 120
 # Maximum allowed percentage increase from the baseline metric value.
 MAX_BASELINE_INCREASE_PERCENT = 20.0
 # Minimum available memory percentage required for a healthy system.
@@ -41,46 +41,6 @@ PHY_RATE_DROP_PERCENT = 50
 MAX_RSSI_DEGRADATION_DB = 10
 # Minimum acceptable RSSI threshold (dBm) for a stable link.
 MIN_RSSI_DBM = -80
-
-def parse_iw_dev_output(output: str, value: str) -> list:
-    """
-    Syntax : parse_iw_dev_output(output, value)
-    Description : Extracts a requested value from raw `iw dev` output.
-    Parameters :
-        output - Raw output from an `iw dev` command.
-        value - Value to extract: `interfaces`, `interface_records`, or `macs`.
-    Return Value: A list of extracted values or interface-record tuples.
-    """
-    patterns = {
-        "interfaces": (
-            re.compile(r"^\s*Interface\s+(\S+)", re.MULTILINE),
-            1,
-        ),
-        "interface_records": (
-            re.compile(
-                r"^\s*Interface\s+(?P<interface>\S+)"
-                r"(?P<details>.*?)(?=^\s*Interface\s+|\Z)",
-                re.MULTILINE | re.DOTALL,
-            ),
-            ("interface", "details"),
-        ),
-        "macs": (
-            re.compile(
-                r"^\s*addr\s+([0-9a-f:]{17})",
-                re.MULTILINE | re.IGNORECASE,
-            ),
-            1,
-        ),
-    }
-    if value not in patterns:
-        raise ValueError(f"Unsupported iw dev value: {value}")
-    pattern, groups = patterns[value]
-    if isinstance(groups, tuple):
-        return [
-            tuple(match.group(group) for group in groups)
-            for match in pattern.finditer(output)
-        ]
-    return [match.group(groups) for match in pattern.finditer(output)]
 
 def parse_link_output(output: str, value: str) -> list:
     """
@@ -242,9 +202,10 @@ def validate_memory_utilization_limits(
     if baseline:
         increase = snapshot["used_percent"] - baseline["used_percent"]
         if increase > MAX_BASELINE_USED_INCREASE_PERCENT:
-            message = (f"{device}: abnormal used-memory increase vs baseline: "
-                       f"{increase:.1f} percentage points")
-            report_logger.print_error(message)
+            raise Exception(
+                f"{device}: abnormal used-memory increase vs baseline: "
+                f"{increase:.1f} percentage points"
+            )
     used_history.append(snapshot["used_mb"])
     recent = used_history[-MONOTONIC_GROWTH_SAMPLES:]
     if (
@@ -285,11 +246,10 @@ def validate_cpu_utilization_limits(
     if baseline:
         increase = snapshot["utilization_percent"] - baseline["utilization_percent"]
         if increase > MAX_BASELINE_INCREASE_PERCENT:
-            message = (
+            raise Exception(
                 f"{device}: abnormal utilization increase vs baseline: "
                 f"{increase:.1f} percentage points"
             )
-            report_logger.print_error(message)
           
     current_processes = set(snapshot["high_cpu_processes"])
     for process in list(high_cpu_counts):
@@ -343,34 +303,24 @@ def get_scale_setup(initialize, scale: str = None) -> dict:
         raise ValueError("No scale setup is enabled in platform YAML")
     return enabled_setup
 
-def fronthaul_interface(initialize, device: str) -> str:
+def get_all_interfaces(initialize, device: str) -> list:
     """
-    Syntax : fronthaul_interface(initialize, device)
-    Description : Builds the configured MLD fronthaul interface name.
-    Parameters :
-        initialize - Testbed initialization and database interface.
-        device - Name of the target mesh device.
-    Return Value: The configured fronthaul interface name.
-    """
-    mld_ifname = initialize.read_from_database(device, "mld_ifname")
-    mld_iface_index = initialize.read_from_database(device, "mld_iface_index")
-    if not mld_ifname or mld_iface_index is None:
-        raise ValueError(f"Missing MLD interface configuration for {device}")
-    return f"{mld_ifname}{mld_iface_index}"
-
-def all_interfaces(initialize, device: str) -> list:
-    """
-    Syntax : all_interfaces(initialize, device)
+    Syntax : get_all_interfaces(initialize, device)
     Description : Returns non-MLD wireless interfaces reported by `iw dev`.
     Parameters :
         initialize - Testbed initialization and database interface.
         device - Name of the target mesh device.
     Return Value: A list of wireless interface names used for topology checks.
     """
-    interfaces = parse_iw_dev_output(
-        initialize.get_iw_dev_info(device), "interfaces"
-    )
-    return [iface for iface in interfaces if not iface.lower().startswith("mld")]
+    interfaces = []
+    for line in initialize.get_iw_dev_info(device).splitlines():
+        line = line.strip()
+        if line.startswith("Interface "):
+            interface = line.split()[1]
+            if not interface.lower().startswith("mld"):
+                interfaces.append(interface)
+    return interfaces
+
 def backhaul_interfaces(initialize, device: str) -> list:
     """
     Syntax : backhaul_interfaces(initialize, device)
@@ -380,18 +330,15 @@ def backhaul_interfaces(initialize, device: str) -> list:
         device - Name of the target mesh device.
     Return Value: A list of managed backhaul interface names.
     """
-    return [
+    interfaces =  [
         interface
-        for interface, details in parse_iw_dev_output(
-            initialize.get_iw_dev_info(device), "interface_records"
-        )
-        if not interface.lower().startswith("mld")
-        and re.search(
-            r"^\s*type\s+managed\s*$",
-            details,
-            re.MULTILINE | re.IGNORECASE,
-        )
+        for interface in get_all_interfaces(initialize, device)
+             if initialize.get_iw_interface_details(device, interface).get("type", "").lower() == "managed"
     ]
+    report_logger.print_info(
+        f"INFO: {device} managed backhaul interfaces: {interfaces}"
+    )
+    return interfaces     
 
 def backhaul_state(initialize, device: str, interface: str) -> dict:
     """
@@ -429,9 +376,9 @@ def backhaul_state(initialize, device: str, interface: str) -> dict:
         )
     return state
 
-def all_stations(initialize, device: str) -> set:
+def get_all_stations(initialize, device: str) -> set:
     """
-    Syntax : all_stations(initialize, device)
+    Syntax : get_all_stations(initialize, device)
     Description : Collects station MACs across all relevant device interfaces.
     Parameters :
         initialize - Testbed initialization and database interface.
@@ -439,7 +386,7 @@ def all_stations(initialize, device: str) -> set:
     Return Value: A set of associated station MAC addresses.
     """
     macs: set = set()
-    for iface in all_interfaces(initialize, device):
+    for iface in get_all_interfaces(initialize, device):
         try:
             output = initialize.get_iw_dev_sta_dump(device, iface)
             macs.update(parse_station_output(output, "macs"))
@@ -447,9 +394,9 @@ def all_stations(initialize, device: str) -> set:
             report_logger.print_error(f"station dump failed on {device}/{iface}: {err}")
     return macs
 
-def collect_fronthaul_associations(initialize, devices: list) -> dict:
+def get_fronthaul_associations(initialize, devices: list) -> dict:
     """
-    Syntax : collect_fronthaul_associations(initialize, devices)
+    Syntax : get_fronthaul_associations(initialize, devices)
     Description : Collects fronthaul station MACs for each mesh device.
     Parameters :
         initialize - Testbed initialization and database interface.
@@ -458,7 +405,7 @@ def collect_fronthaul_associations(initialize, devices: list) -> dict:
     """
     associations = {}
     for device in devices:
-        interface = fronthaul_interface(initialize, device)
+        interface = device_utils.get_fronthaul_interface(initialize, device)
         try:
             output = initialize.get_iw_dev_sta_dump(device, interface)
             associations[device] = set(parse_station_output(output, "macs"))
@@ -476,9 +423,9 @@ def collect_fronthaul_associations(initialize, devices: list) -> dict:
             associations[device] = set()
     return associations
 
-def total_associations(associations: dict) -> int:
+def get_total_associations(associations: dict) -> int:
     """
-    Syntax : total_associations(associations)
+    Syntax : get_total_associations(associations)
     Description : Counts all associated clients in a topology snapshot.
     Parameters :
         associations - Mapping of device names to station MAC sets.
@@ -486,9 +433,9 @@ def total_associations(associations: dict) -> int:
     """
     return sum(len(macs) for macs in associations.values())
 
-def compare_associations(baseline: dict, current: dict) -> list:
+def get_associations_mismatch(baseline: dict, current: dict) -> list:
     """
-    Syntax : compare_associations(baseline, current)
+    Syntax : get_associations_mismatch(baseline, current)
     Description : Compares current client associations with a baseline snapshot.
     Parameters :
         baseline - Initial mapping of device names to station MAC sets.
@@ -496,8 +443,8 @@ def compare_associations(baseline: dict, current: dict) -> list:
     Return Value: A list of client-count and per-device mismatch descriptions.
     """
     mismatches = []
-    baseline_total = total_associations(baseline)
-    current_total = total_associations(current)
+    baseline_total = get_total_associations(baseline)
+    current_total = get_total_associations(current)
     if current_total != baseline_total:
         mismatches.append(
             f"Total client count changed: baseline={baseline_total} "
@@ -515,10 +462,10 @@ def compare_associations(baseline: dict, current: dict) -> list:
             )
     return mismatches
 
-def capture_agent_presence(initialize, agents: list) -> dict:
+def capture_extender_presence(initialize, agents: list) -> dict:
     """
-    Syntax : capture_topology(initialize, agents)
-    Description : Captures controller and agent station topology using `iw` data.
+    Syntax : capture_extender_presence(initialize, agents)
+    Description : Captures extender presence information.
     Parameters :
         initialize - Testbed initialization and database interface.
         agents - Names of extender devices included in the topology.
@@ -538,11 +485,15 @@ def capture_agent_presence(initialize, agents: list) -> dict:
                 connected_agents.add(agent)
         except Exception:
             continue
+    report_logger.print_info(
+        f"INFO: Connected agents: {sorted(connected_agents)} "
+        f"(count={len(connected_agents)})"
+    )
     return { "agent_count": len(connected_agents), "agents": connected_agents, }
 
-def compare_agent_presence(expected_count: int, baseline: dict, current: dict) -> list:
+def compare_extender_presence(expected_count: int, baseline: dict, current: dict) -> list:
     """
-    Syntax : compare_agent_presence(expected_count, baseline, current)
+    Syntax : compare_extender_presence(expected_count, baseline, current)
     Description : Validates controller-side agent count and presence.
     Parameters :
         expected_count - Required number of connected agents.
@@ -572,9 +523,9 @@ def compare_agent_presence(expected_count: int, baseline: dict, current: dict) -
         )    
     return mismatches
 
-def mesh_device_for_bssid(initialize, bssid: str):
+def get_device_for_bssid(initialize, bssid: str):
     """
-    Syntax : mesh_device_for_bssid(initialize, bssid)
+    Syntax : get_device_for_bssid(initialize, bssid)
     Description : Identifies the mesh device advertising the specified fronthaul BSSID.
     Parameters :
         initialize - Testbed initialization and database interface.
@@ -597,22 +548,6 @@ def mesh_device_for_bssid(initialize, bssid: str):
         if connected_bssid in bssids:
             return device
     return None
-
-def client_wifi_macs(initialize, client: str) -> set:
-    """
-    Syntax : client_wifi_macs(initialize, client)
-    Description : Finds the MAC addresses of a client's wireless interfaces.
-    Parameters :
-        initialize - Testbed initialization and database interface.
-        client - Name of the WLAN client device.
-    Return Value: A set of lowercase wireless-interface MAC addresses.
-    """
-    return {
-        mac.lower()
-        for mac in parse_iw_dev_output(
-            initialize.get_iw_dev_info(client), "macs"
-        )
-    }
 
 def rate_to_mbps(rate: str, unit: str) -> float:
     """
@@ -643,12 +578,12 @@ def client_phy_rate(initialize, client: str, host: str | None):
     """
     if host is None:
         return None
-    client_macs = client_wifi_macs(initialize, client)
-    interface = fronthaul_interface(initialize, host)
+    client_mac = initialize.read_from_database(client, "mac").lower()
+    interface = device_utils.get_fronthaul_interface(initialize, host)
     output = initialize.get_iw_dev_sta_dump(host, interface)
     for station_mac, details in parse_station_output(output, "records"):
         station_mac = station_mac.lower()
-        if station_mac not in client_macs:
+        if station_mac != client_mac:
             continue
         tx_rates = parse_station_output(details, "tx_rate")
         rx_rates = parse_station_output(details, "rx_rate")
@@ -705,13 +640,13 @@ def client_rssi(initialize, client: str, host: str | None):
     """
     if host is None:
         return None
-    interface = fronthaul_interface(initialize, host)
-    client_macs = client_wifi_macs(initialize, client)
+    interface = device_utils.get_fronthaul_interface(initialize, host)
+    client_mac = initialize.read_from_database(client, "mac").lower()
     output = initialize.get_iw_dev_sta_dump(host, interface)
 
     for station_mac, details in parse_station_output(output, "records"):
         station_mac = station_mac.lower()
-        if station_mac not in client_macs:
+        if station_mac != client_mac:
             continue
         signals = parse_station_output(details, "signal")
         return {

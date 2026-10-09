@@ -34,6 +34,9 @@ def get_client_bssids(client, ssid, ssh):
         list: Matching BSSID(s) in lowercase format.
     """
     ssh.switch_connection(client)
+    report_logger.print_info(
+        f"INFO: Scanning for SSID '{ssid}' on {client}"
+    )
     result = ssh.execute_command(
         "nmcli -t --escape no -f BSSID,SSID device wifi list"
     )
@@ -45,20 +48,6 @@ def get_client_bssids(client, ssid, ssh):
             if re.fullmatch(r"(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}", bssid):
                 bssids.append(bssid.lower())
     return bssids
-
-def get_connected_client_bssid(initialize, client):
-    """
-    Syntax: get_connected_client_bssid(initialize, client)
-    Description: Returns the BSSID currently associated with the client's Wi-Fi interface.
-    Parameters: 
-        initialize : Test initialization object.
-        client : Client device name.
-    Return Value: str | None: Connected BSSID in lowercase format, or None if unavailable.
-    """
-    try:
-        return initialize.get_association_status(client, "cli").lower()
-    except RuntimeError:
-        return None
 
 def get_present_device_bssids(initialize):
     """
@@ -116,7 +105,15 @@ def connect_client_to_bssid(
     )
     ssh.switch_connection(client)
     output = ssh.execute_command(command)
-    connected_bssid = get_connected_client_bssid(initialize, client)
+    try:
+        connected_bssid = (
+            initialize.get_association_status(client, "cli").lower()
+        )
+    except Exception as error:
+        report_logger.print_error(
+            f"Failed to get connected BSSID for {client}: {error}"
+        )
+        return None
     accepted_bssids = (
         {value.lower() for value in allowed_bssids}
         if allowed_bssids is not None
@@ -126,22 +123,21 @@ def connect_client_to_bssid(
         if connected_bssid != bssid.lower():
             owner = client.rsplit("_wlan_client_", 1)[0]
             report_logger.print_info(
-                f"INFO: BSSID mismatch for client '{client}' owned by "
-                f"'{owner}': requested={bssid.lower()}, actual={connected_bssid}; "
-                "actual BSSID belongs to another present mesh device"
+                f"INFO: Client '{client}' is associated with BSSID "
+                f"'{connected_bssid}'."
             )
         return
     if "successfully activated" not in output.lower() and connected_bssid is None:
-        raise RuntimeError(f"Failed to connect {client} to BSSID {bssid}: {output}")
-    raise RuntimeError(
+        raise report_logger.print_error(f"Failed to connect {client} to BSSID {bssid}: {output}")
+    raise report_logger.print_error(
         f"{client} connected to {connected_bssid}, expected BSSID {bssid}: {output}"
     )
 
-def connect_clients_to_extender(
+def connect_client_to_target_device(
     initialize, client_devices, extender, allowed_bssids=None
 ):
     """
-    Syntax: connect_clients_to_extender(initialize, client_devices, extender,allowed_bssids=None) 
+    Syntax: connect_client_to_target_device(initialize, client_devices, extender, allowed_bssids=None) 
     Description: Connects WLAN clients to a visible fronthaul BSSID advertised by the specified extender and verifies successful association.
      Parameters:
         initialize : Test initialization object.
@@ -181,7 +177,7 @@ def connect_clients_to_extender(
             None,
         )
         if not target_bssid:
-            raise RuntimeError(
+            raise report_logger.print_error(
                 f"No expected BSSID for '{ssid}' was visible; "
                 f"expected={sorted(normalized_extender_bssids)}, "
                 f"visible={sorted(visible_bssids)}"
@@ -213,7 +209,7 @@ def connect_wlan_clients(initialize, client_devices, require_all=True):
     ssh = initialize.get_connection_module_object("ssh")
     allowed_bssids = get_present_device_bssids(initialize)
     if not allowed_bssids:
-        raise RuntimeError("No fronthaul BSSIDs found for present mesh devices")
+        raise report_logger.print_error("No fronthaul BSSIDs found for present mesh devices")
     last_errors = {}
     connected_clients = []
     for client in clients:
@@ -223,16 +219,16 @@ def connect_wlan_clients(initialize, client_devices, require_all=True):
                 raise ValueError(
                     f"Cannot determine owning device from client name '{client}'"
                 )
-            connect_clients_to_extender(
+            connect_client_to_target_device(
                 initialize, [client], match.group(1), allowed_bssids
             )
-            connected_bssid = get_connected_client_bssid(initialize, client)
+            connected_bssid = initialize.get_association_status(client, "cli").lower()
             if connected_bssid is None:
-                raise RuntimeError(
+                raise report_logger.print_error(
                     f"{client} is not connected after connection attempt"
                 )
             if connected_bssid not in allowed_bssids:
-                raise RuntimeError(
+                raise report_logger.print_error(
                     f"{client} is connected to {connected_bssid}, not an "
                     f"allowed present-device BSSID {sorted(allowed_bssids)}"
                 )
@@ -241,7 +237,7 @@ def connect_wlan_clients(initialize, client_devices, require_all=True):
             last_errors[client] = error
             if not require_all:
                 try:
-                    connected_bssid = get_connected_client_bssid(initialize, client)
+                    connected_bssid = initialize.get_association_status(client, "cli").lower()
                 except Exception:
                     connected_bssid = None
                 if connected_bssid in allowed_bssids:
@@ -265,6 +261,6 @@ def connect_wlan_clients(initialize, client_devices, require_all=True):
         return connected_clients
     if len(connected_clients) == len(clients):
         return connected_clients
-    raise RuntimeError(
+    raise report_logger.print_error(
         f"Unable to connect all clients after one attempt: {last_errors}"
     ) from next(iter(last_errors.values()), None)

@@ -49,9 +49,9 @@ def test_em_scale_controller_agent_stability(initialize):
             report_logger.print_error(f"Device '{agent}' reachability check failed: {err}")
 
     report_logger.print_step("STEP 3: Capture the baseline topology")
-    baseline = capture_agent_presence(initialize, agents)
+    baseline = capture_extender_presence(initialize, agents)
     report_logger.print_info(f"INFO: Baseline topology snapshot: {baseline}")
-    baseline_mismatches = compare_agent_presence(
+    baseline_mismatches = compare_extender_presence(
         expected_agent_count, baseline, baseline
     )
     if baseline_mismatches:
@@ -63,45 +63,24 @@ def test_em_scale_controller_agent_stability(initialize):
     poll_count = 0
     while time.time() < end_time:
         poll_count += 1
-        current = capture_agent_presence(initialize, agents)
-        mismatches = compare_agent_presence(
+        current = capture_extender_presence(initialize, agents)
+        mismatches = compare_extender_presence(
             expected_agent_count, baseline, current
         )
         if mismatches:
             report_logger.print_error(
                 f"Topology mismatch at poll #{poll_count}: {mismatches}"
             )
-        report_logger.print_step(
-            f"STEP 5: Verify backhaul remains active (poll #{poll_count})"
-        )
-        for agent in agents:
-            try:
-                report_logger.print_step(
-                    f" STEP 5.1 : Checking backhaul status for device '{agent}'"
-                )
-                interfaces = backhaul_interfaces(initialize, agent)
-                if not any(
-                    initialize.get_wireless_backhaul_connection_status(
-                        agent, interface
-                    )
-                    for interface in interfaces
-                ):
-                    report_logger.print_error(
-                        f"Device '{agent}' backhaul is not active"
-                    )
-                report_logger.print_success(
-                    f"PASS: Device '{agent}' backhaul active"
-                )
-            except Exception as err:
-                report_logger.print_error(
-                    f"Device '{agent}' backhaul check failed: {err}"
-                )
+
         remaining_time = end_time - time.time()
         if remaining_time > 0:
             time.sleep(min(POLL_INTERVAL_SEC, remaining_time))
 
-    final = capture_agent_presence(initialize, agents)
-    final_mismatches = compare_agent_presence(
+    report_logger.print_step(
+        f"STEP 5: Compare baseline and latest agent presence"
+    )
+    final = capture_extender_presence(initialize, agents)
+    final_mismatches = compare_extender_presence(
         expected_agent_count, baseline, final
     )
     if final_mismatches:

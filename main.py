@@ -64,7 +64,7 @@ if __name__ == "__main__":
         f"{BASE_DIR}/test/testscripts/scale_validation_stability/TS_client_association.py", 
         f"{BASE_DIR}/test/testscripts/scale_validation_stability/TS_cpu_utilization.py",
         f"{BASE_DIR}/test/testscripts/scale_validation_stability/TS_memory_utilization.py",
-        f"{BASE_DIR}/test/testscripts/link_stability/TS_fronthaul_client_connectivity_stability.py",
+        f"{BASE_DIR}/test/testscripts/link_stability/TS_fronthaul_link_stability.py",
         f"{BASE_DIR}/test/testscripts/link_stability/TS_fronthaul_phyrate_stability.py",
         f"{BASE_DIR}/test/testscripts/link_stability/TS_fronthaul_rssi_stability.py",
         f"{BASE_DIR}/test/testscripts/link_stability/TS_backhaul_link_stability.py",

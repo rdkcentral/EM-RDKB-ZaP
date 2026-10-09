@@ -32,7 +32,7 @@ def test_em_scale_controller_agent_connectivity(initialize):
         f"INFO: Discovered {len(agents)} configured scale devices: {agents}"
     )
     expected_agent_count = get_scale_setup(initialize)["expected_agent_count"]
-    presence = capture_agent_presence(initialize, agents)
+    presence = capture_extender_presence(initialize, agents)
     actual_agent_count = presence["agent_count"]
     report_logger.print_step("STEP 2: Validate the configured scale device count")
     report_logger.print_info(

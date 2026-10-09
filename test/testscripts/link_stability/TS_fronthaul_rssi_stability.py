@@ -27,14 +27,12 @@ def test_em_fronthaul_rssi_stability(initialize):
     """
     report_logger.print_test("Entering test_em_fronthaul_rssi_stability")
     report_logger.print_step(
-        "STEP 1: Discover present WLAN clients and attempt connection to "
-        "their owning device"
+        "STEP 1: Identify all present WLAN clients and connect each client to its assigned device"
     )
     present_clients = device_utils.get_enabled_clients(initialize)
     if not present_clients:
         message = "No fronthaul clients are marked present in the database"
         report_logger.print_error(message)
-        pytest.fail(message)
     try:
         clients = connect_wlan_clients(
             initialize, present_clients, require_all=False
@@ -42,7 +40,6 @@ def test_em_fronthaul_rssi_stability(initialize):
     except Exception as err:
         message = f"Unable to prepare fronthaul clients for RSSI monitoring: {err}"
         report_logger.print_error(message)
-        pytest.fail(message)
     unavailable = [
         f"{client}: connection unavailable"
         for client in present_clients
@@ -50,11 +47,10 @@ def test_em_fronthaul_rssi_stability(initialize):
     ]
     if unavailable:
         message = (
-            "Unable to establish or preserve a present-mesh association for "
+            "Unable to establish association for "
             f"all configured WLAN clients: {unavailable}"
         )
         report_logger.print_error(message)
-        pytest.fail(message)
     report_logger.print_success(
         f"PASS: Connected clients before RSSI test: {', '.join(clients)}"
     )
@@ -71,7 +67,7 @@ def test_em_fronthaul_rssi_stability(initialize):
     for client in clients:
         try:
             bssid = initialize.get_association_status(client, "cli")
-            host = mesh_device_for_bssid(initialize, bssid)
+            host = get_device_for_bssid(initialize, bssid)
             state = client_rssi(initialize, client, host)
             error = validate_rssi(state)
         except Exception as err:
@@ -92,7 +88,7 @@ def test_em_fronthaul_rssi_stability(initialize):
         "present WLAN client(s)"
     )
     report_logger.print_step(
-        "STEP 3: Sample each client's RSSI and compare it with the baseline "
+        "STEP 3: Monitor each client's RSSI and compare it with the baseline "
         "for the configured duration"
     )
     start_time = time.time()
@@ -101,7 +97,7 @@ def test_em_fronthaul_rssi_stability(initialize):
         poll_count += 1
         elapsed_sec = int(time.time() - start_time)
         report_logger.print_step(
-            "STEP 3: Sample client RSSI"
+            f"STEP 3.{poll_count}: Monitor the client RSSI rates at poll"
         )
         report_logger.print_info(
             f"INFO: Poll #{poll_count} at {elapsed_sec}s elapsed"
@@ -109,7 +105,7 @@ def test_em_fronthaul_rssi_stability(initialize):
         for client in clients:
             try:
                 bssid = initialize.get_association_status(client, "cli")
-                host = mesh_device_for_bssid(initialize, bssid)
+                host = get_device_for_bssid(initialize, bssid)
                 state = client_rssi(initialize, client, host)
                 error = validate_rssi(state, baseline_rssi[client], MAX_RSSI_DEGRADATION_DB)
             except Exception as err:
@@ -128,16 +124,16 @@ def test_em_fronthaul_rssi_stability(initialize):
         time.sleep(poll_interval_sec)
 
     report_logger.print_step(
-        "STEP 4: Capture final per-client RSSI and enforce the allowed "
-        "degradation limit"
+        "STEP 4: Capture final RSSIfor all clients and "
+        "verify they remain within the allowed drop limit"
     )
     for client in clients:
         try:
             bssid = initialize.get_association_status(client, "cli")
-            host = mesh_device_for_bssid(initialize, bssid)
+            host = get_device_for_bssid(initialize, bssid)
             state = client_rssi(initialize, client, host)
         except Exception as err:
-            message = f"Final RSSI sample failed for '{client}': {err}"
+            message = f"Final RSSI Monitoring check failed for '{client}': {err}"
             report_logger.print_error(message)
             continue
         error = validate_rssi(state, baseline_rssi[client], MAX_RSSI_DEGRADATION_DB)

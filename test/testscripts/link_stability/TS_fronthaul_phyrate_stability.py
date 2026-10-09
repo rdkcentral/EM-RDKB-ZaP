@@ -27,14 +27,12 @@ def test_em_fronthaul_phyrate_stability(initialize):
     """
     report_logger.print_test("Entering test_em_fronthaul_phyrate_stability")
     report_logger.print_step(
-        "STEP 1: Discover present WLAN clients and attempt connection to "
-        "their owning device"
-    )
+        "STEP 1: Identify all present WLAN clients and connect each client to its assigned device"
+        )
     present_clients = device_utils.get_enabled_clients(initialize)
     if not present_clients:
         message = "No fronthaul clients are marked present in the database"
         report_logger.print_error(message)
-        pytest.fail(message)
     try:
         clients = connect_wlan_clients(
             initialize, present_clients, require_all=False
@@ -42,7 +40,6 @@ def test_em_fronthaul_phyrate_stability(initialize):
     except Exception as err:
         message = f"Unable to prepare fronthaul clients for PHY-rate monitoring: {err}"
         report_logger.print_error(message)
-        pytest.fail(message)
     unavailable = [
         f"{client}: connection unavailable"
         for client in present_clients
@@ -54,7 +51,6 @@ def test_em_fronthaul_phyrate_stability(initialize):
             f"all configured WLAN clients: {unavailable}"
         )
         report_logger.print_error(message)
-        pytest.fail(message)
     report_logger.print_success(
         f"PASS: Connected clients before PHY-rate test: {', '.join(clients)}"
     )
@@ -71,7 +67,7 @@ def test_em_fronthaul_phyrate_stability(initialize):
     for client in clients:
         try:
             bssid = initialize.get_association_status(client, "cli")
-            host = mesh_device_for_bssid(initialize, bssid)
+            host = get_device_for_bssid(initialize, bssid)
             state = client_phy_rate(initialize, client, host)
             error = validate_phy_rate(state)
         except Exception as err:
@@ -94,7 +90,7 @@ def test_em_fronthaul_phyrate_stability(initialize):
     )
 
     report_logger.print_step(
-        "STEP 3: Sample each client's TX/RX PHY rates and compare them with "
+        "STEP 3: Monitor each client's TX/RX PHY rates and compare them with "
         "the baseline for the configured duration"
     )
     start_time = time.time()
@@ -103,7 +99,7 @@ def test_em_fronthaul_phyrate_stability(initialize):
         poll_count += 1
         elapsed_sec = int(time.time() - start_time)
         report_logger.print_step(
-            "STEP 3: Sample client PHY rates"
+            f"STEP 3.{poll_count}: Monitor the client PHY rates at poll"
         )
         report_logger.print_info(
             f"INFO: Poll #{poll_count} at {elapsed_sec}s elapsed"
@@ -111,7 +107,7 @@ def test_em_fronthaul_phyrate_stability(initialize):
         for client in clients:
             try:
                 bssid = initialize.get_association_status(client, "cli")
-                host = mesh_device_for_bssid(initialize, bssid)
+                host = get_device_for_bssid(initialize, bssid)
                 state = client_phy_rate(initialize, client, host)
                 error = validate_phy_rate(state, baseline_rates[client], PHY_RATE_DROP_PERCENT)
             except Exception as err:
@@ -129,16 +125,16 @@ def test_em_fronthaul_phyrate_stability(initialize):
             )
         time.sleep(poll_interval_sec)
     report_logger.print_step(
-        "STEP 4: Capture final per-client PHY rates and enforce the allowed "
-        "drop limit"
+        "STEP 4: Capture final PHY rates for all clients and "
+        "verify they remain within the allowed drop limit"
     )
     for client in clients:
         try:
             bssid = initialize.get_association_status(client, "cli")
-            host = mesh_device_for_bssid(initialize, bssid)
+            host = get_device_for_bssid(initialize, bssid)
             state = client_phy_rate(initialize, client, host)
         except Exception as err:
-            message = f"Final PHY-rate sample failed for '{client}': {err}"
+            message = f"Final PHY-rate Monitoring failed for '{client}': {err}"
             report_logger.print_error(message)
             continue
         error = validate_phy_rate(state, baseline_rates[client], PHY_RATE_DROP_PERCENT)

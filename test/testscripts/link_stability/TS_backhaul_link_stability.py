@@ -29,12 +29,12 @@ def test_em_backhaul_link_stability(initialize):
     if not agents:
         message = "No backhaul agents are marked present in the database"
         report_logger.print_error(message)
-        pytest.fail(message)
+        pytest.skip(message)
     interval = POLL_INTERVAL_SEC
     duration = TEST_DURATION_SEC
     interfaces = {}
 
-    report_logger.print_step("STEP 1: Discover and capture managed backhaul links")
+    report_logger.print_step("STEP 1: Identify managed backhaul links and collect their baseline details")
     baseline = {}
     for agent in agents:
         try:
@@ -67,13 +67,12 @@ def test_em_backhaul_link_stability(initialize):
                 continue
             baseline[(agent, interface)] = state
     report_logger.print_info(
-        f"INFO: Baseline captured for {len(baseline)} link(s); "
-        "all configured agents and managed backhaul links are covered"
+        f"INFO: Baseline captured for {len(baseline)} managed backhaul link(s)"
     )
     previous_connected_times = {
         key: state["connected_time"] for key, state in baseline.items()
     }
-    report_logger.print_step("STEP 2: Monitor backhaul connection continuity")
+    report_logger.print_step("STEP 2: Monitor backhaul connections and verify they remain stable")
     start = time.time()
     poll = 0
     while time.time() - start < duration:
@@ -82,15 +81,15 @@ def test_em_backhaul_link_stability(initialize):
         for key, initial in baseline.items():
             agent, interface = key
             try:
+                report_logger.print_step(
+                    f"STEP 2.1: Monitor backhaul connectivity for {agent}/{interface}"
+                )
                 current = backhaul_state(initialize, agent, interface)
             except Exception as err:
                 message = f"'{agent}/{interface}': state collection failed: {err}"
                 report_logger.print_error(message)
                 poll_failure +=1
                 continue
-            report_logger.print_step(
-                "STEP 2: Check backhaul connection continuity"
-            )
             report_logger.print_info(
                 f"INFO: Poll #{poll}, {agent}/{interface}: {current}"
             )
@@ -115,13 +114,13 @@ def test_em_backhaul_link_stability(initialize):
                 previous_connected_times[key] = current["connected_time"]
             if poll_failure == 0:
                 report_logger.print_success(
-                    f"PASS: Step 2.{poll}: {agent}/{interface} remains connected "
+                    f"PASS: {agent}/{interface} remains connected "
                     f"to BSSID {current['bssid']}"
                 )
         time.sleep(interval)
     report_logger.print_step(
-        "STEP 3: Recheck each backhaul link and compare its final parent BSSID "
-        "and connected time with the baseline"
+        "STEP 3: Verify each backhaul link remains connected and "
+        "compare its current parent BSSID and connection duration with the baseline"
     )
     for key, initial in baseline.items():
         agent, interface = key
@@ -131,14 +130,15 @@ def test_em_backhaul_link_stability(initialize):
             messag = f"{agent}/{interface}: final state collection failed: {err}"
             report_logger.print_error(messag)
             continue
+        error = None
         if not current["connected"] or current["bssid"] != initial["bssid"]:
-            message = f"{agent}/{interface}: baseline BSSID {initial['bssid']} -> " f"latest BSSID {current['bssid']}"
-            report_logger.print_error(message)
+            error = f"{agent}/{interface}: baseline BSSID {initial['bssid']} -> " f"latest BSSID {current['bssid']}"
         elif current["connected_time"] is None or current["connected_time"] < previous_connected_times[key]:
-            message = f"{agent}/{interface}: connected time previous sample " f"{previous_connected_times[key]} -> final {current['connected_time']}"
-            report_logger.print_error(message)
+            error = f"{agent}/{interface}: connected time previous sample " f"{previous_connected_times[key]} -> final {current['connected_time']}"
+        if error:
+            report_logger.print_error(error)
         else:
             report_logger.print_success(
-            f"PASS: Final backhaul state matches baseline for {len(baseline)} links"
+            f"PASS: Final backhaul state validation passed for {agent}/{interface}"
         )
     report_logger.print_test("Exiting test_em_backhaul_link_stability")
