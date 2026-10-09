@@ -257,3 +257,15 @@ def get_extender_parent_device(initialize, extender, devices):
         if re.search(rf"\baddr\s+{re.escape(bssid)}\b", str(output), re.IGNORECASE):
             return device, bssid
     return None, bssid
+
+def retrieve_and_store_device_index(initialize, device, device_mac):
+    """
+    Syntax: retrieve_and_store_device_index(initialize, device, device_mac)
+    Description: Retrieve the device index for a given device and its MAC address, and store it in the database.
+    Parameters: initialize - Testbed interface; device - Device name; device_mac - Device MAC address.
+    Return Value: The retrieved device index.
+    Example: retrieve_and_store_device_index(initialize, "controller", "00:11:22:33:44:55")
+    """
+    index = initialize.get_device_index("controller", device_mac, "de")
+    initialize.db_obj.write_into_database("controller", f"{device}_device_index",index)
+    return index
