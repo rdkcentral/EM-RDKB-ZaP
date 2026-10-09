@@ -245,10 +245,12 @@ def pytest_html_results_summary(prefix, summary, postfix):
 		)
 		failure_html = (
 			f'<div style="margin:0;">'
+			f'{report_logger.print_title("Execution Error:")}<br>'
 			f'{section_failure}</div>'
 			if section_failure
 			else ""
 		)
+		section_html += '<br><div>-------------------------------------------------------</div>'
 		prefix.append(
 			f'<details class="{section_name}" style="margin-bottom:{0 if section_failure else 10}px;">'
 			f'<summary><strong style="color:#003366;">{title}</strong></summary>'
