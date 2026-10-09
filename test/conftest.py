@@ -238,17 +238,25 @@ def pytest_html_results_summary(prefix, summary, postfix):
 			report_logger.format_report_line(line)
 			for line in _setup_sections[section_name].splitlines()
 		)
+		section_failure = "<br>".join(
+			report_logger.format_report_line(line)
+			for line in _setup_sections[section_name].splitlines()
+			if "FAIL:" in line
+		)
+		failure_html = (
+			f'<div style="margin:0;">'
+			f'{section_failure}</div>'
+			if section_failure
+			else ""
+		)
 		prefix.append(
-			f'<details class="{section_name}" style="margin-bottom:10px;">'
+			f'<details class="{section_name}" style="margin-bottom:{0 if section_failure else 10}px;">'
 			f'<summary><strong style="color:#003366;">{title}</strong></summary>'
 			f"<div>{section_html}</div>"
 			"</details>"
 		)
-		if section_name == "test_environment_check" and _setup_failure:
-			prefix.append(
-				f'<div style="margin:10px 0;">'
-				f'<strong style="color:red;">{escape(_setup_failure)}</strong></div>'
-			)
+		if failure_html:
+			prefix.append(failure_html)
 
 @pytest.fixture(scope="function", autouse=True)
 def protocol_validation(request, initialize):

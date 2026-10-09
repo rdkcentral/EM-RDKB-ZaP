@@ -40,7 +40,7 @@ def test_ap_metrics_periodic_reporting(initialize):
         report_logger.print_step("STEP 3: Verify the configured AP Metrics reporting interval")
         configured_interval = initialize.get_ap_metrics_reporting_interval("controller")
         if str(configured_interval).strip() != str(mc_utils.REPORTING_INTERVAL):
-            report_logger.print_error(f"AP Metrics reporting interval is {configured_interval!r}; expected {mc_utils.REPORTING_INTERVAL}")
+            report_logger.print_error(f"FAIL: AP Metrics reporting interval is {configured_interval!r}; expected {mc_utils.REPORTING_INTERVAL}")
             return
         report_logger.print_success("PASS: Configured AP Metrics reporting interval matches the expected value")
 

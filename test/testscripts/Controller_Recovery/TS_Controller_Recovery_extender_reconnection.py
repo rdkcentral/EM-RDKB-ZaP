@@ -103,7 +103,6 @@ def test_controller_recovery_extender_reconnection(initialize):
             thread.join()
         # Each worker records its recovery duration.
         report_logger.print_info("INFO: Recovery checks have finished for all extenders")
-
         recovered_results = {
             extender: result
             for extender, result in recovery_times.items()
@@ -124,6 +123,9 @@ def test_controller_recovery_extender_reconnection(initialize):
                 validation_errors.append(f"{extender}: recovery failed: {result}")
                 continue
             if result is False:
+                validation_errors.append(
+                    f"{extender}: recovery failed within the recovery KPI"
+                )
                 continue
             if result is None:
                 validation_errors.append(f"{extender}: recovery result is unavailable")
@@ -134,11 +136,11 @@ def test_controller_recovery_extender_reconnection(initialize):
                 continue
             if not initialize.is_device_alive(extender):
                 validation_errors.append(f"{extender}: extender is not reachable after controller reboot")
-                report_logger.print_error(validation_errors[-1])
+                report_logger.print_error(f"FAIL: {validation_errors[-1]}")
                 continue
             if result >= CONTROLLER_RECOVERY_KPI_SECONDS:
                 validation_errors.append(f"{extender}: recovery took {result:.1f}s; KPI is < {CONTROLLER_RECOVERY_KPI_SECONDS}s")
-                report_logger.print_error(validation_errors[-1])
+                report_logger.print_error(f"FAIL: {validation_errors[-1]}")
                 continue
             report_logger.print_success(
                 f"PASS: {extender} is reachable and recovered within the KPI threshold "
@@ -206,5 +208,7 @@ def test_controller_recovery_extender_reconnection(initialize):
                 # Always clean up captures that were started but not collected.
                 device_utils.stop_and_collect_capture(initialize, extender, capture_name)
             except Exception as error:
-                report_logger.log(f"Could not stop {extender} capture during cleanup: {error}")
+                report_logger.print_error(
+                    f"Could not stop {extender} capture during cleanup: {error}"
+                )
         report_logger.print_test("Exiting test_controller_recovery_extender_reconnection")

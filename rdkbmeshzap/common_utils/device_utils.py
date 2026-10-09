@@ -163,9 +163,7 @@ def stop_and_collect_capture(initialize, device, capture_name):
     try:
         initialize.delete_captured_pcap(device, capture_name)
     except Exception as error:
-        report_logger.print_info(
-            f"{device}: capture file was already removed from the device, skipping cleanup: {error}"
-        )
+        report_logger.print_info(f"INFO: {device}: capture file was already removed from the device, skipping cleanup: {error}")
     report_logger.print_success(
         f"PASS: Packet capture stopped on {device} and saved to: {local_path}"
     )
@@ -201,9 +199,9 @@ def verify_services(initialize, device, service_names, deadline=None):
             time.sleep(min(2, remaining))
     services = ", ".join(service_names)
     if attempts == 0:
-        report_logger.print_error(f"Could not check services on {device} ({services}): the time limit expired before the first attempt")
+        report_logger.print_error(f"FAIL: Could not check services on {device} ({services}): the time limit expired before the first attempt")
     else:
-        report_logger.print_error(f"Services on {device} are not active after {attempts} attempt(s). Services checked: {services}. Last error: {last_error}")
+        report_logger.print_error(f"FAIL: Services on {device} are not active after {attempts} attempt(s). Services checked: {services}. Last error: {last_error}")
     return False
 
 def verify_controller_services(initialize, deadline=None):

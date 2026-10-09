@@ -46,7 +46,7 @@ def reconnect_device(initialize, device, step, started_at=None):
     Syntax: reconnect_device(initialize, device, step, started_at=None)
     Description: Reconnect a device within the configured recovery KPI window.
     Parameters: initialize - Testbed interface; device - Device name; step - Report step; started_at - Optional recovery start time.
-    Return Value: None on success; False when recovery times out.
+    Return Value: True on success; False when recovery times out.
     Example: reconnect_device(initialize, "controller", 1)
     """
     report_logger.print_step(f"STEP {step}: Wait for {device} SSH recovery")
@@ -62,18 +62,18 @@ def reconnect_device(initialize, device, step, started_at=None):
         try:
             initialize.connect_with_device(device)
         except Exception as error:
-            report_logger.print_info(f"{device} connect attempt {attempt} failed: {error}")
+            report_logger.print_info(f"INFO: {device} connect attempt {attempt} failed: {error}")
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 break
             time.sleep(min(RETRY_INTERVAL_SECONDS, remaining))
             continue
-        if time.monotonic() > deadline:
+        if time.monotonic() >= deadline:
             break
         report_logger.print_success(f"PASS: {device} connection restored on attempt {attempt}")
-        return
+        return True
     report_logger.print_error(
-        f"{device}: could not reconnect within {recovery_kpi} seconds"
+        f"FAIL: {device}: could not reconnect within {recovery_kpi} seconds"
     )
     return False
 
@@ -100,9 +100,6 @@ def recover_device(initialize, device, started_at, results, step):
             services_active = device_utils.verify_extender_services(initialize, device, deadline)
         if not services_active:
             results[device] = False
-            report_logger.print_error(
-                f"{device}: services were not active within the recovery KPI"
-            )
             return False
         recovery_time = time.monotonic() - started_at
         if recovery_time >= recovery_kpi:

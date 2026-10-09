@@ -43,7 +43,7 @@ def test_ap_metrics_response_disable(initialize):
         report_logger.print_step("STEP 3: Verify the configured AP Metrics reporting interval is 0s")
         configured_interval = initialize.get_ap_metrics_reporting_interval("controller")
         if str(configured_interval).strip() != str(mc_utils.DISABLED_INTERVAL):
-            report_logger.print_error(f"AP Metrics reporting interval is {configured_interval!r}; expected {mc_utils.DISABLED_INTERVAL}")
+            report_logger.print_error(f"FAIL: AP Metrics reporting interval is {configured_interval!r}; expected {mc_utils.DISABLED_INTERVAL}")
             return
         report_logger.print_success("PASS: Configured interval confirms AP Metrics reporting is disabled")
 
@@ -90,4 +90,3 @@ def test_ap_metrics_response_disable(initialize):
             except Exception as error:
                 report_logger.log(f"Could not collect remote packet capture: {error}")
         report_logger.print_test("Exiting test_ap_metrics_response_disable")
-        

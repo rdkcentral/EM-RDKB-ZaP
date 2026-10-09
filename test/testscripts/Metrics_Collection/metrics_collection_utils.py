@@ -78,14 +78,14 @@ def validate_periodic_ap_metrics_capture(packets, expected_device_macs, step):
         and check_message_presence([packet], MSG_TYPE_AP_METRICS_RESPONSE)
     ]
     if not responses:
-        report_logger.print_error("No AP Metrics Responses from enabled testbed devices were captured")
+        report_logger.print_error("FAIL: No AP Metrics Responses from enabled testbed devices were captured")
         return
     missing_tlv = any(
         not check_tlv_presence(bytes(response[Ether].payload), TLV_TYPE_AP_METRICS)
         for response in responses
     )
     if missing_tlv:
-        report_logger.print_error("An AP Metrics Response is missing its AP Metrics TLV")
+        report_logger.print_error("FAIL: An AP Metrics Response is missing its AP Metrics TLV")
     else:
         report_logger.print_success("PASS: AP Metrics Responses were captured with the AP Metrics TLV")
 

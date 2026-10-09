@@ -38,7 +38,7 @@ def test_controller_recovery_consecutive_reboots(initialize):
         report_logger.print_step("STEP 1: Discover all enabled extenders")
         extenders = device_utils.get_enabled_extenders(initialize)
         if not extenders:
-            report_logger.print_error("No enabled extenders found in infra.yaml")
+            report_logger.print_error("FAIL: No enabled extenders found in infra.yaml")
             return
         report_logger.print_info(f"INFO: Enabled extenders for this recovery test: {extenders}")
 
@@ -87,7 +87,8 @@ def test_controller_recovery_consecutive_reboots(initialize):
             if cycle_success:
                 report_logger.print_success(f"PASS: Controller recovered successfully in cycle {cycle}/{cr_utils.REBOOT_CYCLES}")
             else:
-                report_logger.print_error(f"Recovery cycle {cycle}/{cr_utils.REBOOT_CYCLES} completed with errors")
+                report_logger.print_error(f"FAIL: Recovery cycle {cycle}/{cr_utils.REBOOT_CYCLES} completed with errors")
+                return
         report_logger.print_info(f"INFO: All controller reboot cycles completed; checking extender reachability after cycle {cr_utils.REBOOT_CYCLES}")
         extender_results = {}
         extender_threads = []
@@ -111,7 +112,6 @@ def test_controller_recovery_consecutive_reboots(initialize):
         for thread in extender_threads:
             thread.join()
         report_logger.print_info("INFO: Recovery checks have finished for all extenders")
-
         recovered_results = {
             extender: result
             for extender, result in extender_results.items()
@@ -135,6 +135,9 @@ def test_controller_recovery_consecutive_reboots(initialize):
                 validation_errors.append(f"{extender}: recovery failed after controller cycle {cr_utils.REBOOT_CYCLES}: {recovery_result}")
                 continue
             if recovery_result is False:
+                validation_errors.append(
+                    f"{extender}: recovery failed within the recovery KPI"
+                )
                 continue
             if recovery_result is None:
                 validation_errors.append(f"{extender}: no recovery result was recorded")
@@ -235,5 +238,7 @@ def test_controller_recovery_consecutive_reboots(initialize):
                 # Always clean up captures that were started but not collected.
                 device_utils.stop_and_collect_capture(initialize, extender, capture_name)
             except Exception as error:
-                report_logger.log(f"Could not stop {extender} capture during cleanup: {error}")
+                report_logger.print_error(
+                    f"Could not stop {extender} capture during cleanup: {error}"
+                )
         report_logger.print_test("Exiting test_controller_recovery_consecutive_reboots")
