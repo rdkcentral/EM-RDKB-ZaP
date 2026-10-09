@@ -1,0 +1,686 @@
+# If not stated otherwise in this file or this component LICENSE file the
+# following copyright and licenses apply:
+#
+# Copyright 2026 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import re
+import pytest
+from rdkbmeshzap.common_utils import device_utils, report_logger
+
+# Polling interval (seconds) between consecutive stability checks.
+POLL_INTERVAL_SEC = 60
+# Total duration (seconds) for which stability monitoring is performed.
+TEST_DURATION_SEC = 120
+# Maximum allowed percentage increase from the baseline metric value.
+MAX_BASELINE_INCREASE_PERCENT = 20.0
+# Minimum available memory percentage required for a healthy system.
+AVAILABLE_MEMORY_PERCENT = 20.0
+# Maximum memory utilization percentage allowed during the test.
+MAX_USED_MEMORY_PERCENT = 80.0
+# Number of consecutive samples required to detect monotonic memory growth.
+MONOTONIC_GROWTH_SAMPLES = 3
+# Minimum cumulative memory growth (MB) considered significant.
+MIN_MONOTONIC_GROWTH_MB = 50.0
+# Maximum allowed increase in used memory percentage from baseline.
+MAX_BASELINE_USED_INCREASE_PERCENT = 20.0
+# Maximum allowed PHY rate degradation relative to baseline (%).
+PHY_RATE_DROP_PERCENT = 50
+# Maximum allowed RSSI degradation from baseline (dB).
+MAX_RSSI_DEGRADATION_DB = 10
+# Minimum acceptable RSSI threshold (dBm) for a stable link.
+MIN_RSSI_DBM = -80
+
+def parse_link_output(output: str, value: str) -> list:
+    """
+    Syntax : parse_link_output(output, value)
+    Description : Extracts a requested value from raw `iw link` output.
+    Parameters :
+        output - Raw output from an `iw link` command.
+        value - Value to extract: `bssid`, `ssid`, `signal`, or `rates`.
+    Return Value: A list of extracted values or rate tuples.
+    """
+    patterns = {
+        "bssid": (
+            re.compile(
+                r"^\s*Connected\s+to\s+([0-9a-f:]{17})",
+                re.MULTILINE | re.IGNORECASE,
+            ),
+            1,
+        ),
+        "ssid": (
+            re.compile(r"^\s*SSID:\s*(.+?)\s*$", re.MULTILINE | re.IGNORECASE),
+            1,
+        ),
+        "signal": (
+            re.compile(
+                r"^\s*signal:\s*(-?\d+)\s*dBm",
+                re.MULTILINE | re.IGNORECASE,
+            ),
+            1,
+        ),
+        "rates": (
+            re.compile(
+                r"^\s*(tx|rx) bitrate:\s*([\d.]+)\s+([MGK]Bit/s)",
+                re.MULTILINE | re.IGNORECASE,
+            ),
+            (1, 2, 3),
+        ),
+    }
+    if value not in patterns:
+        raise ValueError(f"Unsupported iw link value: {value}")
+    pattern, groups = patterns[value]
+    if isinstance(groups, tuple):
+        return [
+            tuple(match.group(group) for group in groups)
+            for match in pattern.finditer(output)
+        ]
+    return [match.group(groups) for match in pattern.finditer(output)]
+
+def parse_station_output(output: str, value: str) -> list:
+    """
+    Syntax : parse_station_output(output, value)
+    Description : Extracts a requested value from raw `iw station dump` output.
+    Parameters :
+        output - Raw output from an `iw station dump` command.
+        value - Value to extract: `records`, `macs`, `connected_time`,
+                `signal`, `tx_rate`, or `rx_rate`.
+    Return Value: A list of extracted values or station-record/rate tuples.
+    """
+    patterns = {
+        "records": (
+            re.compile(
+                r"^Station\s+(?P<mac>[0-9a-f:]{17})\b"
+                r"(?P<details>.*?)(?=^Station |\Z)",
+                re.MULTILINE | re.DOTALL | re.IGNORECASE,
+            ),
+            ("mac", "details"),
+        ),
+        "macs": (
+            re.compile(
+                r"^Station\s+([0-9a-f:]{17})",
+                re.MULTILINE | re.IGNORECASE,
+            ),
+            1,
+        ),
+        "connected_time": (
+            re.compile(r"^\s*connected time:\s*(\d+) seconds", re.MULTILINE),
+            1,
+        ),
+        "signal": (
+            re.compile(
+                r"^\s*signal:\s*(-?\d+)\s*dBm\s*$",
+                re.MULTILINE | re.IGNORECASE,
+            ),
+            1,
+        ),
+        "tx_rate": (
+            re.compile(
+                r"^\s*tx bitrate:\s*([\d.]+)\s+([MGK]Bit/s)",
+                re.MULTILINE | re.IGNORECASE,
+            ),
+            (1, 2),
+        ),
+        "rx_rate": (
+            re.compile(
+                r"^\s*rx bitrate:\s*([\d.]+)\s+([MGK]Bit/s)",
+                re.MULTILINE | re.IGNORECASE,
+            ),
+            (1, 2),
+        ),
+    }
+    if value not in patterns:
+        raise ValueError(f"Unsupported iw station value: {value}")
+    pattern, groups = patterns[value]
+    if isinstance(groups, tuple):
+        return [
+            tuple(match.group(group) for group in groups)
+            for match in pattern.finditer(output)
+        ]
+    return [match.group(groups) for match in pattern.finditer(output)]
+
+def collect_device_cpu_utilization(initialize, device: str) -> dict:
+    """
+    Syntax : collect_device_cpu_utilization(initialize, device)
+    Description : Collects one parsed CPU utilization snapshot for a device.
+    Parameters :
+        initialize - Testbed initialization object exposing feature APIs.
+        device - Name of the target device.
+    Return Value: A parsed CPU snapshot containing the device name.
+    """
+    output = device_utils.get_device_cpu_utilization_output(initialize, device)
+    snapshot = device_utils.parse_cpu_utilization_output(output)
+    snapshot["device"] = device
+    return snapshot
+
+def collect_device_memory_utilization(initialize, device: str) -> dict:
+    """
+    Syntax : collect_device_memory_utilization(initialize, device)
+    Description : Collects one parsed memory utilization snapshot for a device.
+    Parameters :
+        initialize - Testbed initialization object exposing feature APIs.
+        device - Name of the target device.
+    Return Value: A parsed memory snapshot containing the device name.
+    """
+    output = device_utils.get_device_memory_utilization_output(initialize, device)
+    snapshot = device_utils.parse_memory_utilization_output(output)
+    snapshot["device"] = device
+    return snapshot
+
+def validate_memory_utilization_limits(
+    snapshot: dict, used_history: list, baseline: dict | None = None
+):
+    """
+    Syntax : validate_memory_utilization_limits(snapshot, used_history, baseline=None)
+    Description : Validates memory thresholds and detects sustained memory growth.
+    Parameters :
+        snapshot - Current parsed memory data.
+        used_history - Previously observed used-memory values.
+        baseline - Optional baseline memory snapshot used for comparison.
+    Return Value: None. The current test fails when a memory limit is exceeded.
+    """
+    device = snapshot["device"]
+    if snapshot["available_percent"] <= AVAILABLE_MEMORY_PERCENT:
+        message = (f"{device}: available memory too low: "
+                   f"{snapshot['available_percent']:.1f}%")
+        report_logger.print_error(message)
+    if snapshot["used_percent"] >= MAX_USED_MEMORY_PERCENT:
+        message = (f"{device}: used memory too high: "
+                   f"{snapshot['used_percent']:.1f}%")
+        report_logger.print_error(message)
+    if baseline:
+        increase = snapshot["used_percent"] - baseline["used_percent"]
+        if increase > MAX_BASELINE_USED_INCREASE_PERCENT:
+            raise Exception(
+                f"{device}: abnormal used-memory increase vs baseline: "
+                f"{increase:.1f} percentage points"
+            )
+    used_history.append(snapshot["used_mb"])
+    recent = used_history[-MONOTONIC_GROWTH_SAMPLES:]
+    if (
+        len(recent) == MONOTONIC_GROWTH_SAMPLES
+        and all(older < newer for older, newer in zip(recent, recent[1:]))
+        and recent[-1] - recent[0] >= MIN_MONOTONIC_GROWTH_MB
+    ):
+        message = (f"{device}: used memory increased monotonically across "
+               f"{MONOTONIC_GROWTH_SAMPLES} samples by "
+               f"{recent[-1] - recent[0]:.1f} MB: {recent} MB")
+        report_logger.print_error(message)
+
+def validate_cpu_utilization_limits(
+    snapshot: dict,
+    high_cpu_counts: dict,
+    consecutive_limit: int,
+    baseline: dict | None = None,
+):
+    """
+    Syntax : validate_cpu_utilization_limits(snapshot, high_cpu_counts, consecutive_limit, baseline=None)
+    Description : Validates CPU thresholds and repeated high-CPU process usage.
+    Parameters :
+        snapshot - Current parsed CPU data.
+        high_cpu_counts - Consecutive high-CPU counters keyed by process.
+        consecutive_limit - Number of consecutive samples allowed before failure.
+        baseline - Optional baseline CPU snapshot used for comparison.
+    Return Value: None. The current test fails when a CPU limit is exceeded.
+    """
+    device = snapshot["device"]
+    idle_percent = snapshot["idle_percent"]
+    if idle_percent <= 20 or snapshot["utilization_percent"] >= 80:
+        message = (
+            f"{device}: CPU limits exceeded: idle={idle_percent:.1f}%, "
+            f"utilization={snapshot['utilization_percent']:.1f}%"
+        )
+        report_logger.print_error(message)
+        
+    if baseline:
+        increase = snapshot["utilization_percent"] - baseline["utilization_percent"]
+        if increase > MAX_BASELINE_INCREASE_PERCENT:
+            raise Exception(
+                f"{device}: abnormal utilization increase vs baseline: "
+                f"{increase:.1f} percentage points"
+            )
+          
+    current_processes = set(snapshot["high_cpu_processes"])
+    for process in list(high_cpu_counts):
+        if process not in current_processes:
+            del high_cpu_counts[process]
+    for process in current_processes:
+        high_cpu_counts[process] = high_cpu_counts.get(process, 0) + 1
+        if high_cpu_counts[process] >= consecutive_limit:
+            message = (
+                f"{device}: process continuously exceeded 50% CPU: {process} "
+                f"({snapshot['high_cpu_processes'][process]:.1f}%)"
+            )
+            report_logger.print_error(message)
+            continue
+
+def get_scale_setup(initialize, scale: str = None) -> dict:
+    """
+    Syntax : get_scale_setup(initialize, scale=None)
+    Description : Reads the requested or enabled scale settings from platform YAML.
+    Parameters :
+        initialize - Testbed initialization and database interface.
+        scale - Optional scale name such as `small`, `medium`, or `large`.
+    Return Value: A dictionary containing the selected scale configuration.
+    """
+    scale_setups = initialize.read_from_database(
+        "test_parameters", "scalesetup"
+    )
+    if not isinstance(scale_setups, dict):
+        raise ValueError(
+            "Scale setups are missing from test_parameters in platform YAML"
+        )
+    scale_names = (scale,) if scale else ("small", "medium", "large")
+    enabled_setup = None
+    for scale_name in scale_names:
+        setup = scale_setups.get(scale_name)
+        if not isinstance(setup, dict):
+            raise ValueError(
+                f"Scale setup '{scale_name}' is missing from "
+                "test_parameters.scalesetup in platform YAML"
+            )
+        if scale:
+            return setup
+        enabled = setup.get("enabled", False)
+        if isinstance(enabled, str):
+            enabled = enabled.strip().lower() in {"true", "yes", "1", "on"}
+        if enabled:
+            if enabled_setup is not None:
+                raise ValueError("Multiple scale setups are enabled in platform YAML")
+            enabled_setup = setup
+    if enabled_setup is None:
+        raise ValueError("No scale setup is enabled in platform YAML")
+    return enabled_setup
+
+def get_all_interfaces(initialize, device: str) -> list:
+    """
+    Syntax : get_all_interfaces(initialize, device)
+    Description : Returns non-MLD wireless interfaces reported by `iw dev`.
+    Parameters :
+        initialize - Testbed initialization and database interface.
+        device - Name of the target mesh device.
+    Return Value: A list of wireless interface names used for topology checks.
+    """
+    interfaces = []
+    for line in initialize.get_iw_dev_info(device).splitlines():
+        line = line.strip()
+        if line.startswith("Interface "):
+            interface = line.split()[1]
+            if not interface.lower().startswith("mld"):
+                interfaces.append(interface)
+    return interfaces
+
+def backhaul_interfaces(initialize, device: str) -> list:
+    """
+    Syntax : backhaul_interfaces(initialize, device)
+    Description : Finds non-MLD wireless interfaces operating in managed mode.
+    Parameters :
+        initialize - Testbed initialization and database interface.
+        device - Name of the target mesh device.
+    Return Value: A list of managed backhaul interface names.
+    """
+    interfaces =  [
+        interface
+        for interface in get_all_interfaces(initialize, device)
+             if initialize.get_iw_interface_details(device, interface).get("type", "").lower() == "managed"
+    ]
+    report_logger.print_info(
+        f"INFO: {device} managed backhaul interfaces: {interfaces}"
+    )
+    return interfaces     
+
+def backhaul_state(initialize, device: str, interface: str) -> dict:
+    """
+    Syntax : backhaul_state(initialize, device, interface)
+    Description : Collects link and station metrics for a backhaul interface.
+    Parameters :
+        initialize - Testbed initialization and database interface.
+        device - Name of the target mesh device.
+        interface - Name of the managed backhaul interface.
+    Return Value: A dictionary containing connection, signal, rate, and station data.
+    """
+    link = initialize.get_iw_dev_link_info(device, interface)
+    station = initialize.get_iw_dev_sta_dump(device, interface)
+    bssids = parse_link_output(link, "bssid")
+    signals = parse_link_output(link, "signal")
+    ssids = parse_link_output(link, "ssid")
+    state = {
+        "device": device,
+        "interface": interface,
+        "connected": bool(bssids),
+        "bssid": bssids[0] if bssids else None,
+        "ssid": ssids[0].strip() if ssids else None,
+        "rssi_dbm": int(signals[0]) if signals else None,
+        "tx_mbps": None,
+        "rx_mbps": None,
+        "connected_time": None,
+    }
+    for direction, rate, unit in parse_link_output(link, "rates"):
+        state[f"{direction.lower()}_mbps"] = rate_to_mbps(rate, unit)
+    records = parse_station_output(station, "records")
+    if records:
+        connected_times = parse_station_output(records[0][1], "connected_time")
+        state["connected_time"] = (
+            int(connected_times[0]) if connected_times else None
+        )
+    return state
+
+def get_all_stations(initialize, device: str) -> set:
+    """
+    Syntax : get_all_stations(initialize, device)
+    Description : Collects station MACs across all relevant device interfaces.
+    Parameters :
+        initialize - Testbed initialization and database interface.
+        device - Name of the target mesh device.
+    Return Value: A set of associated station MAC addresses.
+    """
+    macs: set = set()
+    for iface in get_all_interfaces(initialize, device):
+        try:
+            output = initialize.get_iw_dev_sta_dump(device, iface)
+            macs.update(parse_station_output(output, "macs"))
+        except Exception as err:
+            report_logger.print_error(f"station dump failed on {device}/{iface}: {err}")
+    return macs
+
+def get_fronthaul_associations(initialize, devices: list) -> dict:
+    """
+    Syntax : get_fronthaul_associations(initialize, devices)
+    Description : Collects fronthaul station MACs for each mesh device.
+    Parameters :
+        initialize - Testbed initialization and database interface.
+        devices - Names of the mesh devices to inspect.
+    Return Value: A mapping of device names to associated station MAC sets.
+    """
+    associations = {}
+    for device in devices:
+        interface = device_utils.get_fronthaul_interface(initialize, device)
+        try:
+            output = initialize.get_iw_dev_sta_dump(device, interface)
+            associations[device] = set(parse_station_output(output, "macs"))
+            observed = ", ".join(sorted(associations[device]))
+            observation = observed or "no clients currently connected"
+            report_logger.print_info(
+                f"INFO: Observed {device}/{interface} fronthaul client MACs: "
+                f"{observation}"
+            )
+        except Exception as err:
+            report_logger.print_error(
+                f"Fronthaul station dump failed on "
+                f"{device}/{interface}: {err}"
+            )
+            associations[device] = set()
+    return associations
+
+def get_total_associations(associations: dict) -> int:
+    """
+    Syntax : get_total_associations(associations)
+    Description : Counts all associated clients in a topology snapshot.
+    Parameters :
+        associations - Mapping of device names to station MAC sets.
+    Return Value: The total number of associated clients.
+    """
+    return sum(len(macs) for macs in associations.values())
+
+def get_associations_mismatch(baseline: dict, current: dict) -> list:
+    """
+    Syntax : get_associations_mismatch(baseline, current)
+    Description : Compares current client associations with a baseline snapshot.
+    Parameters :
+        baseline - Initial mapping of device names to station MAC sets.
+        current - Current mapping of device names to station MAC sets.
+    Return Value: A list of client-count and per-device mismatch descriptions.
+    """
+    mismatches = []
+    baseline_total = get_total_associations(baseline)
+    current_total = get_total_associations(current)
+    if current_total != baseline_total:
+        mismatches.append(
+            f"Total client count changed: baseline={baseline_total} "
+            f"current={current_total}"
+        )
+    for device in sorted(set(baseline) | set(current)):
+        baseline_macs = baseline.get(device, set())
+        current_macs = current.get(device, set())
+        missing_macs = sorted(baseline_macs - current_macs)
+        unexpected_macs = sorted(current_macs - baseline_macs)
+        if missing_macs or unexpected_macs:
+            mismatches.append(
+                f"{device} client association mismatch: "
+                f"missing={missing_macs}, unexpected={unexpected_macs}"
+            )
+    return mismatches
+
+def capture_extender_presence(initialize, agents: list) -> dict:
+    """
+    Syntax : capture_extender_presence(initialize, agents)
+    Description : Captures extender presence information.
+    Parameters :
+        initialize - Testbed initialization and database interface.
+        agents - Names of extender devices included in the topology.
+    Return Value: Dictionary containing the connected agents and agent count.
+    """
+    connected_agents = set()
+    for agent in agents:
+        try:
+            interfaces = backhaul_interfaces(initialize, agent)
+            if any(
+                initialize.get_wireless_backhaul_connection_status(
+                    agent,
+                    interface,
+                )
+                for interface in interfaces
+            ):
+                connected_agents.add(agent)
+        except Exception:
+            continue
+    report_logger.print_info(
+        f"INFO: Connected agents: {sorted(connected_agents)} "
+        f"(count={len(connected_agents)})"
+    )
+    return { "agent_count": len(connected_agents), "agents": connected_agents, }
+
+def compare_extender_presence(expected_count: int, baseline: dict, current: dict) -> list:
+    """
+    Syntax : compare_extender_presence(expected_count, baseline, current)
+    Description : Validates controller-side agent count and presence.
+    Parameters :
+        expected_count - Required number of connected agents.
+        baseline - Initial topology snapshot.
+        current - Current topology snapshot.
+    Return Value: A list of agent-presence mismatch descriptions.
+    """
+    mismatches = []
+    current_agent_count = current["agent_count"]
+
+    if current_agent_count < expected_count:
+        mismatches.append(
+            f"Agent count below minimum: expected={expected_count} "
+            f"current={current_agent_count}"
+        )
+
+    if current_agent_count != baseline["agent_count"]:
+        mismatches.append(
+            f"Agent count changed: baseline={baseline['agent_count']} "
+            f"current={current_agent_count}"
+        )
+    missing_agents = baseline["agents"] - current["agents"]
+
+    if missing_agents:
+        mismatches.append(
+            f"Missing agents: {sorted(missing_agents)}"
+        )    
+    return mismatches
+
+def get_device_for_bssid(initialize, bssid: str):
+    """
+    Syntax : get_device_for_bssid(initialize, bssid)
+    Description : Identifies the mesh device advertising the specified fronthaul BSSID.
+    Parameters :
+        initialize - Testbed initialization and database interface.
+        bssid - BSSID to locate within the mesh network.
+    Return Value: Device name advertising the BSSID, or None if not found.
+    """
+    connected_bssid = bssid.lower()
+    devices = ["controller", *device_utils.get_enabled_extenders(initialize)]
+    for device in devices:
+        try:
+            bssids = {
+                bssid.lower()
+                for bssid in initialize.get_fronthaul_bssids(device)
+            }
+        except Exception as err:
+            report_logger.print_info(
+                f"INFO: Could not read fronthaul BSSIDs from '{device}': {err}"
+            )
+            continue
+        if connected_bssid in bssids:
+            return device
+    return None
+
+def rate_to_mbps(rate: str, unit: str) -> float:
+    """
+    Syntax : rate_to_mbps(rate, unit)
+    Description : Converts a parsed `iw` bitrate to megabits per second.
+    Parameters :
+        rate - Numeric bitrate value returned by the parser.
+        unit - Bitrate unit returned by the parser.
+    Return Value: The bitrate in Mbps.
+    """
+    rate = float(rate)
+    unit = unit.lower()
+    if unit == "gbit/s":
+        return rate * 1000
+    if unit == "kbit/s":
+        return rate / 1000
+    return rate
+
+def client_phy_rate(initialize, client: str, host: str | None):
+    """
+    Syntax : client_phy_rate(initialize, client, host)
+    Description : Reads a client's primary transmit and receive PHY rates.
+    Parameters :
+        initialize - Testbed initialization and database interface.
+        client - Name of the configured WLAN client.
+        host - Present mesh device advertising the client's associated BSSID.
+    Return Value: A PHY-rate state dictionary, or None when no station matches.
+    """
+    if host is None:
+        return None
+    client_mac = initialize.read_from_database(client, "mac").lower()
+    interface = device_utils.get_fronthaul_interface(initialize, host)
+    output = initialize.get_iw_dev_sta_dump(host, interface)
+    for station_mac, details in parse_station_output(output, "records"):
+        station_mac = station_mac.lower()
+        if station_mac != client_mac:
+            continue
+        tx_rates = parse_station_output(details, "tx_rate")
+        rx_rates = parse_station_output(details, "rx_rate")
+        return {
+            "client": client,
+            "host": host,
+            "interface": interface,
+            "mac": station_mac,
+            "tx_mbps": rate_to_mbps(*tx_rates[0]) if tx_rates else None,
+            "rx_mbps": rate_to_mbps(*rx_rates[0]) if rx_rates else None,
+        }
+    return None
+
+def validate_phy_rate(
+    state,
+    baseline=None,
+    drop_percent_limit=PHY_RATE_DROP_PERCENT,
+):
+    """
+    Syntax : validate_phy_rate(state, baseline=None, drop_percent_limit=PHY_RATE_DROP_PERCENT)
+    Description : Validates PHY rates and optional baseline degradation.
+    Parameters :
+        state - Current PHY-rate state dictionary.
+        baseline - Optional baseline PHY-rate state.
+        drop_percent_limit - Maximum allowed rate reduction percentage.
+    Return Value: An error message, or None when the sample is valid.
+    """
+    if state is None:
+        return "client PHY-rate sample is unavailable"
+    if state["tx_mbps"] is None or state["rx_mbps"] is None:
+        return f"station record has no TX/RX PHY rate: {state}"
+    if baseline is not None:
+        for direction in ("tx_mbps", "rx_mbps"):
+            baseline_rate = baseline[direction]
+            current_rate = state[direction]
+            drop_percent = (baseline_rate - current_rate) / baseline_rate * 100
+            if drop_percent > drop_percent_limit:
+                return (
+                    f"{direction[:-5].upper()} PHY rate dropped by "
+                    f"{drop_percent:.1f}% from {baseline_rate:.1f} to "
+                    f"{current_rate:.1f} Mbps"
+                )
+    return None
+
+def client_rssi(initialize, client: str, host: str | None):
+    """
+    Syntax : client_rssi(initialize, client, host)
+    Description : Reads a client's fronthaul RSSI and station state.
+    Parameters :
+        initialize - Testbed initialization and database interface.
+        client - Name of the configured WLAN client.
+        host - Present mesh device advertising the client's associated BSSID.
+    Return Value: An RSSI state dictionary, or None when no station matches.
+    """
+    if host is None:
+        return None
+    interface = device_utils.get_fronthaul_interface(initialize, host)
+    client_mac = initialize.read_from_database(client, "mac").lower()
+    output = initialize.get_iw_dev_sta_dump(host, interface)
+
+    for station_mac, details in parse_station_output(output, "records"):
+        station_mac = station_mac.lower()
+        if station_mac != client_mac:
+            continue
+        signals = parse_station_output(details, "signal")
+        return {
+            "client": client,
+            "host": host,
+            "interface": interface,
+            "mac": station_mac,
+            "rssi_dbm": int(signals[0]) if signals else None,
+        }
+    return None
+
+def validate_rssi(
+    client_state,
+    previous_rssi=None,
+    max_rssi_degradation_db=MAX_RSSI_DEGRADATION_DB,
+):
+    """
+    Syntax : validate_rssi(client_state, previous_rssi=None, max_rssi_degradation_db=MAX_RSSI_DEGRADATION_DB)
+    Description : Validates RSSI data and degradation.
+    Parameters :
+        client_state - Current RSSI state dictionary.
+        previous_rssi - Optional baseline or previous RSSI value in dBm.
+        max_rssi_degradation_db - Maximum allowed RSSI degradation in dB.
+    Return Value: An error message, or None when the sample is valid.
+    """
+    if client_state is None:
+        return "client RSSI sample is unavailable"
+    if client_state["rssi_dbm"] is None:
+        return "station record has no primary signal value"
+    if previous_rssi is not None:
+        degradation = previous_rssi - client_state["rssi_dbm"]
+        if degradation > max_rssi_degradation_db:
+            return (
+                f"RSSI degraded by {degradation} dB from {previous_rssi} dBm "
+                f"to {client_state['rssi_dbm']} dBm"
+            )
+    return None
