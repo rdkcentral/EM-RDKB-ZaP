@@ -326,3 +326,35 @@ class FeatureInterfaceDE(DatabaseModule,
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output.strip()}")
         return output.partition('Value')[2].lstrip(' :').split()[0]
+
+    def get_controller_id(self, device: str) -> str:
+        """
+        Get the Controller ID for the specific device."""
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        cmd = f"rbuscli get Device.WiFi.DataElements.Network.ControllerID"
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+        # No 'Value' in the output 
+        if 'Value :' not in output:
+              raise RuntimeError(f"Failed to get controller ID: {output.strip()}")      
+         # 'Value' found -> extract and return just the value
+        return output.partition('Value')[2].lstrip(' :').split()[0]
+
+    def get_device_index(self, device: str, device_mac: str) -> int:
+        """
+        Get the device index using the MAC address from DataElements.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
+        cutval = "'{print $6}'"
+        cmd = f"rbuscli get Device.WiFi.DataElements. | grep -i -B 2 {device_mac} |grep 'Name' | awk -F. {cutval} | sort -u"
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+        if error or not output.strip():
+            raise RuntimeError(f"Failed to get device index for {device}: {output.strip()}")
+        device_index = int(output.strip())
+
+        return device_index

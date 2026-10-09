@@ -25,6 +25,12 @@ def test_client_association_gateway_reachability(initialize):
     Verify that Wi-Fi client devices can successfully ping and reach the gateway after receiving a valid IP address via DHCP and associating to the EasyMesh SSID, whether attached to the Controller or one of the 3 Agents.
     """
     report_logger.print_test("Entering EM_Client_Association_Gateway_Reachability")
+    report_logger.print_info(f"INFO: Retrieving and storing device index into the database for controller and enabled extenders")
+    devices = ["controller"] + device_utils.get_enabled_extenders(initialize)
+    for device in devices:
+        device_mac = initialize.read_from_database(device, "2g_radio_mac")
+        device_index = device_utils.retrieve_and_store_device_index(initialize, device, device_mac)   
+        report_logger.print_info(f"INFO: Device index for {device}: {device_index}")
     report_logger.print_step("STEP 1: Get Gateway interface is up or not from DataElements")
     gateway_interface = initialize.get_IP_Interface_Enable("controller", "controller_device_index",'de')
     if  gateway_interface != "true":

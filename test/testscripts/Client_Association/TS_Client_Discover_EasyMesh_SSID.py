@@ -25,6 +25,12 @@ def test_client_association_discovery_easymesh_ssid(initialize):
     Verify that  Wi-Fi client devices can discover and see the EasyMesh SSID broadcast by the mesh network (Controller and all 3 Agent devices)
     """    
     report_logger.print_test("Entering EM_Client_Association_Discovery_EasyMesh_SSID")
+    report_logger.print_info(f"INFO: Retrieving and storing device index into the database for controller and enabled extenders")
+    devices = ["controller"] + device_utils.get_enabled_extenders(initialize)
+    for device in devices:
+        device_mac = initialize.read_from_database(device, "2g_radio_mac")
+        device_index = device_utils.retrieve_and_store_device_index(initialize, device, device_mac)   
+        report_logger.print_info(f"INFO: Device index for {device}: {device_index}")
     report_logger.print_step("STEP 1: Get SSID from DataElements")
     ssid = initialize.get_ssid("controller", "controller_device_index", 'de')
     report_logger.print_success(f"PASS: Retrieved SSID: {ssid}")
