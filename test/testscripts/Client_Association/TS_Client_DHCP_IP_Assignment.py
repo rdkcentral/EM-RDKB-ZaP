@@ -30,8 +30,8 @@ def test_client_association_dhcp_ip_assignment(initialize):
         devices = ["controller"] + device_utils.get_enabled_extenders(initialize)
         for device in devices:
             device_mac = initialize.read_from_database(device, "2g_radio_mac")
-            device_index = initialize.get_device_index("controller", device_mac, "de")   
-        report_logger.print_info(f"INFO: Device index for {device}: {device_index}")
+            device_index = device_utils.retrieve_and_store_device_index(initialize, device, device_mac)   
+            report_logger.print_info(f"INFO: Device index for {device}: {device_index}")
         report_logger.print_step("STEP 1: Get DHCP Server is enabled or not")
         try:
             dhcp_server_enabled = initialize.get_dhcpv4_server_enable("controller",'de')
