@@ -88,19 +88,13 @@ def validate_setup_accessibility(initialize):
 @pytest.fixture(scope="session", autouse=True)
 def update_runtime_database(initialize, validate_setup_accessibility):
 	global _setup_failure
-	steps = (
-		test_environment_checks.retrieve_and_store_radio_macs,
-		test_environment_checks.retrieve_and_store_device_indexes,
-	)
 	captured_output = io.StringIO()
-	for step in steps:
-		start = captured_output.tell()
-		with redirect_stdout(captured_output):
-			result = step(initialize)
-		print(captured_output.getvalue()[start:], end="")
-		if result is False and not _setup_failure:
-			_setup_failure = "Runtime Database Configuration Update failed"
+	with redirect_stdout(captured_output):
+		database_update_result = test_environment_checks.retrieve_and_store_radio_macs(initialize)
 	_setup_sections["database_update"] = captured_output.getvalue()
+	print(_setup_sections["database_update"], end="")
+	if database_update_result is False:
+		_setup_failure = "Runtime Database Configuration Update failed"
 
 @pytest.fixture(scope="session", autouse=True)
 def verify_test_environment(initialize, update_runtime_database):

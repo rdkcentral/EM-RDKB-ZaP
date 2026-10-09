@@ -25,6 +25,12 @@ def test_multi_agent_onboarding_no_duplicate_entries(initialize):
     Verify that no duplicate Agent entries are created in the Controller's topology after all 3 Agents complete onboarding.
     """
     report_logger.print_test("Entering EM Multi-Agent Onboarding No Duplicate Entries")
+    report_logger.print_info(f"INFO: Retrieving and storing device index into the database for controller and enabled extenders")
+    devices = ["controller"] + device_utils.get_enabled_extenders(initialize)
+    for device in devices:
+        device_mac = initialize.read_from_database(device, "2g_radio_mac")
+        device_index = initialize.get_device_index("controller", device_mac, "de")   
+        report_logger.print_info(f"INFO: Device index for {device}: {device_index}")
     report_logger.print_step("STEP 1: Get device-IDs of controller and all extenders from DataElements")
     present_devices = []
     index = []
@@ -33,7 +39,6 @@ def test_multi_agent_onboarding_no_duplicate_entries(initialize):
         present_devices.append("controller")
         index.append(controller_index)
     devices = device_utils.get_enabled_extenders(initialize)
-    report_logger.print_success(f"{devices}")
     for device in devices:
         if initialize.read_from_database(device, "device_present"):
             present_devices.append(device)

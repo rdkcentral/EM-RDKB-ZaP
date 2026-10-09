@@ -508,3 +508,11 @@ class FeatureInterface(FeatureInterfaceModules):
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.get_controller_id(device)
+
+    def get_device_index(self, device: str, device_mac: str, method='de') -> str:
+        """
+        Get the device index for a given device and its MAC address.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_device_index(device, device_mac)
