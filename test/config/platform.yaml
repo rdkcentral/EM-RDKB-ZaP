@@ -138,7 +138,7 @@ test_parameters:
       small:
         enabled: true                                        # Enable the small scale setup
         expected_agent_count: 2                              # Number of expected agents in the small scale setup
-        expected_client_count: 1                             # Number of expected clients in the small scale setup
+        expected_client_count: 5                             # Number of expected clients in the small scale setup
       medium:
         enabled: false                                       # Enable the medium scale setup
         expected_agent_count: 5                              # Number of expected agents in the medium scale setup

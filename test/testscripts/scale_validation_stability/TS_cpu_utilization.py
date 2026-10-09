@@ -32,9 +32,9 @@ def test_em_scale_cpu_utilization(initialize):
 	consecutive_limit = 2
 	high_cpu_counts = {device: {} for device in devices}
 	report_logger.print_step(
-		"STEP 1: Capture per-device baseline CPU idle, utilization, and process usage; "
-		"expect more than 20% idle CPU, less than 80% utilization, and no sustained "
-		"high-CPU process"
+	    "STEP 1: Capture baseline CPU usage for each device and verify that "
+    	"CPU utilization remains below 80%, idle CPU stays above 20%, and "
+    	"no process is consuming excessive CPU resources"
 	)
 	baseline = {}
 	for device in devices:
@@ -54,11 +54,11 @@ def test_em_scale_cpu_utilization(initialize):
 			continue
 
 	report_logger.print_step(
-		"STEP 2: Sample every device and compare CPU usage with its baseline"
+    "STEP 2: Monitor CPU usage on each device and compare it against the baseline values"
 	)
 	report_logger.print_info(
-		f"INFO: Sampling for {test_duration_sec} seconds every "
-		f"{poll_interval_sec} seconds"
+    f"INFO: Monitoring CPU usage for {test_duration_sec} seconds at "
+    f"{poll_interval_sec}-second intervals"
 	)
 	start_time = time.time()
 	sample_count = 0
@@ -66,13 +66,16 @@ def test_em_scale_cpu_utilization(initialize):
 		sample_count += 1
 		for device in devices:
 			try:
+				report_logger.print_step(
+        		    f"STEP 2.{sample_count}: Monitor CPU usage on {device}"
+        		)
 				snapshot = collect_device_cpu_utilization(initialize, device)
 				validate_cpu_utilization_limits(
 					snapshot, high_cpu_counts[device], consecutive_limit,
 					baseline[device]
 				)
 				report_logger.print_success(
-					f"PASS: Sample #{sample_count} observed on {device}: "
+					f"PASS: Monitoring check #{sample_count} observed on {device}: "
 					f"idle={snapshot['idle_percent']:.1f}%, "
 					f"utilization={snapshot['utilization_percent']:.1f}%"
 				)
@@ -83,7 +86,7 @@ def test_em_scale_cpu_utilization(initialize):
 		time.sleep(poll_interval_sec)
 
 	report_logger.print_step(
-		"STEP 3: Capture final per-device CPU statistics and enforce all limits"
+		"STEP 3: Capture final CPU statistics and validate CPU usage remains within expected limits"
 	)
 	final = {}
 	for device in devices:

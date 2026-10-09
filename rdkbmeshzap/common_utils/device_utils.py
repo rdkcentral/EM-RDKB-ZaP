@@ -17,7 +17,6 @@
 
 import re
 import time
-import re
 import pytest
 from rdkbmeshzap.common_utils import report_logger
 
@@ -137,35 +136,6 @@ def get_device_memory_utilization_output(initialize, device: str) -> str:
         return output
     raise RuntimeError(f"free returned no output on {device}")
 
-def validate_device_accessibility(initialize):
-    """
-    Validate SSH accessibility for every configured testbed device.
-    Parameters: initialize - Testbed initialization and device interface.
-    Return Value: A list of devices that failed accessibility validation.
-    Example: validate_device_accessibility(initialize)
-    """
-    devices = initialize.get_testbed_devices()
-    failures = []
-    report_logger.print_info(
-        f"INFO: Validating accessibility of {len(devices)} configured devices"
-    )
-    for device in devices:
-        report_logger.print_info(f"INFO: Connecting to {device}")
-        try:
-            connected = initialize.connect_with_device(device)
-            if connected is False:
-                raise RuntimeError("connection API returned False")
-        except Exception as error:
-            failures.append(device)
-            report_logger.print_error(
-                f"{device} accessibility validation failed: {error}"
-            )
-        else:
-            report_logger.print_success(
-                f"{device} is accessible over SSH"
-            )
-    return failures
-
 def get_enabled_clients(initialize):
     """
     Syntax: get_enabled_clients(initialize)
@@ -174,17 +144,11 @@ def get_enabled_clients(initialize):
     Return Value: A list of enabled client device names.
     Example: get_enabled_clients(initialize)
     """
-    enabled_clients = []
-    for device in initialize.get_testbed_devices():
-        if "_wlan_client_" not in device:
-            continue
-        present = initialize.read_from_database(device, "device_present")
-        if present is None or (
-            isinstance(present, str)
-            and present.strip().lower() in {"true", "yes", "1", "on"}
-        ) or (not isinstance(present, str) and bool(present)):
-            enabled_clients.append(device)
-    return enabled_clients
+    return [
+        device
+        for device in initialize.get_testbed_devices()
+        if "_wlan_client_" in device
+    ]
 
 def normalize_security( value: str) -> str:
     """
@@ -409,3 +373,18 @@ def get_extender_parent_device(initialize, extender, devices):
         if re.search(rf"\baddr\s+{re.escape(bssid)}\b", str(output), re.IGNORECASE):
             return device, bssid
     return None, bssid
+
+def get_fronthaul_interface(initialize, device: str) -> str:
+    """
+    Syntax : get_fronthaul_interface(initialize, device)
+    Description : Builds the configured MLD fronthaul interface name.
+    Parameters :
+        initialize - Testbed initialization and database interface.
+        device - Name of the target mesh device.
+    Return Value: The configured fronthaul interface name.
+    """
+    mld_ifname = initialize.read_from_database(device, "mld_ifname")
+    mld_iface_index = initialize.read_from_database(device, "mld_iface_index")
+    if not mld_ifname or mld_iface_index is None:
+        raise ValueError(f"Missing MLD interface configuration for {device}")
+    return f"{mld_ifname}{mld_iface_index}"

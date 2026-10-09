@@ -42,9 +42,6 @@ def test_em_scale_client_association(initialize):
     report_logger.print_step(
         "STEP 2: Connect configured WLAN clients before baseline capture"
     )
-    report_logger.print_info(
-        f"INFO: WLAN clients selected for connection: {clients}"
-    )
     clients = connect_wlan_clients(initialize, clients)
     report_logger.print_success(
         f"PASS: Connected clients before association test: {', '.join(clients)}"
@@ -53,7 +50,6 @@ def test_em_scale_client_association(initialize):
     poll_interval_sec = POLL_INTERVAL_SEC
     test_duration_sec = TEST_DURATION_SEC
     all_devices = ["controller"] + agents
-
     report_logger.print_step(
         "STEP 3: Verify each device is reachable before association capture"
     )
@@ -80,22 +76,20 @@ def test_em_scale_client_association(initialize):
             )
             report_logger.print_error(message)
     report_logger.print_step(
-        "STEP 4: Capture per-device fronthaul client MACs and validate the "
-        "baseline client count"
+        "STEP 4: Capture devices fronthaul client MACs and validate the baseline client count"
     )
-    baseline = collect_fronthaul_associations(initialize, all_devices)
-    total_baseline = total_associations(baseline)
+    baseline = get_fronthaul_associations(initialize, all_devices)
+    total_baseline = get_total_associations(baseline)
     if total_baseline < expected_client_count:
         message = (
             f"Baseline client count {total_baseline} is below the minimum "
-            f"{expected_client_count}. Snapshot: {baseline}"
+            f"{expected_client_count}."
         )
         report_logger.print_error(message)
     report_logger.print_success(
         f"PASS: Baseline captured: {total_baseline} clients "
         f"across {len(all_devices)} devices"
     )
-
     report_logger.print_step(
         "STEP 5: Periodically compare each device's client MAC associations "
         "with the baseline"
@@ -106,13 +100,13 @@ def test_em_scale_client_association(initialize):
         elapsed_min = int((time.time() - start_time) / 60)
         poll_count += 1
         report_logger.print_step(
-            "STEP 5: Compare current associations with the baseline"
+            f"STEP 5.{poll_count}: Compare current associations with the baseline"
         )
         report_logger.print_info(
             f"INFO: Poll #{poll_count} at ~{elapsed_min} min elapsed"
         )
-        current = collect_fronthaul_associations(initialize, all_devices)
-        mismatches = compare_associations(baseline, current)
+        current = get_fronthaul_associations(initialize, all_devices)
+        mismatches = get_associations_mismatch(baseline, current)
         if mismatches:
             message = (
                 f"Poll #{poll_count} ({elapsed_min} min): "
@@ -121,21 +115,19 @@ def test_em_scale_client_association(initialize):
             report_logger.print_error(message)
         report_logger.print_success(
             f"PASS: Poll #{poll_count}: Associations match baseline "
-            f"({total_associations(current)} clients)"
+            f"({get_total_associations(current)} clients)"
         )
         time.sleep(poll_interval_sec)
-
     report_logger.print_step(
-        "STEP 6: Capture final per-device client associations and report any "
-        "missing or unexpected client MACs"
+        "STEP 6: Capture final associations and report any missing client(s)"
     )
-    final = collect_fronthaul_associations(initialize, all_devices)
-    final_mismatches = compare_associations(baseline, final)
+    final = get_fronthaul_associations(initialize, all_devices)
+    final_mismatches = get_associations_mismatch(baseline, final)
     if final_mismatches:
         message = f"Final associations do not match baseline: {final_mismatches}"
         report_logger.print_error(message)
     report_logger.print_success(
         f"PASS: Final associations match baseline: "
-        f"{total_associations(final)} clients — PASS"
+        f"{get_total_associations(final)} clients — PASS"
     )
     report_logger.print_test("Exiting test_em_scale_client_association")

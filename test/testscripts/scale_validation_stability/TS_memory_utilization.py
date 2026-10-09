@@ -33,7 +33,8 @@ def test_em_scale_memory_utilization(initialize):
 	failures = []
 
 	report_logger.print_step(
-		"STEP 1: Capture and validate baseline available and used memory for each device"
+		"STEP 1: Capture baseline memory statistics for each device and" 
+		 "verify available and used memory are within expected limits"
 	)
 	baseline = {}
 	for device in devices:
@@ -52,7 +53,7 @@ def test_em_scale_memory_utilization(initialize):
 	report_logger.print_info(f"INFO: Baseline memory snapshot: {baseline}")
 
 	report_logger.print_step(
-		"STEP 2: Sample each device at the configured interval and compare memory "
+		"STEP 2: Monitor each device at the configured interval and compare memory "
 		"usage with its baseline"
 	)
 	start_time = time.time()
@@ -61,12 +62,15 @@ def test_em_scale_memory_utilization(initialize):
 		sample_count += 1
 		for device in devices:
 			try:
+				report_logger.print_step(
+					f"STEP 2.{sample_count}: Monitor memory usage on {device}"
+				)
 				snapshot = collect_device_memory_utilization(initialize, device)
 				validate_memory_utilization_limits(
 					snapshot, used_history[device], baseline[device]
 				)
 				report_logger.print_success(
-					f"PASS: Sample #{sample_count} {device}: "
+					f"PASS: Monitoring check #{sample_count} {device}: "
 					f"available={snapshot['available_percent']:.1f}%, "
 					f"used={snapshot['used_percent']:.1f}%"
 				)
@@ -77,7 +81,7 @@ def test_em_scale_memory_utilization(initialize):
 		time.sleep(poll_interval_sec)
 
 	report_logger.print_step(
-		"STEP 3: Capture final per-device memory statistics and enforce all limits"
+		"STEP 3: Capture final memory statistics and ensure memory usage remains within expected limits"
 	)
 	final = {}
 	for device in devices:

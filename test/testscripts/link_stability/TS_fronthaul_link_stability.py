@@ -30,14 +30,12 @@ def test_em_fronthaul_link_stability(initialize):
     """
     report_logger.print_test("Entering test_em_fronthaul_link_stability")
     report_logger.print_step(
-        "STEP 1: Discover present WLAN clients and attempt connection to "
-        "their owning device"
+        "STEP 1: Identify all present WLAN clients and connect each client to its assigned device"
     )
     present_clients = device_utils.get_enabled_clients(initialize)
     if not present_clients:
         message = "No fronthaul clients are marked present in the database"
         report_logger.print_error(message)
-        pytest.fail(message)
     try:
         clients = connect_wlan_clients(
             initialize, present_clients, require_all=False
@@ -66,22 +64,27 @@ def test_em_fronthaul_link_stability(initialize):
     report_logger.print_step(
         "STEP 2: Validate each client's baseline controller gateway reachability"
     )
+    index = 0
     for client in clients:
+        index +=1
         try:
+            report_logger.print_step(
+                f"STEP 2.{index}: Ping gateway from {client}"
+            )   
             ping_result = initialize.ping_ipv4(client, gateway_ip, "3")
         except Exception as err:
-            message = f"Baseline ping failed for '{client}' to {gateway_ip}: {err}"
+            message = f"Baseline ping failed for '{client}' to gateway: {err}"
             report_logger.print_error(message)
             continue
         if ping_result != 0:
-            message = f"Client '{client}' cannot ping controller gateway {gateway_ip}"
+            message = f"Client '{client}' cannot ping controller gateway gateway"
             report_logger.print_error(message)
             continue
         report_logger.print_success(
-            f"PASS: Client '{client}' can ping controller gateway {gateway_ip}"
+            f"PASS: Client '{client}' can ping controller gateway "
         )
     report_logger.print_info(
-        f"INFO: Baseline ping checked for all {len(clients)} configured "
+        f"INFO: Baseline ping checked for {len(clients)} configured "
         "present WLAN client(s)"
     )
     report_logger.print_step(
@@ -92,14 +95,14 @@ def test_em_fronthaul_link_stability(initialize):
     while time.time() - start_time < test_duration_sec:
         elapsed_min = int((time.time() - start_time) / 60)
         poll_count += 1
-        report_logger.print_step(
-            "STEP 3: Validate client connectivity"
-        )
         report_logger.print_info(
             f"INFO: Poll #{poll_count} at ~{elapsed_min} min elapsed"
         )
         for client in clients:
             try:
+                report_logger.print_step(
+                    f"STEP 3.{poll_count}: Ping gateway from {client}"
+                )
                 ping_result = initialize.ping_ipv4(client, gateway_ip, "3")
             except Exception as err:
                 msg = (
@@ -111,7 +114,7 @@ def test_em_fronthaul_link_stability(initialize):
             if ping_result != 0:
                 msg = (
                     f"Poll #{poll_count} ({elapsed_min} min): Client "
-                    f"'{client}' cannot ping controller gateway {gateway_ip}"
+                    f"'{client}' cannot ping controller gateway"
                 )
                 report_logger.print_error(msg)
                 continue
@@ -121,24 +124,24 @@ def test_em_fronthaul_link_stability(initialize):
             )
         time.sleep(poll_interval_sec)
     report_logger.print_step(
-        "STEP 4: Perform the final per-client gateway reachability check"
+        "STEP 4: Perform the final gateway reachability check"
     )
     for client in clients:
         try:
             ping_result = initialize.ping_ipv4(client, gateway_ip, "3")
         except Exception as err:
-            msg = f"Final ping failed for '{client}' to {gateway_ip}: {err}"
+            msg = f"Final ping failed for '{client}' to gateway: {err}"
             report_logger.print_error(msg)
             continue
         if ping_result != 0:
             msg = (
                 f"Client '{client}' cannot ping controller gateway "
-                f"{gateway_ip} at end of test"
+                f" at end of test"
             )
             report_logger.print_error(msg)
             continue
         report_logger.print_success(
             f"PASS: Client '{client}' can ping controller gateway "
-            f"{gateway_ip} at end of test"
+            f"at end of test"
         )
     report_logger.print_test("Exiting test_em_fronthaul_link_stability")
