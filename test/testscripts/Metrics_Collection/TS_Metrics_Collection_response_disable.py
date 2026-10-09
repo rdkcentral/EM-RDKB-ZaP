@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
 import time
 from packet_analyzer.packet_dissector import reassemble_packets
 import metrics_collection_utils as mc_utils
@@ -30,11 +29,9 @@ def test_ap_metrics_response_disable(initialize):
     capture_started = False
 
     try:
-        report_logger.print_step("STEP 1: Identify enabled controller and extender AL MAC addresses to validate the packet capture")
+        report_logger.print_step("STEP 1: Identify controller and enabled extender AL MAC addresses to validate the packet capture")
         expected_device_macs = device_utils.get_enabled_device_al_macs(initialize)
-        report_logger.print_success(
-            f"PASS: Identified AL MAC addresses for {len(expected_device_macs)} devices"
-        )
+        report_logger.print_success(f"PASS: Identified AL MAC addresses for {len(expected_device_macs)} devices")
 
         report_logger.print_step(f"STEP 2: Disable AP Metrics reporting by setting the interval to {mc_utils.DISABLED_INTERVAL}s")
         initialize.set_ap_metrics_reporting_interval(
@@ -46,17 +43,13 @@ def test_ap_metrics_response_disable(initialize):
         report_logger.print_step("STEP 3: Verify the configured AP Metrics reporting interval is 0s")
         configured_interval = initialize.get_ap_metrics_reporting_interval("controller")
         if str(configured_interval).strip() != str(mc_utils.DISABLED_INTERVAL):
-            pytest.fail(
-                f"Configured interval {configured_interval!r}; "
-                f"expected {mc_utils.DISABLED_INTERVAL}"
-            )
+            report_logger.print_error(f"FAIL: AP Metrics reporting interval is {configured_interval!r}; expected {mc_utils.DISABLED_INTERVAL}")
+            return
         report_logger.print_success("PASS: Configured interval confirms AP Metrics reporting is disabled")
 
         report_logger.print_step(f"STEP 4: Wait {mc_utils.DRAIN_SECONDS}s for in-flight AP Metrics responses to drain")
-        report_logger.print_info(
-            "INFO: Waiting for in-flight AP Metrics responses to drain"
-        )
         time.sleep(mc_utils.DRAIN_SECONDS)
+        report_logger.print_info("INFO: In-flight AP Metrics response drain period completed")
 
         capture_filename = device_utils.start_capture(
             initialize,
@@ -67,21 +60,17 @@ def test_ap_metrics_response_disable(initialize):
         capture_started = True
 
         report_logger.print_step(f"STEP 6: Monitor IEEE 1905 traffic for {mc_utils.OBSERVATION_SECONDS}s")
-        report_logger.print_info(
-            "INFO: Monitoring IEEE 1905 traffic while AP Metrics reporting is disabled"
-        )
         time.sleep(mc_utils.OBSERVATION_SECONDS)
+        report_logger.print_info("INFO: AP Metrics observation period completed with reporting disabled")
 
-        report_logger.print_step("STEP 7: Stop the capture and download from Controller")
+        report_logger.print_step("STEP 7: Stop and collect the AP Metrics capture from the controller")
         try:
             local_path = device_utils.stop_and_collect_capture(
                 initialize, "controller", capture_filename
             )
             capture_started = False
         except Exception as error:
-            report_logger.print_error(
-                f"FAIL: Could not stop and collect capture for controller: {error}"
-            )
+            report_logger.print_error(f"FAIL: Could not stop and collect the AP Metrics capture from the controller: {error}")
             raise
         packets = reassemble_packets(local_path)
 
@@ -93,7 +82,6 @@ def test_ap_metrics_response_disable(initialize):
             step=8,
         )
     finally:
-        report_logger.print_test("Exiting test_ap_metrics_response_disable")
         if capture_started:
             try:
                 device_utils.stop_and_collect_capture(
@@ -101,3 +89,4 @@ def test_ap_metrics_response_disable(initialize):
                 )
             except Exception as error:
                 report_logger.log(f"Could not collect remote packet capture: {error}")
+        report_logger.print_test("Exiting test_ap_metrics_response_disable")

@@ -26,14 +26,6 @@ from rdkbmeshzap.common_utils import device_utils
 def test_controller_recovery_extender_reconnection(initialize):
     report_logger.print_test("Entering test_controller_recovery_extender_reconnection")
     CONTROLLER_RECOVERY_KPI_SECONDS = cr_utils.get_controller_recovery_kpi(initialize)
-    report_logger.print_step("STEP 1: Discover all enabled extenders")
-    extenders = device_utils.get_enabled_extenders(initialize)
-    if not extenders:
-        pytest.fail("No enabled extenders found in infra.yaml")
-    report_logger.print_info(
-        f"INFO: Enabled extenders for this recovery test: {extenders}"
-    )
-
     capture_names = {}
     capture_started = set()
     recovery_times = {}
@@ -45,6 +37,13 @@ def test_controller_recovery_extender_reconnection(initialize):
     recovered_extenders = []
 
     try:
+        report_logger.print_step("STEP 1: Discover all enabled extenders")
+        extenders = device_utils.get_enabled_extenders(initialize)
+        if not extenders:
+            report_logger.print_error("No enabled extenders found in infra.yaml")
+            return
+        report_logger.print_info(f"INFO: Enabled extenders for this recovery test: {extenders}")
+
         # Collect captures before the controller reboot so recovery traffic is retained.
         report_logger.print_step("STEP 2: Start IEEE 1905 packet capture on enabled extenders")
         for index, extender in enumerate(extenders, start=1):
@@ -59,11 +58,9 @@ def test_controller_recovery_extender_reconnection(initialize):
                 extender, "cli"
             )
             capture_started.add(extender)
-        report_logger.print_info(
-            "INFO: Packet captures have been started successfully on all extender devices"
-        )
+        report_logger.print_info("INFO: Packet captures have been started successfully on all extender devices")
 
-        report_logger.print_step("STEP 3: Reboot the controller and start recovery timer")
+        report_logger.print_step("STEP 3: Reboot the controller and start the recovery timer")
         controller_started_at = time.monotonic()
         # Use one reboot timestamp so controller and extender recovery share the same KPI window.
         recovery_started = {extender: controller_started_at for extender in extenders}
@@ -71,6 +68,7 @@ def test_controller_recovery_extender_reconnection(initialize):
         report_logger.print_info("INFO: Controller reboot command executed")
         # Allow some time for the controller to reboot before attempting reconnection.
         time.sleep(30)
+ 
         report_logger.print_step("STEP 4: Reconnect to the controller after reboot")
         controller_result = cr_utils.recover_device(
             initialize,
@@ -80,11 +78,11 @@ def test_controller_recovery_extender_reconnection(initialize):
             "4.1",
         )
         if isinstance(controller_result, Exception):
-            raise controller_result
+            return
         if controller_result is False:
-            pytest.fail("controller: services did not become active within the KPI")
+            return
 
-        report_logger.print_step("STEP 5: Verify all extenders in parallel for recovery and record recovery times")
+        report_logger.print_step("STEP 5: Verify recovery of all extenders in parallel and record their recovery times")
         threads = []
         for index, extender in enumerate(extenders, start=1):
             # Recover each extender concurrently to keep the timing comparable.
@@ -104,9 +102,14 @@ def test_controller_recovery_extender_reconnection(initialize):
         for thread in threads:
             thread.join()
         # Each worker records its recovery duration.
-        report_logger.print_info(
-            "INFO: All extender recovery threads have completed"
-        )
+        report_logger.print_info("INFO: Recovery checks have finished for all extenders")
+        recovered_results = {
+            extender: result
+            for extender, result in recovery_times.items()
+            if isinstance(result, (int, float)) and not isinstance(result, bool)
+        }
+        if not recovered_results:
+            return
 
         report_logger.print_step("STEP 6: Identify recovered extenders and validate their recovery KPI")
         for index, extender in enumerate(extenders, start=1):
@@ -114,7 +117,11 @@ def test_controller_recovery_extender_reconnection(initialize):
             result = recovery_times.get(extender)
             if isinstance(result, BaseException):
                 validation_errors.append(f"{extender}: recovery failed: {result}")
-                report_logger.print_error(f"{extender}: recovery failed: {result}")
+                continue
+            if result is False:
+                validation_errors.append(
+                    f"{extender}: recovery failed within the recovery KPI"
+                )
                 continue
             if result is None:
                 validation_errors.append(f"{extender}: recovery result is unavailable")
@@ -123,60 +130,46 @@ def test_controller_recovery_extender_reconnection(initialize):
                     "process may have failed or did not complete"
                 )
                 continue
-
             if not initialize.is_device_alive(extender):
-                validation_errors.append(f"{extender}: extender is not reachable after recovery")
-                report_logger.print_error(validation_errors[-1])
+                validation_errors.append(f"{extender}: extender is not reachable after controller reboot")
+                report_logger.print_error(f"FAIL: {validation_errors[-1]}")
                 continue
             if result >= CONTROLLER_RECOVERY_KPI_SECONDS:
-                validation_errors.append(
-                    f"{extender}: recovery took {result:.1f}s; KPI is < "
-                    f"{CONTROLLER_RECOVERY_KPI_SECONDS}s"
-                )
-                report_logger.print_error(validation_errors[-1])
+                validation_errors.append(f"{extender}: recovery took {result:.1f}s; KPI is < {CONTROLLER_RECOVERY_KPI_SECONDS}s")
+                report_logger.print_error(f"FAIL: {validation_errors[-1]}")
                 continue
             report_logger.print_success(
                 f"PASS: {extender} is reachable and recovered within the KPI threshold "
                 f"in {result:.1f}s"
             )
             recovered_extenders.append(extender)
-
         if not recovered_extenders:
-            pytest.fail(
-                "No extender recovered within the recovery KPI: "
-                + "; ".join(validation_errors)
-            )
+            return
 
-        report_logger.print_step("STEP 7: Wait for topology packets to propagate before stopping captures")
+        report_logger.print_step("STEP 7: Wait for topology packets to propagate before the captures are stopped")
         time.sleep(60)
-        report_logger.print_info(
-            "INFO: Topology propagation wait completed before capture validation"
-        )
+        report_logger.print_info("INFO: Topology propagation wait is over; proceeding to capture validation")
 
         report_logger.print_step("STEP 8: Stop and collect packet captures from recovered extenders")
         for extender in recovered_extenders:
             try:
-                capture_paths[extender] = device_utils.stop_and_collect_capture(
-                    initialize, extender, capture_names[extender]
-                )
+                capture_paths[extender] = device_utils.stop_and_collect_capture(initialize, extender, capture_names[extender])
                 capture_started.remove(extender)
             except Exception as error:
                 validation_errors.append(f"{extender}: capture collection failed: {error}")
 
         report_logger.print_step("STEP 9: Validate topology exchange packets for recovered extenders")
-        for index, extender in enumerate(recovered_extenders, start=1):
-            report_logger.print_step(f"STEP 9.{index}: Validate topology traffic for {extender}")
+        for index, (extender, capture_path) in enumerate(capture_paths.items(), start=1):
+            report_logger.print_step(f"STEP 9.{index}: Check the topology traffic captured on {extender}")
             try:
-                packets = reassemble_packets(capture_paths[extender])
-                cr_utils.validate_topology_capture(
-                    packets, extender, extender_al_macs[extender]
-                )
+                packets = reassemble_packets(capture_path)
+                cr_utils.validate_topology_capture(packets, extender, extender_al_macs[extender])
             except Exception as error:
-                error_message = f"{extender}: {error}"
+                error_message = f"{extender}: topology traffic check failed: {error}"
                 validation_errors.append(error_message)
                 report_logger.print_error(error_message)
 
-        report_logger.print_step("STEP 10: Verify each parent device of recovered extenders after Controller reboot")
+        report_logger.print_step("STEP 10: Identify the parent device of each recovered extender after the controller reboot")
         topology_devices = ["controller", *extenders]
         for extender in recovered_extenders:
             try:
@@ -194,29 +187,23 @@ def test_controller_recovery_extender_reconnection(initialize):
                     report_logger.print_error(validation_errors[-1])
             except Exception as error:
                 validation_errors.append(
-                    f"{extender}: parent device lookup failed: {error}"
+                    f"{extender}: failed to look up its parent device: {error}"
                 )
                 report_logger.print_error(validation_errors[-1])
-
         if validation_errors:
-            pytest.fail("Recovery validation failed: " + "; ".join(validation_errors))
-
-        report_logger.print_success("PASS: All extenders recovered and topology messages were validated")
+            report_logger.print_error("Recovery validation failed: " + "; ".join(validation_errors))
+            return
+        report_logger.print_success("PASS: All extenders recovered and their topology messages were validated successfully")
     finally:
-        report_logger.print_test(
-            "Exiting test_controller_recovery_extender_reconnection"
-        )
-        if capture_started:
-            for extender in recovered_extenders:
-                capture_name = capture_names.get(extender)
-                if extender not in capture_started:
-                    continue
-                if not capture_name:
-                    continue
-                try:
-                    # Always clean up captures that were started but not validated successfully.
-                    device_utils.stop_and_collect_capture(initialize, extender, capture_name)
-                except Exception as error:
-                    report_logger.print_error(
-                        f"Could not stop {extender} capture: {error}"
-                    )
+        for extender in capture_started:
+            capture_name = capture_names.get(extender)
+            if not capture_name:
+                continue
+            try:
+                # Always clean up captures that were started but not collected.
+                device_utils.stop_and_collect_capture(initialize, extender, capture_name)
+            except Exception as error:
+                report_logger.print_error(
+                    f"Could not stop {extender} capture during cleanup: {error}"
+                )
+        report_logger.print_test("Exiting test_controller_recovery_extender_reconnection")
