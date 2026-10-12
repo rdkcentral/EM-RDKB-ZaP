@@ -25,7 +25,7 @@ def test_client_association_dhcp_ip_assignment(initialize):
     Verify that  Wi-Fi client devices receives a valid IP address via DHCP after successful authentication and association to the EasyMesh SSID, regardless of whether it associates to the Controller or one of the 3 Agents .
     """
     try:
-        report_logger.print_test("Entering EM_Client_Association_DHCP_IP_Assignment")
+        report_logger.print_test("Entering test_client_association_dhcp_ip_assignment")
         report_logger.print_info(f"INFO: Retrieving and storing device index into the database for controller and enabled extenders")
         devices = ["controller"] + device_utils.get_enabled_extenders(initialize)
         for device in devices:
@@ -67,6 +67,7 @@ def test_client_association_dhcp_ip_assignment(initialize):
         report_logger.print_info(f"INFO: Retrieved SSID: {ssid}")
         clients = device_utils.get_enabled_clients(initialize)
         report_logger.print_step("STEP 5: Connect client with correct credentials and verify the connection status")
+        step_passed = True
         password = initialize.get_fronthaul_password("controller","gui")
         try:
             if not password:
@@ -96,15 +97,19 @@ def test_client_association_dhcp_ip_assignment(initialize):
                     try:
                         initialize.connect_client_to_ssid(client,ssid,password,device_bssid)
                         time.sleep(10)
-                        report_logger.print_success(f"PASS: Client {client} connected to SSID {ssid} through {radio} radio ({device_bssid})")
+                        report_logger.print_info(f"INFO: {client} connected to SSID {ssid} through {radio} radio ({device_bssid})")
                         connected = True
                         break
                     except Exception as e:
-                        report_logger.print_info(f"INFO: Client {client} failed to connect through {radio} radio ({device_bssid})")
+                        report_logger.print_info(f"INFO: {client} failed to connect through {radio} radio ({device_bssid})")
                 if not connected:
-                    report_logger.print_error(f"FAIL: Client {client} could not connect to SSID {ssid} through 2G, 5G or 6G radio")
+                    report_logger.print_error(f"FAIL: {client} could not connect to SSID {ssid} through 2G, 5G or 6G radio")
+                    step_passed = False
             except Exception as e:
                 report_logger.print_error(f"FAIL: Failed to connect client {client} to SSID {ssid}: {e}")
+                step_passed = False
+        if step_passed:
+            report_logger.print_success("PASS: All clients connected to the EasyMesh SSID using correct credentials")
         report_logger.print_step("STEP 6: Wait for some time for association completion")
         time.sleep(10)
         report_logger.print_step("STEP 7: Validate the Client's association with expected AP")
@@ -124,17 +129,17 @@ def test_client_association_dhcp_ip_assignment(initialize):
                     if radio_mac and associated_mac.lower() == radio_mac.lower():
                         associated_radio = radio
                         break
-                report_logger.print_info(f"INFO: Client {client} associated MAC: {associated_mac}")
+                report_logger.print_info(f"INFO: {client} associated MAC: {associated_mac}")
                 if associated_radio:
-                    report_logger.print_info(f"INFO: Client {client} is associated with {device} {associated_radio} radio ({associated_mac})")
+                    report_logger.print_info(f"INFO: {client} is associated with {device} {associated_radio} radio ({associated_mac})")
                 else:
-                    report_logger.print_error(f"FAIL: Client {client} is not associated with any known radio of {device}. Associated MAC: {associated_mac}")
+                    report_logger.print_error(f"FAIL: {client} is not associated with any known radio of {device}. Associated MAC: {associated_mac}")
                     step_passed = False
             except Exception as e:
                 report_logger.print_error(f"FAIL: Failed to verify association status for client {client}: {e}")
                 step_passed = False
         if step_passed:
-            report_logger.print_success("PASS: All clients are association status verified successfully ")
+            report_logger.print_success("PASS: Association status verified successfully ")
         report_logger.print_step("STEP 8: Confirm the DHCP Process is successful for each client")
         step_passed = True
         for client in clients:
@@ -143,15 +148,15 @@ def test_client_association_dhcp_ip_assignment(initialize):
             try:
                 dhcp_process = initialize.verify_dhcp_process(client,'cli')
                 if dhcp_process:
-                    report_logger.print_info(f"INFO: Client {client} DHCP process is successful")
+                    report_logger.print_info(f"INFO: {client} DHCP process is successful")
                 else:
-                    report_logger.print_error(f"FAIL: Client {client} DHCP process is not successful")
+                    report_logger.print_error(f"FAIL: {client} DHCP process is not successful")
                     step_passed = False
             except Exception as e:
                 report_logger.print_error(f"FAIL: Failed to verify DHCP process for client {client}: {e}")
                 step_passed = False
         if step_passed:
-            report_logger.print_success("PASS: All clients have successful DHCP processes")
+            report_logger.print_success("PASS: DHCP processes verification successful for all connected clients")
         report_logger.print_step("STEP 9: Verify IP address assignment on clients")
         step_passed = True
         for client in clients:
@@ -160,33 +165,33 @@ def test_client_association_dhcp_ip_assignment(initialize):
             try:
                 ip_address = initialize.get_client_ipv4(client)
                 if ip_address:
-                    report_logger.print_info(f"INFO: Client {client} has been assigned IP address: {ip_address}")
+                    report_logger.print_info(f"INFO: {client} has been assigned IP address: {ip_address}")
                 else:
-                    report_logger.print_error(f"FAIL: Client {client} has not been assigned an IP address")
+                    report_logger.print_error(f"FAIL: {client} has not been assigned an IP address")
                     step_passed = False
             except Exception as e:
                 report_logger.print_error(f"FAIL: Failed to verify IP address assignment for client {client}: {e}")
                 step_passed = False
         if step_passed:
-            report_logger.print_success("PASS: All clients have been assigned valid IP addresses")
+            report_logger.print_success("PASS: All connected clients have been assigned valid IP addresses")
         report_logger.print_step("STEP 10: Verify IP Address assignment is within the DHCP pool range")
         step_passed = True
         for client in clients:
             if not initialize.read_from_database(client,"device_present"):
-                report_logger.print_error(f"FAIL: Client {client} is not present in the database")
+                report_logger.print_error(f"FAIL: {client} is not present in the database")
                 continue
             try:
                 ip_address = initialize.get_client_ipv4(client)
                 if ip_address:
                     if (int(dhcp_pool_min_address.split('.')[-1]) <= int(ip_address.split('.')[-1])<= int(dhcp_pool_max_address.split('.')[-1])):
-                        report_logger.print_info(f"INFO: Client {client} IP address {ip_address} is within the DHCP pool range: {dhcp_pool_min_address} - {dhcp_pool_max_address}")
+                        report_logger.print_info(f"INFO: {client} IP address {ip_address} is within the DHCP pool range: {dhcp_pool_min_address} - {dhcp_pool_max_address}")
                     else:
-                        report_logger.print_error(f"FAIL: Client {client} IP address {ip_address} is NOT within the DHCP pool range: {dhcp_pool_min_address} - {dhcp_pool_max_address}")
+                        report_logger.print_error(f"FAIL: {client} IP address {ip_address} is NOT within the DHCP pool range: {dhcp_pool_min_address} - {dhcp_pool_max_address}")
                         step_passed = False
             except Exception as e:
                 report_logger.print_error(f"FAIL: Failed to verify IP address assignment "f"for client {client}: {e}")
                 step_passed = False
-            if step_passed:
-                report_logger.print_success("PASS: All clients have IP addresses within the DHCP pool range")
+        if step_passed:
+            report_logger.print_success("PASS: All connected clients have IP addresses within the DHCP pool range")
     finally:
-        report_logger.print_test("Exiting EM_Client_Association_DHCP_IP_Assignment")    
+        report_logger.print_test("Exiting test_client_association_dhcp_ip_assignment")    
