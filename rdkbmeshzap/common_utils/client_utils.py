@@ -128,10 +128,13 @@ def connect_client_to_bssid(
             )
         return
     if "successfully activated" not in output.lower() and connected_bssid is None:
-        raise report_logger.print_error(f"Failed to connect {client} to BSSID {bssid}: {output}")
-    raise report_logger.print_error(
-        f"{client} connected to {connected_bssid}, expected BSSID {bssid}: {output}"
-    )
+        message = f"Failed to connect {client} to BSSID {bssid}: {output}"
+        report_logger.print_error(message)
+        raise Exception(message)
+    message = (f"{client} connected to {connected_bssid}, expected BSSID {bssid}: {output}") 
+    report_logger.print_error(message)
+    raise Exception(message)
+
 
 def connect_client_to_target_device(
     initialize, client_devices, extender, allowed_bssids=None
@@ -177,11 +180,11 @@ def connect_client_to_target_device(
             None,
         )
         if not target_bssid:
-            raise report_logger.print_error(
-                f"No expected BSSID for '{ssid}' was visible; "
-                f"expected={sorted(normalized_extender_bssids)}, "
-                f"visible={sorted(visible_bssids)}"
-            )
+            message = (f"No expected BSSID for '{ssid}' was visible; "
+                        f"expected={sorted(normalized_extender_bssids)}, "
+                        f"visible={sorted(visible_bssids)}")
+            report_logger.print_error(message)
+            raise Exception(message)
         connect_client_to_bssid(
             initialize,
             client,

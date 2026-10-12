@@ -115,3 +115,4 @@ def test_em_scale_cpu_utilization(initialize):
 		report_logger.print_error(
         	"ERROR: No reachable devices were available for final CPU validation"
     )
+	report_logger.print_test("Exiting test_em_scale_cpu_utilization")

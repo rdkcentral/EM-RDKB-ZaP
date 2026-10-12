@@ -82,7 +82,7 @@ def test_em_backhaul_link_stability(initialize):
             agent, interface = key
             try:
                 report_logger.print_step(
-                    f"STEP 2.1: Monitor backhaul connectivity for {agent}/{interface}"
+                    f"STEP 2.{poll}: Monitor backhaul connectivity for {agent}/{interface}"
                 )
                 current = backhaul_state(initialize, agent, interface)
             except Exception as err:
@@ -125,6 +125,7 @@ def test_em_backhaul_link_stability(initialize):
     for key, initial in baseline.items():
         agent, interface = key
         try:
+            report_logger.print_info(f"INFO : Final state collection for {agent}/{interface}")
             current = backhaul_state(initialize, agent, interface)
         except Exception as err:
             messag = f"{agent}/{interface}: final state collection failed: {err}"

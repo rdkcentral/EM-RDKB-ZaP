@@ -116,6 +116,7 @@ def test_em_backhaul_rssi_stability(initialize):
     )
     for (agent, interface), initial_rssi in baseline.items():
         try:
+            report_logger.print_info(f"Final state collection for {agent}/{interface}")
             state = backhaul_state(initialize, agent, interface)
         except Exception as err:
             message = f"{agent}/{interface}: final state collection failed: {err}"

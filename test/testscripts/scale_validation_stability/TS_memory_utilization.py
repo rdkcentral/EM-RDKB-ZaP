@@ -97,14 +97,14 @@ def test_em_scale_memory_utilization(initialize):
 
 	if final:
 		report_logger.print_success(
-			f"PASS: Final CPU snapshot: {final}"
+			f"PASS: Final memory snapshot: {final}"
 	    )
 		report_logger.print_success(
-			f"PASS: CPU utilization remained within configured limits for "
-			f"{len(final)} reachable devices across {sample_count} monitoring samples"
+			f"PASS: Memory utilization remained within configured limits for "
+			f"{len(final)} reachable devices across {sample_count} monitoring checks"
     	)
 	else:
 		report_logger.print_error(
-        "ERROR: No reachable devices were available for final CPU validation"
+        "ERROR: No reachable devices were available for final Memory validation"
     	)
-	report_logger.print_test("Exiting test_em_scale_cpu_utilization")
+	report_logger.print_test("Exiting test_em_scale_memory_utilization")
