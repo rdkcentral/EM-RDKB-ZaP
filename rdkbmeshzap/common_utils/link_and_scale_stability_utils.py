@@ -20,9 +20,9 @@ import pytest
 from rdkbmeshzap.common_utils import device_utils, report_logger
 
 # Polling interval (seconds) between consecutive stability checks.
-POLL_INTERVAL_SEC = 60
+POLL_INTERVAL_SEC = 600
 # Total duration (seconds) for which stability monitoring is performed.
-TEST_DURATION_SEC = 120
+TEST_DURATION_SEC = 3600
 # Maximum allowed percentage increase from the baseline metric value.
 MAX_BASELINE_INCREASE_PERCENT = 20.0
 # Minimum available memory percentage required for a healthy system.
@@ -394,9 +394,9 @@ def get_all_stations(initialize, device: str) -> set:
             report_logger.print_error(f"station dump failed on {device}/{iface}: {err}")
     return macs
 
-def get_fronthaul_associations(initialize, devices: list) -> dict:
+def get_fronthaul_client_macs(initialize, devices: list) -> dict:
     """
-    Syntax : get_fronthaul_associations(initialize, devices)
+    Syntax : get_fronthaul_client_macs(initialize, devices)
     Description : Collects fronthaul station MACs for each mesh device.
     Parameters :
         initialize - Testbed initialization and database interface.
@@ -423,19 +423,19 @@ def get_fronthaul_associations(initialize, devices: list) -> dict:
             associations[device] = set()
     return associations
 
-def get_total_associations(associations: dict) -> int:
+def get_total_connected_clients(associations: dict) -> int:
     """
-    Syntax : get_total_associations(associations)
-    Description : Counts all associated clients in a topology snapshot.
+    Syntax : get_total_connected_clients(associations)
+    Description : Counts all connected clients in a topology snapshot.
     Parameters :
         associations - Mapping of device names to station MAC sets.
     Return Value: The total number of associated clients.
     """
     return sum(len(macs) for macs in associations.values())
 
-def get_associations_mismatch(baseline: dict, current: dict) -> list:
+def get_connected_client_mismatch(baseline: dict, current: dict) -> list:
     """
-    Syntax : get_associations_mismatch(baseline, current)
+    Syntax : get_connected_client_mismatch(baseline, current)
     Description : Compares current client associations with a baseline snapshot.
     Parameters :
         baseline - Initial mapping of device names to station MAC sets.
@@ -443,8 +443,8 @@ def get_associations_mismatch(baseline: dict, current: dict) -> list:
     Return Value: A list of client-count and per-device mismatch descriptions.
     """
     mismatches = []
-    baseline_total = get_total_associations(baseline)
-    current_total = get_total_associations(current)
+    baseline_total = get_total_connected_clients(baseline)
+    current_total = get_total_connected_clients(current)
     if current_total != baseline_total:
         mismatches.append(
             f"Total client count changed: baseline={baseline_total} "

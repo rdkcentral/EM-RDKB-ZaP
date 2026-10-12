@@ -55,8 +55,8 @@ def test_em_scale_client_association_baseline(initialize):
         "STEP 3: Capture client MAC associations from each controller and "
         "agent fronthaul interface"
     )
-    baseline = get_fronthaul_associations(initialize, all_devices)
-    observed_client_count = get_total_associations(baseline)
+    baseline = get_fronthaul_client_macs(initialize, all_devices)
+    observed_client_count = get_total_connected_clients(baseline)
     report_logger.print_info(
         f"INFO: Captured {observed_client_count} client associations across "
         f"{len(all_devices)} devices"

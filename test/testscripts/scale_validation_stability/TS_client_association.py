@@ -51,7 +51,7 @@ def test_em_scale_client_association(initialize):
     test_duration_sec = TEST_DURATION_SEC
     all_devices = ["controller"] + agents
     report_logger.print_step(
-        "STEP 3: Verify each device is reachable before association capture"
+        "STEP 3: Verify each device is reachable before client connection capture"
     )
     for agent in agents:
         for attempt in range(1, 7):
@@ -78,8 +78,8 @@ def test_em_scale_client_association(initialize):
     report_logger.print_step(
         "STEP 4: Capture devices fronthaul client MACs and validate the baseline client count"
     )
-    baseline = get_fronthaul_associations(initialize, all_devices)
-    total_baseline = get_total_associations(baseline)
+    baseline = get_fronthaul_client_macs(initialize, all_devices)
+    total_baseline = get_total_connected_clients(baseline)
     if total_baseline < expected_client_count:
         message = (
             f"Baseline client count {total_baseline} is below the minimum "
@@ -105,8 +105,8 @@ def test_em_scale_client_association(initialize):
         report_logger.print_info(
             f"INFO: Poll #{poll_count} at ~{elapsed_min} min elapsed"
         )
-        current = get_fronthaul_associations(initialize, all_devices)
-        mismatches = get_associations_mismatch(baseline, current)
+        current =get_fronthaul_client_macs(initialize, all_devices)
+        mismatches = get_connected_client_mismatch(baseline, current)
         if mismatches:
             message = (
                 f"Poll #{poll_count} ({elapsed_min} min): "
@@ -115,19 +115,19 @@ def test_em_scale_client_association(initialize):
             report_logger.print_error(message)
         report_logger.print_success(
             f"PASS: Poll #{poll_count}: Associations match baseline "
-            f"({get_total_associations(current)} clients)"
+            f"({get_total_connected_clients(current)} clients)"
         )
         time.sleep(poll_interval_sec)
     report_logger.print_step(
         "STEP 6: Capture final associations and report any missing client(s)"
     )
-    final = get_fronthaul_associations(initialize, all_devices)
-    final_mismatches = get_associations_mismatch(baseline, final)
+    final = get_fronthaul_client_macs(initialize, all_devices)
+    final_mismatches = get_connected_client_mismatch(baseline, final)
     if final_mismatches:
         message = f"Final associations do not match baseline: {final_mismatches}"
         report_logger.print_error(message)
     report_logger.print_success(
         f"PASS: Final associations match baseline: "
-        f"{get_total_associations(final)} clients — PASS"
+        f"{get_total_connected_clients(final)} clients — PASS"
     )
     report_logger.print_test("Exiting test_em_scale_client_association")

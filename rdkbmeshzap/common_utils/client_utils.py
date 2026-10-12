@@ -128,10 +128,11 @@ def connect_client_to_bssid(
             )
         return
     if "successfully activated" not in output.lower() and connected_bssid is None:
-        raise report_logger.print_error(f"Failed to connect {client} to BSSID {bssid}: {output}")
-    raise report_logger.print_error(
-        f"{client} connected to {connected_bssid}, expected BSSID {bssid}: {output}"
-    )
+        message = (f"Failed to connect {client} to BSSID {bssid}: {output}")
+        report_logger.print_error(message)
+        raise Exception(message)
+    message = (f"{client} connected to {connected_bssid}, expected BSSID {bssid}: {output}")
+    raise Exception(message)
 
 def connect_client_to_target_device(
     initialize, client_devices, extender, allowed_bssids=None
@@ -177,11 +178,11 @@ def connect_client_to_target_device(
             None,
         )
         if not target_bssid:
-            raise report_logger.print_error(
-                f"No expected BSSID for '{ssid}' was visible; "
-                f"expected={sorted(normalized_extender_bssids)}, "
-                f"visible={sorted(visible_bssids)}"
-            )
+            message = (f"No expected BSSID for '{ssid}' was visible; "
+                        f"expected={sorted(normalized_extender_bssids)}, "
+                        f"visible={sorted(visible_bssids)}")
+            report_logger.print_error(message)
+            raise Exception(message)
         connect_client_to_bssid(
             initialize,
             client,
@@ -209,7 +210,9 @@ def connect_wlan_clients(initialize, client_devices, require_all=True):
     ssh = initialize.get_connection_module_object("ssh")
     allowed_bssids = get_present_device_bssids(initialize)
     if not allowed_bssids:
-        raise report_logger.print_error("No fronthaul BSSIDs found for present mesh devices")
+        message = ("No fronthaul BSSIDs found for present mesh devices")
+        report_logger.print_error(message)
+        raise Exception(message)  
     last_errors = {}
     connected_clients = []
     for client in clients:
@@ -224,14 +227,16 @@ def connect_wlan_clients(initialize, client_devices, require_all=True):
             )
             connected_bssid = initialize.get_association_status(client, "cli").lower()
             if connected_bssid is None:
-                raise report_logger.print_error(
-                    f"{client} is not connected after connection attempt"
-                )
+                message = (f"{client} is not connected after connection attempt")
+                report_logger.print_error(message)
+                raise Exception(message)
             if connected_bssid not in allowed_bssids:
-                raise report_logger.print_error(
+                message = (
                     f"{client} is connected to {connected_bssid}, not an "
                     f"allowed present-device BSSID {sorted(allowed_bssids)}"
                 )
+                report_logger.print_error(message)
+                raise Exception(message)
             connected_clients.append(client)
         except Exception as error:
             last_errors[client] = error
@@ -261,6 +266,7 @@ def connect_wlan_clients(initialize, client_devices, require_all=True):
         return connected_clients
     if len(connected_clients) == len(clients):
         return connected_clients
-    raise report_logger.print_error(
+    raise Exception(
         f"Unable to connect all clients after one attempt: {last_errors}"
     ) from next(iter(last_errors.values()), None)
+
