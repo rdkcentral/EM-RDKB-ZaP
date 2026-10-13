@@ -27,9 +27,10 @@ _WHITE_REPORT_STYLE = (
     "<style>"
     ".logwrapper, .logwrapper .log, "
     ".logwrapper .logexpander { background-color: #fff !important; }"
+    "a { text-decoration: none; color: #464feb; }"
+    "tr th { background-color: #f5f5f5; }"
     ".setup_accessibility, .database_update, .test_environment_check { margin-bottom: 10px; }"
-    ".setup_accessibility summary, .database_update summary, .test_environment_check summary { cursor: pointer; font-weight: bold; "
-    "color: #0055aa; padding: 4px 0; }"
+    ".setup_accessibility summary, .database_update summary, .test_environment_check summary { cursor: pointer; font-weight: bold; padding: 4px 0; }"
     "</style>"
 )
 
@@ -46,20 +47,22 @@ def format_report_line(line):
     Example: format_report_line("PASS: Capture completed")
     """
     is_title = "\033[1m\033[30m" in line
+    is_info = "\033[1m\033[96m" in line
+    is_step = "\033[1m\033[94m" in line
+    is_pass = "\033[92m" in line
+    is_fail = "\033[91m" in line
     plain_line = _ANSI_ESCAPE.sub("", line)
     plain_line = re.sub(r"</?span[^>]*>", "", plain_line, flags=re.IGNORECASE)
-    if plain_line.lstrip().lower().startswith(("entering test", "exiting test")):
-        color, weight = "#0055aa", "bold"
-    elif plain_line.lstrip().startswith("INFO:"):
+    if is_info:
         color, weight = "#007a8a", "bold"
-    elif plain_line.lstrip().startswith(("Step", "STEP")):
-        color, weight = "#8a5a00", "bold"
+    elif is_step:
+        color, weight = "#0055aa", "bold"
     elif is_title:
         color, weight = "black", "bold"
-    elif "PASS:" in plain_line or plain_line.lstrip().startswith("Pass:"):
+    elif is_pass:
         color, weight = "green", "bold"
     elif (
-        "FAIL:" in plain_line
+        is_fail
         or "ERROR" in plain_line
         or any(error in plain_line for error in _error_logs)
     ):
@@ -145,8 +148,8 @@ def print_test(message):
     Return Value: Styled HTML for the test name.
     Example: print_test("Controller Recovery")
     """
-    print(f"\033[1m\033[33m{message}\033[0m")
-    return f'<span style="color:#8a5a00; font-weight:bold;">{message}</span>'
+    print(f"\033[1m\033[30m{message}\033[0m")
+    return f'<span style="color:black; font-weight:bold;">{message}</span>'
 
 def print_success(message):
     """

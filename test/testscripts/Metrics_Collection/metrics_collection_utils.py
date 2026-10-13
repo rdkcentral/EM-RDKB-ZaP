@@ -63,9 +63,7 @@ def validate_periodic_ap_metrics_capture(packets, expected_device_macs, step):
     Return Value: None; reports validation results.
     Example: validate_periodic_ap_metrics_capture(packets, device_macs, 1)
     """
-    report_logger.print_step(
-        f"STEP {step}: Validate AP Metrics Response presence and AP Metrics TLVs"
-    )
+    report_logger.print_step(f"STEP {step}: Validate AP Metrics Response presence and AP Metrics TLVs")
     expected_device_macs = {
         device: mac
         for device, mac in expected_device_macs.items()
@@ -80,25 +78,18 @@ def validate_periodic_ap_metrics_capture(packets, expected_device_macs, step):
         and check_message_presence([packet], MSG_TYPE_AP_METRICS_RESPONSE)
     ]
     if not responses:
-        report_logger.print_error(
-            "No AP Metrics Responses from enabled testbed devices were captured"
-        )
+        report_logger.print_error("FAIL: No AP Metrics Responses from enabled testbed devices were captured")
         return
     missing_tlv = any(
         not check_tlv_presence(bytes(response[Ether].payload), TLV_TYPE_AP_METRICS)
         for response in responses
     )
     if missing_tlv:
-        report_logger.print_error("An AP Metrics Response is missing its AP Metrics TLV")
+        report_logger.print_error("FAIL: An AP Metrics Response is missing its AP Metrics TLV")
     else:
-        report_logger.print_success(
-            "PASS: AP Metrics Responses were captured with the AP Metrics TLV"
-        )
+        report_logger.print_success("PASS: AP Metrics Responses were captured with the AP Metrics TLV")
 
-    report_logger.print_step(
-        f"STEP {step+1}: Validate that AP Metrics responses were reported "
-        f"periodically at the configured {REPORTING_INTERVAL}-second interval"
-    )
+    report_logger.print_step(f"STEP {step+1}: Validate that AP Metrics responses were reported periodically at the configured {REPORTING_INTERVAL}-second interval")
     response_times_by_source = {
         source: times
         for source, times in extract_message_times_by_source(
@@ -110,18 +101,14 @@ def validate_periodic_ap_metrics_capture(packets, expected_device_macs, step):
     for device, source in expected_device_macs.items():
         response_times = response_times_by_source.get(source)
         if response_times is None:
-            report_logger.print_error(
-                f"FAIL: No AP Metrics Responses were captured for {device}"
-            )
+            report_logger.print_error(f"FAIL: No AP Metrics Responses were captured for {device}")
             continue
         intervals = [
             later - earlier
             for earlier, later in zip(response_times, response_times[1:])
         ]
         if len(response_times) < 2:
-            report_logger.print_error(
-                f"FAIL: Fewer than two AP Metrics Responses were captured for {device}"
-            )
+            report_logger.print_error(f"FAIL: Fewer than two AP Metrics Responses were captured for {device}")
             continue
         invalid_intervals = [
             round(interval, 2)
@@ -129,16 +116,9 @@ def validate_periodic_ap_metrics_capture(packets, expected_device_macs, step):
             if abs(interval - REPORTING_INTERVAL) > INTERVAL_TOLERANCE
         ]
         if invalid_intervals:
-            report_logger.print_error(
-                f"FAIL: AP Metrics Response intervals for {device} exceeded the "
-                f"allowed range of {REPORTING_INTERVAL}+/-{INTERVAL_TOLERANCE}s. "
-                f"Observed intervals: {invalid_intervals}"
-            )
+            report_logger.print_error(f"FAIL: AP Metrics Response intervals for {device} exceeded the allowed range of {REPORTING_INTERVAL}+/-{INTERVAL_TOLERANCE}s. Observed intervals: {invalid_intervals}")
         else:
-            report_logger.print_success(
-                f"PASS: AP Metrics Response intervals for {device} are within the "
-                f"allowed range of {REPORTING_INTERVAL}+/-{INTERVAL_TOLERANCE}s"
-            )
+            report_logger.print_success(f"PASS: AP Metrics Response intervals for {device} are within the allowed range of {REPORTING_INTERVAL}+/-{INTERVAL_TOLERANCE}s")
 
 def validate_disabled_ap_metrics_capture(
     packets, disabled_at, drain_seconds, expected_device_macs, step
@@ -150,10 +130,7 @@ def validate_disabled_ap_metrics_capture(
     Return Value: None; reports validation results.
     Example: validate_disabled_ap_metrics_capture(packets, disabled_at, 10, device_macs, 1)
     """
-    report_logger.print_step(
-        f"STEP {step}: Validate that no AP Metrics responses were reported "
-        "after reporting was disabled"
-    )
+    report_logger.print_step(f"STEP {step}: Validate that no AP Metrics responses were reported after reporting was disabled")
     expected_device_macs = {
         device: mac
         for device, mac in expected_device_macs.items()
@@ -172,12 +149,6 @@ def validate_disabled_ap_metrics_capture(
 
     for device, source in expected_device_macs.items():
         if responses_by_source.get(source):
-            report_logger.print_error(
-                f"FAIL: AP Metrics Responses from {device} were captured "
-                "after reporting was disabled"
-            )
+            report_logger.print_error(f"FAIL: AP Metrics Responses from {device} were captured after reporting was disabled")
         else:
-            report_logger.print_success(
-                f"PASS: No AP Metrics Responses from {device} were captured "
-                "after reporting was disabled"
-            )
+            report_logger.print_success(f"PASS: No AP Metrics Responses from {device} were captured after reporting was disabled")
