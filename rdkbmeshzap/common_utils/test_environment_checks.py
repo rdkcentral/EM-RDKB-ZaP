@@ -36,10 +36,10 @@ def validate_device_accessibility(initialize):
         except Exception as error:
             validation_result = False
             report_logger.print_error(
-                f"{device} accessibility validation failed: {error}"
+                f"FAIL: {device} accessibility validation failed: {error}"
             )
         else:
-            report_logger.print_success(f"{device} is accessible over SSH")
+            report_logger.print_success(f"PASS: {device} is accessible over SSH")
     return validation_result
 
 def retrieve_and_store_radio_macs(initialize):
@@ -70,12 +70,12 @@ def retrieve_and_store_radio_macs(initialize):
             "wifi2": "6g_radio_mac"
         }
         for device in devices:
-            report_logger.print_info(f"[{device}] Retrieving 2G, 5G, and 6G fronthaul BSSIDs")
+            report_logger.print_info(f"INFO: [{device}] Retrieving 2G, 5G, and 6G fronthaul BSSIDs")
             bssids = initialize.get_fronthaul_bssids(device, "cli")
             if len(bssids) < 3:
-                report_logger.print_error(f"Expected 3 fronthaul BSSIDs for {device}, but found {len(bssids)}: {bssids}")
+                report_logger.print_error(f"FAIL: Expected 3 fronthaul BSSIDs for {device}, but found {len(bssids)}: {bssids}")
                 return False
-            report_logger.print_info(f"[{device}] Fronthaul BSSIDs received: {bssids}")
+            report_logger.print_info(f"INFO: [{device}] Fronthaul BSSIDs received: {bssids}")
             bssids = [
                 mac.strip().lower()
                 for mac in bssids]
@@ -106,12 +106,12 @@ def retrieve_and_store_radio_macs(initialize):
             initialize.db_obj.write_into_database(device,"2g_radio_mac",matched["wifi0"])
             initialize.db_obj.write_into_database(device,"5g_radio_mac",matched["wifi1"])
             initialize.db_obj.write_into_database(device,"6g_radio_mac", matched["wifi2"])
-            report_logger.print_success(f"[{device}] Stored 2g_radio_mac = {matched['wifi0']}")
-            report_logger.print_success(f"[{device}] Stored 5g_radio_mac = {matched['wifi1']}")
-            report_logger.print_success(f"[{device}] Stored 6g_radio_mac = {matched['wifi2']}")
-        report_logger.print_success(f"Successfully retrieved and stored radio MAC addresses in the database for {len(devices)} device(s)")
+            report_logger.print_success(f"PASS: [{device}] Stored 2g_radio_mac = {matched['wifi0']}")
+            report_logger.print_success(f"PASS: [{device}] Stored 5g_radio_mac = {matched['wifi1']}")
+            report_logger.print_success(f"PASS: [{device}] Stored 6g_radio_mac = {matched['wifi2']}")
+        report_logger.print_success(f"PASS: Successfully retrieved and stored radio MAC addresses in the database for {len(devices)} device(s)")
     except Exception as e:
-        report_logger.print_error(f"Radio MAC retrieval and storage failed: {e}")
+        report_logger.print_error(f"FAIL: Radio MAC retrieval and storage failed: {e}")
         return False
 
 def validate_mld0_vap_configurations(initialize):
@@ -280,9 +280,9 @@ def validate_extender_parent_connections(initialize):
             validation_result = False
             report_logger.print_error(f"FAIL: {extender} is not connected to a testbed device (BSSID: {bssid or 'unknown'})")
         else:
-            report_logger.print_success(f"{extender} is connected to {parent} through {bssid}")
+            report_logger.print_success(f"PASS: {extender} is connected to {parent} through {bssid}")
     if validation_result:
-        report_logger.print_success("All enabled extenders are connected within testbed devices")
+        report_logger.print_success("PASS: All enabled extenders are connected within testbed devices")
     return validation_result
 
 def validate_mesh_service_status(initialize):
