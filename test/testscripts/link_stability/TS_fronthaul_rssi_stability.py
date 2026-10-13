@@ -32,15 +32,17 @@ def test_em_fronthaul_rssi_stability(initialize):
         )
         present_clients = device_utils.get_enabled_clients(initialize)
         if not present_clients:
-            message = "No fronthaul clients are marked present in the database"
-            report_logger.print_error(message)
+            report_logger.print_error(
+                "No fronthaul clients are marked present in the database"
+            )
         try:
             clients = connect_wlan_clients(
                 initialize, present_clients, require_all=False
             )
         except Exception as err:
-            message = f"Unable to prepare fronthaul clients for RSSI monitoring: {err}"
-            report_logger.print_error(message)
+            report_logger.print_error(
+                f"Unable to prepare fronthaul clients for RSSI monitoring: {err}"
+            )
         unavailable = [
             f"{client}: connection unavailable"
             for client in present_clients
@@ -72,12 +74,14 @@ def test_em_fronthaul_rssi_stability(initialize):
                 state = client_rssi(initialize, client, host)
                 error = validate_rssi(state)
             except Exception as err:
-                message = f"Unable to capture baseline RSSI for '{client}': {err}"
-                report_logger.print_error(message)
+                report_logger.print_error(
+                    f"Unable to capture baseline RSSI for '{client}': {err}"
+                )
                 continue
             if error:
-                message = f"Client '{client}' failed baseline RSSI validation: {error}"
-                report_logger.print_error(message)
+                report_logger.print_error(
+                    f"Client '{client}' failed baseline RSSI validation: {error}"
+                )
                 continue
             baseline_rssi[client] = state["rssi_dbm"]
             report_logger.print_success(
@@ -113,12 +117,14 @@ def test_em_fronthaul_rssi_stability(initialize):
                     state = client_rssi(initialize, client, host)
                     error = validate_rssi(state, baseline_rssi[client], MAX_RSSI_DEGRADATION_DB)
                 except Exception as err:
-                    message = f"RSSI poll #{poll_count} failed for '{client}': {err}"
-                    report_logger.print_error(message)
+                    report_logger.print_error(
+                        f"RSSI poll #{poll_count} failed for '{client}': {err}"
+                    )
                     continue
                 if error:
-                    message = f"Client '{client}' RSSI check failed: {error}"
-                    report_logger.print_error(message)
+                    report_logger.print_error(
+                        f"Client '{client}' RSSI check failed: {error}"
+                    )
                     continue
                 report_logger.print_success(
                     f"PASS: Client '{client}' RSSI is {state['rssi_dbm']} dBm "
@@ -137,13 +143,15 @@ def test_em_fronthaul_rssi_stability(initialize):
                 host = get_device_for_bssid(initialize, bssid)
                 state = client_rssi(initialize, client, host)
             except Exception as err:
-                message = f"Final RSSI Monitoring check failed for '{client}': {err}"
-                report_logger.print_error(message)
+                report_logger.print_error(
+                    f"Final RSSI Monitoring check failed for '{client}': {err}"
+                )
                 continue
             error = validate_rssi(state, baseline_rssi[client], MAX_RSSI_DEGRADATION_DB)
             if error:
-                message = f"Client '{client}' final RSSI validation failed: {error}"
-                report_logger.print_error(message)
+                report_logger.print_error(
+                    f"Client '{client}' final RSSI validation failed: {error}"
+                )
                 continue
             report_logger.print_success(
                 f"PASS: Client '{client}' final RSSI is {state['rssi_dbm']} dBm; "

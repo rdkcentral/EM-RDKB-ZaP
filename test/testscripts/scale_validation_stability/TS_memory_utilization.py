@@ -47,8 +47,9 @@ def test_em_scale_memory_utilization(initialize):
 				f"used={baseline[device]['used_percent']:.1f}%"
 			)
 		except Exception as err:
-			message = f"Baseline memory collection failed on {device}: {err}"
-			report_logger.print_error(message)
+			report_logger.print_error(
+				f"Baseline memory collection failed on {device}: {err}"
+			)
 			continue
 	report_logger.print_info(f"INFO: Baseline memory snapshot: {baseline}")
 
@@ -75,8 +76,9 @@ def test_em_scale_memory_utilization(initialize):
 					f"used={snapshot['used_percent']:.1f}%"
 				)
 			except Exception as err:
-				message = f"Memory monitoring failed on {device}: {err}"
-				report_logger.print_error(message)
+				report_logger.print_error(
+					f"Memory monitoring failed on {device}: {err}"
+				)
 				continue
 		time.sleep(poll_interval_sec)
 
@@ -91,8 +93,9 @@ def test_em_scale_memory_utilization(initialize):
 				final[device], used_history[device], baseline[device]
 			)
 		except Exception as err:
-			message = f"Final memory collection failed on {device}: {err}"
-			report_logger.print_error(message)
+			report_logger.print_error(
+				f"Final memory collection failed on {device}: {err}"
+			)
 			continue
 
 	if final:

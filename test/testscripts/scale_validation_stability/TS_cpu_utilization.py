@@ -49,8 +49,9 @@ def test_em_scale_cpu_utilization(initialize):
 				f"utilization={baseline[device]['utilization_percent']:.1f}%"
 			)
 		except Exception as err:
-			message = f"Baseline CPU collection failed on {device}: {err}"
-			report_logger.print_error(message)
+			report_logger.print_error(
+				f"Baseline CPU collection failed on {device}: {err}"
+			)
 			continue
 
 	report_logger.print_step(
@@ -80,8 +81,9 @@ def test_em_scale_cpu_utilization(initialize):
 					f"utilization={snapshot['utilization_percent']:.1f}%"
 				)
 			except Exception as err:
-				message = f"CPU monitoring failed on {device}: {err}"
-				report_logger.print_error(message)
+				report_logger.print_error(
+					f"CPU monitoring failed on {device}: {err}"
+				)
 				continue
 		time.sleep(poll_interval_sec)
 
@@ -102,8 +104,9 @@ def test_em_scale_cpu_utilization(initialize):
 				f"utilization={final[device]['utilization_percent']:.1f}%"
 			)
 		except Exception as err:
-			message = f"Final CPU collection failed on {device}: {err}"
-			report_logger.print_error(message)
+			report_logger.print_error(
+				f"Final CPU collection failed on {device}: {err}"
+			)
 			continue	
 	if final:
 		report_logger.print_success(

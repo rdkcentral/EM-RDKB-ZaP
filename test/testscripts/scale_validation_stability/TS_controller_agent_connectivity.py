@@ -29,11 +29,10 @@ def test_em_scale_controller_agent_stability(initialize):
     actual_agent_count = len(agents)
     report_logger.print_step("STEP 1: Validate configured scale-agent count")
     if actual_agent_count != expected_agent_count:
-        message = (
+        report_logger.print_error(
             f"Expected {expected_agent_count} configured scale agents, "
             f"but found {actual_agent_count}: {agents}"
         )
-        report_logger.print_error(message)
     report_logger.print_success(f"PASS: Found {actual_agent_count} configured scale agents")
 
     report_logger.print_step("STEP 2: Verify every agent responds to an iw query")
@@ -66,6 +65,9 @@ def test_em_scale_controller_agent_stability(initialize):
         current = capture_extender_presence(initialize, agents)
         mismatches = compare_extender_presence(
             expected_agent_count, baseline, current
+        )
+        report_logger.print_info(
+            f"INFO: Poll #{poll_count} completed"
         )
         if mismatches:
             report_logger.print_error(

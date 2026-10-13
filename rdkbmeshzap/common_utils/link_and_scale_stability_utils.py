@@ -303,9 +303,9 @@ def get_scale_setup(initialize, scale: str = None) -> dict:
         raise ValueError("No scale setup is enabled in platform YAML")
     return enabled_setup
 
-def get_all_interfaces(initialize, device: str) -> list:
+def get_non_mld_wireless_interfaces(initialize, device: str) -> list:
     """
-    Syntax : get_all_interfaces(initialize, device)
+    Syntax : get_non_mld_wireless_interfaces(initialize, device)
     Description : Returns non-MLD wireless interfaces reported by `iw dev`.
     Parameters :
         initialize - Testbed initialization and database interface.
@@ -332,7 +332,7 @@ def backhaul_interfaces(initialize, device: str) -> list:
     """
     interfaces =  [
         interface
-        for interface in get_all_interfaces(initialize, device)
+        for interface in get_non_mld_wireless_interfaces(initialize, device)
              if initialize.get_iw_interface_details(device, interface).get("type", "").lower() == "managed"
     ]
     report_logger.print_info(
@@ -376,9 +376,9 @@ def backhaul_state(initialize, device: str, interface: str) -> dict:
         )
     return state
 
-def get_all_stations(initialize, device: str) -> set:
+def get_all_station_macs(initialize, device: str) -> set:
     """
-    Syntax : get_all_stations(initialize, device)
+    Syntax : get_all_station_macs(initialize, device)
     Description : Collects station MACs across all relevant device interfaces.
     Parameters :
         initialize - Testbed initialization and database interface.
@@ -386,7 +386,7 @@ def get_all_stations(initialize, device: str) -> set:
     Return Value: A set of associated station MAC addresses.
     """
     macs: set = set()
-    for iface in get_all_interfaces(initialize, device):
+    for iface in get_non_mld_wireless_interfaces(initialize, device):
         try:
             output = initialize.get_iw_dev_sta_dump(device, iface)
             macs.update(parse_station_output(output, "macs"))

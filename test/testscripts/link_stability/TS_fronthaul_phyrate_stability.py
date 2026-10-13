@@ -32,15 +32,17 @@ def test_em_fronthaul_phyrate_stability(initialize):
             )
         present_clients = device_utils.get_enabled_clients(initialize)
         if not present_clients:
-            message = "No fronthaul clients are marked present in the database"
-            report_logger.print_error(message)
+            report_logger.print_error(
+                "No fronthaul clients are marked present in the database"
+            )
         try:
             clients = connect_wlan_clients(
                 initialize, present_clients, require_all=False
             )
         except Exception as err:
-            message = f"Unable to prepare fronthaul clients for PHY-rate monitoring: {err}"
-            report_logger.print_error(message)
+            report_logger.print_error(
+                f"Unable to prepare fronthaul clients for PHY-rate monitoring: {err}"
+            )
         unavailable = [
             f"{client}: connection unavailable"
             for client in present_clients
@@ -74,12 +76,14 @@ def test_em_fronthaul_phyrate_stability(initialize):
                 state = client_phy_rate(initialize, client, host)
                 error = validate_phy_rate(state)
             except Exception as err:
-                message = f"Unable to capture baseline PHY rate for '{client}': {err}"
-                report_logger.print_error(message)
+                report_logger.print_error(
+                    f"Unable to capture baseline PHY rate for '{client}': {err}"
+                )
                 continue
             if error:
-                message = f"Client '{client}' failed baseline PHY-rate validation: {error}"
-                report_logger.print_error(message)
+                report_logger.print_error(
+                    f"Client '{client}' failed baseline PHY-rate validation: {error}"
+                )
                 continue
             baseline_rates[client] = state
             report_logger.print_success(
@@ -116,12 +120,14 @@ def test_em_fronthaul_phyrate_stability(initialize):
                     state = client_phy_rate(initialize, client, host)
                     error = validate_phy_rate(state, baseline_rates[client], PHY_RATE_DROP_PERCENT)
                 except Exception as err:
-                    message = f"PHY-rate poll #{poll_count} failed for '{client}': {err}"
-                    report_logger.print_error(message)
+                    report_logger.print_error(
+                        f"PHY-rate poll #{poll_count} failed for '{client}': {err}"
+                    )
                     continue
                 if error:
-                    message = f"Client '{client}' PHY-rate check failed: {error}"
-                    report_logger.print_error(message)
+                    report_logger.print_error(
+                        f"Client '{client}' PHY-rate check failed: {error}"
+                    )
                     continue
                 report_logger.print_success(
                     f"PASS: Client '{client}' PHY rate: TX {state['tx_mbps']:.1f} Mbps, "
@@ -142,13 +148,15 @@ def test_em_fronthaul_phyrate_stability(initialize):
                 host = get_device_for_bssid(initialize, bssid)
                 state = client_phy_rate(initialize, client, host)
             except Exception as err:
-                message = f"Final PHY-rate Monitoring failed for '{client}': {err}"
-                report_logger.print_error(message)
+                report_logger.print_error(
+                    f"Final PHY-rate Monitoring failed for '{client}': {err}"
+                )
                 continue
             error = validate_phy_rate(state, baseline_rates[client], PHY_RATE_DROP_PERCENT)
             if error:
-                message = f"Client '{client}' final PHY validation failed: {error}"
-                report_logger.print_error(message)
+                report_logger.print_error(
+                    f"Client '{client}' final PHY validation failed: {error}"
+                )
                 continue
             report_logger.print_success(
                 f"PASS: Client '{client}' final PHY rate: "
