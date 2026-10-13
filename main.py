@@ -50,6 +50,7 @@ if __name__ == "__main__":
     raise SystemExit(pytest.main([
         "-v",
         "--capture=tee-sys",
+        "--show-capture=no",
         f"{BASE_DIR}/test/ref_test/test_report_generation.py",
         f"{BASE_DIR}/test/ref_test/test_plugin_arch.py",
         f"{BASE_DIR}/test/ref_test/test_ssid_config.py",
