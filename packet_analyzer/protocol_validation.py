@@ -15,10 +15,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import io
+from contextlib import redirect_stdout
+from packet_analyzer.packet_dissector import packet_analyzer
 from zaero.utils import zi_logger
 
 def common_protocol_validation(pcap_file):
     zi_logger.log(f"Executing COMMON PROTOCOL validation : {pcap_file}")
+    captured_pcap_analysis = io.StringIO()
+
+    with redirect_stdout(captured_pcap_analysis):
+        packet_analyzer(pcap_file)
+    return captured_pcap_analysis.getvalue()
  
 def analyse_ssid_packets(pcap_file):
     zi_logger.log(f"Executing PROTOCOL SPECIFIC validation - analyse_ssid : {pcap_file}")

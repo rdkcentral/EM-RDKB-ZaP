@@ -28,7 +28,7 @@ _WHITE_REPORT_STYLE = (
     ".logwrapper, .logwrapper .log, "
     ".logwrapper .logexpander { background-color: #fff !important; }"
     ".setup_accessibility, .database_update, .test_environment_check { margin-bottom: 10px; }"
-    ".setup_accessibility summary, .database_update summary, .test_environment_check summary { cursor: pointer; font-weight: bold; "
+    ".setup_accessibility summary, .database_update summary, .test_environment_check summary, .protocol_validation_errors summary, .protocol_validation summary { cursor: pointer; font-weight: bold; "
     "color: #0055aa; padding: 4px 0; }"
     "</style>"
 )

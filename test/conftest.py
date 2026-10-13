@@ -33,6 +33,7 @@
 # limitations under the License.
 
 import io
+import os
 import pytest
 import time
 from contextlib import redirect_stdout
@@ -43,6 +44,7 @@ import zaero
 from zaero.utils import zi_logger
 from zaero.utils.database import Database
 from packet_analyzer.protocol_validation import common_protocol_validation
+from packet_analyzer.packet_dissector import error_list
 from rdkbmeshzap.common_utils import report_logger, test_environment_checks
 
 _setup_sections = {
@@ -50,6 +52,7 @@ _setup_sections = {
 	"database_update": "",
 	"test_environment_check": "",
 }
+_protocol_validation_results = []
 _setup_failure = ""
 
 @pytest.fixture(scope="session", autouse=True)
@@ -190,7 +193,6 @@ def pytest_runtest_makereport(item, call):
 		report.outcome = "failed"
 		report.longrepr = "Error logs found:\n" + "\n".join(errors)
 
-
 def pytest_html_results_table_html(report, data):
 	if report.when != "call":
 		data.clear()
@@ -228,6 +230,8 @@ def pytest_html_results_summary(prefix, summary, postfix):
 		("database_update", "Runtime Database Configuration Update"),
 		("test_environment_check", "Test Environment Prerequisite Check"),
 	):
+		if not _setup_sections[section_name]:
+			continue
 		section_html = "<br>".join(
 			report_logger.format_report_line(line)
 			for line in _setup_sections[section_name].splitlines()
@@ -243,6 +247,35 @@ def pytest_html_results_summary(prefix, summary, postfix):
 				f'<div style="margin:10px 0;">'
 				f'<strong style="color:red;">{escape(_setup_failure)}</strong></div>'
 			)
+	if _protocol_validation_results:
+		test_sections = []
+		for result in _protocol_validation_results:
+			analysis_html = "<br>".join(
+				report_logger.format_report_line(line)
+				for line in result["analysis"].splitlines()
+			)
+			error_html = "<br>".join(
+				report_logger.format_report_line(line)
+				for line in result["errors"]
+			)
+			errors_section = (
+				f'<div style="margin-top:8px;"><strong style="color:red;">'
+				f"Protocol Validation Errors</strong><br>{error_html}</div>"
+				if error_html
+				else ""
+			)
+			test_sections.append(
+				f'<details class="protocol_validation_test" style="margin:6px 0;">'
+				f'<summary><strong>{escape(result["test_name"])}</strong></summary>'
+				f"<div>{analysis_html}{errors_section}</div>"
+				"</details>"
+			)
+		postfix.append(
+			'<details class="protocol_validation" style="margin-bottom:10px;">'
+			'<summary><strong style="color:#003366;">Common Protocol Validation</strong></summary>'
+			f"<div>{''.join(test_sections)}</div>"
+			"</details>"
+		)
 
 @pytest.fixture(scope="function", autouse=True)
 def protocol_validation(request, initialize):
@@ -250,6 +283,7 @@ def protocol_validation(request, initialize):
 	report_logger.print_step("========== Start Frame Capture ==========")
 	backhaul_iface = initialize.read_from_database("controller", "backhaul_capture_iface")
 	frame_filter = initialize.read_from_database("controller", "filter_1905")
+	pcap_local_directory = initialize.read_from_database("controller","pcap_local_dir")
 	initialize.start_frame_capture(
 		"controller", backhaul_iface, frame_filter, capture_name
 	)
@@ -259,11 +293,20 @@ def protocol_validation(request, initialize):
 	report_logger.print_step(f"Frame Capture saved as {capture_name}")
 	initialize.download_captured_pcap("controller", capture_name)
 	initialize.delete_captured_pcap("controller", capture_name)
+	capture_path = os.path.join(pcap_local_directory, capture_name)
 	if initialize.read_from_database("protocol", "common_protocol_validation"):
-		report_logger.print_step("========== Start Common Protocol Validation ==========")
+		report_logger.print_title("========== Start Common Protocol Validation ==========")
+		error_list.clear()
 		try:
-			common_protocol_validation(capture_name)
+			analysis_output = common_protocol_validation(capture_path)
+			_protocol_validation_results.append(
+				{
+					"test_name": request.node.name,
+					"analysis": analysis_output,
+					"errors": list(error_list),
+				}
+			)
 		except Exception as error:
 			report_logger.print_error(f"Protocol Validation Failed: {error}")
 			pytest.fail(f"Protocol Validation Failed: {error}")
-		report_logger.print_step("========== Stop Common Protocol Validation ==========")
+		report_logger.print_title("========== Stop Common Protocol Validation ==========")

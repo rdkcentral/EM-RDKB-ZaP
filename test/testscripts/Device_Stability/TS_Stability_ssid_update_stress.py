@@ -39,8 +39,11 @@ def test_stability_ssid_update_stress(initialize, common_setup):
         pytest.fail("Local log directory  is not set. Please update the configuration \"local_log_directory\".")
     report_logger.print_info(f"Retrieved local_log_directory: {ctrl_local_dir}")
     if not os.path.exists(ctrl_local_dir):
-        pytest.fail(f"Local log directory {ctrl_local_dir} does not exist. Please create it or update the configuration.")
-    report_logger.print_info(f"Local log directory {ctrl_local_dir} exists.")
+        report_logger.print_info(f"Local log directory {ctrl_local_dir} does not exist. creating it now.")
+        os.makedirs(ctrl_local_dir)
+        report_logger.print_info(f"Local log directory {ctrl_local_dir} created successfully.")
+    else:
+        report_logger.print_info(f"Local log directory {ctrl_local_dir} exists.")
     report_logger.print_success("PASS: Successfully retrieved local log directory and test parameters")
     report_logger.print_step("Step 2: Start monitor_service in controller")
     initialize.execute_command("controller", "python3 /nvram/monitoring_tool.py &")
@@ -91,10 +94,11 @@ def test_stability_ssid_update_stress(initialize, common_setup):
     step_count += 1
     sub_step_count = 0
     available_log_files = []
-    report_logger.print_step(f"Step {step_count}: Checking for presence of log files on controller")
+    report_logger.print_step(f"Step {step_count}: Checking  the presence of resource usage log files on controller")
     for log_file in LOG_PATHS:
         sub_step_count += 1
-        report_logger.print_step(f"Step {step_count}.{sub_step_count}: checking presence of {log_file} on controller")
+        process_name = os.path.basename(log_file).replace("_monitor.csv", "")
+        report_logger.print_step(f"Step {step_count}.{sub_step_count}: checking the presence of resource usage log files for {process_name} on controller")
         if initialize.get_file_presence_status("controller", log_file):
             available_log_files.append(os.path.basename(log_file))
             report_logger.print_success(f"PASS: Log file found on controller.")
@@ -104,7 +108,7 @@ def test_stability_ssid_update_stress(initialize, common_setup):
             initialize.execute_command("controller", f"rm -f {log_file}")
             report_logger.print_success(f"PASS: Log file downloaded and deleted the file from controller")
         else:
-            report_logger.print_error(f"Controller: Log file not found : {log_file}")
+            report_logger.print_error(f"Controller: Log file not found for {process_name}")
     for log_file in available_log_files:
         step_count += 1
         log_file_path = os.path.join(ctrl_local_dir, log_file)

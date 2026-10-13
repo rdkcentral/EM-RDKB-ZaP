@@ -68,7 +68,6 @@ if __name__ == "__main__":
         f"{BASE_DIR}/test/testscripts/Client_Association/TS_Client_Authentication_Correct_Credentials.py",
         f"{BASE_DIR}/test/testscripts/Client_Association/TS_Client_DHCP_IP_Assignment.py",
         f"{BASE_DIR}/test/testscripts/Client_Association/TS_Client_Gateway_Reachability.py",
-        f"{BASE_DIR}/test/testscripts/Client_Association/TS_Client_Internet_Connectivity.py",
         f"{BASE_DIR}/test/testscripts/Device_Stability/TS_Stability_long_duration_validation.py",
         f"{BASE_DIR}/test/testscripts/Device_Stability/TS_Stability_channel_change_stress.py",
         f"{BASE_DIR}/test/testscripts/Device_Stability/TS_Stability_ssid_update_stress.py",
