@@ -158,17 +158,14 @@ def stop_and_collect_capture(initialize, device, capture_name):
     Return Value: The local capture path.
     Example: stop_and_collect_capture(initialize, "extender1", capture_name)
     """
-    report_logger.print_step(f"Stop and collect packet capture from {device}")
     initialize.stop_frame_capture(device)
     local_path = initialize.download_captured_pcap(device, capture_name)
     try:
         initialize.delete_captured_pcap(device, capture_name)
     except Exception as error:
-        report_logger.print_info(
-            f"{device}: capture already unavailable during cleanup: {error}"
-        )
+        report_logger.print_info(f"INFO: {device}: capture file was already removed from the device, skipping cleanup: {error}")
     report_logger.print_success(
-        f"PASS: Capture stopped and collected successfully for {device}: {local_path}"
+        f"PASS: Packet capture stopped on {device} and saved to: {local_path}"
     )
     return local_path
 
@@ -200,10 +197,11 @@ def verify_services(initialize, device, service_names, deadline=None):
             if remaining <= 0:
                 break
             time.sleep(min(2, remaining))
+    services = ", ".join(service_names)
     if attempts == 0:
-        report_logger.print_error(f"{device}: service validation deadline expired before an attempt")
+        report_logger.print_error(f"FAIL: Could not check services on {device} ({services}): the time limit expired before the first attempt")
     else:
-        report_logger.print_error(f"{device}: services did not become active after {attempts} attempts: {last_error}")
+        report_logger.print_error(f"FAIL: Services on {device} are not active after {attempts} attempt(s). Services checked: {services}. Last error: {last_error}")
     return False
 
 def verify_controller_services(initialize, deadline=None):

@@ -190,7 +190,6 @@ def pytest_runtest_makereport(item, call):
 		report.outcome = "failed"
 		report.longrepr = "Error logs found:\n" + "\n".join(errors)
 
-
 def pytest_html_results_table_html(report, data):
 	if report.when != "call":
 		data.clear()
@@ -215,14 +214,21 @@ def pytest_html_results_table_html(report, data):
 	data.clear()
 	data.extend(new_data)
 
-
 def pytest_html_results_table_row(report, cells):
 	if report.when != "call":
 		cells.clear()
+	elif cells:
+		test_name = report.location[2]
+		cells[1] = f'<td class="col-testId">{escape(test_name)}</td>'
+		cells.pop()
 
+def pytest_html_results_table_header(cells):
+	if cells:
+		cells.pop()
 
 def pytest_html_results_summary(prefix, summary, postfix):
 	prefix.append(report_logger.get_report_style())
+	prefix.append('<h2>Testbed Readiness Check</h2>')
 	for section_name, title in (
 		("setup_accessibility", "Setup Accessibility Validation"),
 		("database_update", "Runtime Database Configuration Update"),
@@ -232,17 +238,27 @@ def pytest_html_results_summary(prefix, summary, postfix):
 			report_logger.format_report_line(line)
 			for line in _setup_sections[section_name].splitlines()
 		)
-		postfix.append(
-			f'<details class="{section_name}" style="margin-bottom:10px;">'
+		section_failure = "<br>".join(
+			report_logger.format_report_line(line)
+			for line in _setup_sections[section_name].splitlines()
+			if "FAIL:" in line
+		)
+		failure_html = (
+			f'<div style="margin:0;">'
+			f'{report_logger.print_title("Execution Error:")}<br>'
+			f'{section_failure}</div>'
+			if section_failure
+			else ""
+		)
+		section_html += '<br><div>-------------------------------------------------------</div>'
+		prefix.append(
+			f'<details class="{section_name}" style="margin-bottom:{0 if section_failure else 10}px;">'
 			f'<summary><strong style="color:#003366;">{title}</strong></summary>'
 			f"<div>{section_html}</div>"
 			"</details>"
 		)
-		if section_name == "test_environment_check" and _setup_failure:
-			postfix.append(
-				f'<div style="margin:10px 0;">'
-				f'<strong style="color:red;">{escape(_setup_failure)}</strong></div>'
-			)
+		if failure_html:
+			prefix.append(failure_html)
 
 @pytest.fixture(scope="function", autouse=True)
 def protocol_validation(request, initialize):
