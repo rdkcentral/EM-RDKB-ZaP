@@ -20,39 +20,42 @@ import time
 import pytest
 from rdkbmeshzap.common_utils import report_logger
 
-def parse_cpu_utilization_output(output: str) -> dict:
+def get_device_cpu_utilization(initialize, device: str) -> dict:
     """
-    Syntax : parse_cpu_utilization_output(output)
-    Description : Parses CPU idle time and processes exceeding the CPU threshold.
+    Syntax : get_device_cpu_utilization(initialize, device)
+    Description : Fetches and parses CPU utilization for a device.
     Parameters :
-        output - Raw output from the `top` command.
+        initialize - Testbed initialization object exposing feature APIs.
+        device - Name of the target device.
     Return Value: A dictionary containing idle, utilization, and high-CPU process data.
     """
+    output = initialize.get_cpu_utilization(device)
+    if output is None or not str(output).strip():
+        raise RuntimeError(f"top returned no output on {device}")
+
+    lines = [line.strip() for line in str(output).splitlines() if line.strip()]
     idle_match = re.search(
         r"(?:%?Cpu\([^)]*\).*?(?P<cpu>[\d.]+)\s*id|"
         r"\b(?P<idle>[\d.]+)%?\s*idle\b)",
-        output,
+        " ".join(lines),
         re.IGNORECASE,
     )
     if not idle_match:
         raise ValueError("Could not find CPU idle percentage in top output")
     idle_percent = float(idle_match.group("cpu") or idle_match.group("idle"))
+    if not 0 <= idle_percent <= 100:
+        raise ValueError(f"CPU idle percentage is outside 0-100: {idle_percent}")
 
-    lines = output.splitlines()
-    cpu_header = next(
-        (
-            fields
-            for line in lines
-            if "%CPU" in (fields := [value.upper() for value in line.split()])
-        ),
-        [],
-    )
+    cpu_header = []
+    for line in lines:
+        fields = line.upper().split()
+        if "%CPU" in fields:
+            cpu_header = fields
+            break
+
     high_cpu_processes = {}
     if cpu_header:
-        cpu_column = next(
-            index for index, value in enumerate(cpu_header)
-            if value.upper() == "%CPU"
-        )
+        cpu_column = cpu_header.index("%CPU")
         for line in lines:
             fields = line.split()
             if len(fields) <= cpu_column or not fields[0].isdigit():
@@ -61,40 +64,33 @@ def parse_cpu_utilization_output(output: str) -> dict:
             if not re.fullmatch(r"\d+(?:\.\d+)?%?", cpu_token):
                 continue
             cpu_value = float(cpu_token.rstrip("%"))
-            if cpu_value > 50:
-                process_name = " ".join(fields[cpu_column + 1:])
-                high_cpu_processes[
-                    f"PID {fields[0]} ({process_name})"
-                ] = cpu_value
+            if cpu_value <= 50:
+                continue
+            process_name = " ".join(fields[cpu_column + 1:]) or "unknown"
+            high_cpu_processes[f"PID {fields[0]} ({process_name})"] = cpu_value
 
     return {
+        "device": device,
         "idle_percent": idle_percent,
         "utilization_percent": 100.0 - idle_percent,
         "high_cpu_processes": high_cpu_processes,
     }
 
-def get_device_cpu_utilization_output(initialize, device: str) -> str:
+def get_device_memory_utilization(initialize, device: str) -> dict:
     """
-    Syntax : get_device_cpu_utilization_output(initialize, device)
-    Description : Fetches raw CPU utilization output for a device.
+    Syntax : get_device_memory_utilization(initialize, device)
+    Description : Fetches and parses memory utilization for a device.
     Parameters :
         initialize - Testbed initialization object exposing feature APIs.
         device - Name of the target device.
-    Return Value: Raw output from the device CPU utilization command.
-    """
-    if output := initialize.get_cpu_utilization(device):
-        return output
-    raise RuntimeError(f"top returned no output on {device}")
-
-def parse_memory_utilization_output(output: str) -> dict:
-    """
-    Syntax : parse_memory_utilization_output(output)
-    Description : Parses memory totals and percentages from `free -m` output.
-    Parameters :
-        output - Raw output from the `free -m` command.
     Return Value: A dictionary containing total, used, available, and percentage values.
     """
-    rows = [line.split() for line in output.splitlines() if line.split()]
+    output = initialize.get_memory_utilization(device)
+    if output is None or not str(output).strip():
+        raise RuntimeError(f"free returned no output on {device}")
+
+    lines = [line.strip() for line in str(output).splitlines() if line.strip()]
+    rows = [line.split() for line in lines]
     header = next((row for row in rows if row[0].lower() == "total"), None)
     values = next((row[1:] for row in rows if row[0].lower() == "mem:"), None)
     if not header or not values or len(values) < len(header):
@@ -116,25 +112,13 @@ def parse_memory_utilization_output(output: str) -> dict:
         ),
     )
     return {
+        "device": device,
         "total_mb": total,
         "used_mb": used,
         "available_mb": available,
         "used_percent": used / total * 100.0,
         "available_percent": available / total * 100.0,
     }
-
-def get_device_memory_utilization_output(initialize, device: str) -> str:
-    """
-    Syntax : get_device_memory_utilization_output(initialize, device)
-    Description : Fetches raw memory utilization output for a device.
-    Parameters :
-        initialize - Testbed initialization object exposing feature APIs.
-        device - Name of the target device.
-    Return Value: Raw output from the device memory utilization command.
-    """
-    if output := initialize.get_memory_utilization(device):
-        return output
-    raise RuntimeError(f"free returned no output on {device}")
 
 def get_enabled_clients(initialize):
     """

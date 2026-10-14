@@ -42,12 +42,13 @@ def validate_device_accessibility(initialize):
             report_logger.print_success(f"PASS: {device} is accessible over SSH")
     return validation_result
 
-def retrieve_and_store_radio_macs(initialize):
+def retrieve_and_store_runtime_data(initialize):
     """
     Syntax: retrieve_and_store_radio_macs(initialize)
     Description:
-        Discover 2G, 5G, and 6G fronthaul BSSIDs for the controller
+        Discover and store runtime device parameters for the controller
         and all enabled extenders.
+        This includes the managed backhaul interface and radio MACs.
         Match every BSSID returned by get_fronthaul_bssids() against
         the MAC addresses of wifi0, wifi1, and wifi2, then store the
         validated radio MAC addresses in the database.
@@ -56,13 +57,13 @@ def retrieve_and_store_radio_macs(initialize):
     Return Value:
         None on success; False when retrieval or validation fails.
     """
-    report_logger.print_title("Update the database with radio MAC addresses for the controller and enabled extenders")
+    report_logger.print_title("Update the runtime database for the controller and enabled extenders")
     try:
         # Controller
         devices = ["controller"]
         # Enabled extenders
         devices.extend(device_utils.get_enabled_extenders(initialize))
-        report_logger.print_title(f"Radio MAC retrieval and storage started for {len(devices)} device(s): {', '.join(devices)}")
+        report_logger.print_title(f"Runtime parameter discovery started for {len(devices)} device(s): {', '.join(devices)}")
         interfaces = ["wifi0", "wifi1", "wifi2"]
         radio_db_keys = {
             "wifi0": "2g_radio_mac",
@@ -70,7 +71,21 @@ def retrieve_and_store_radio_macs(initialize):
             "wifi2": "6g_radio_mac"
         }
         for device in devices:
+            report_logger.print_title(f"Update the Runtime database for {device}")
             report_logger.print_info(f"INFO: [{device}] Retrieving 2G, 5G, and 6G fronthaul BSSIDs")
+            wireless_interfaces = initialize.get_wireless_interfaces_list(device)
+            managed_interfaces = [
+                interface
+                for interface in wireless_interfaces
+                if str(
+                    initialize.get_iw_interface_details(device, interface).get("type", "")
+                ).lower() == "managed"
+            ]
+            if not managed_interfaces:
+                report_logger.print_error(f"FAIL: No managed backhaul interface found for {device}")
+                return False
+            initialize.db_obj.write_into_database(device, "backhaul_interface", managed_interfaces[0])
+            report_logger.print_info(f"INFO: [{device}] Stored backhaul_interface = {managed_interfaces[0]}")
             bssids = initialize.get_fronthaul_bssids(device, "cli")
             if len(bssids) < 3:
                 report_logger.print_error(f"FAIL: Expected 3 fronthaul BSSIDs for {device}, but found {len(bssids)}: {bssids}")
@@ -109,7 +124,7 @@ def retrieve_and_store_radio_macs(initialize):
             report_logger.print_success(f"PASS: [{device}] Stored 2g_radio_mac = {matched['wifi0']}")
             report_logger.print_success(f"PASS: [{device}] Stored 5g_radio_mac = {matched['wifi1']}")
             report_logger.print_success(f"PASS: [{device}] Stored 6g_radio_mac = {matched['wifi2']}")
-        report_logger.print_success(f"PASS: Successfully retrieved and stored radio MAC addresses in the database for {len(devices)} device(s)")
+        report_logger.print_success(f"PASS: Successfully retrieved and stored runtime device parameters for {len(devices)} device(s)")
     except Exception as e:
         report_logger.print_error(f"FAIL: Radio MAC retrieval and storage failed: {e}")
         return False
@@ -245,9 +260,18 @@ def verify_mesh_backhaul_interfaces(initialize):
         validation_result = False
         report_logger.print_error("FAIL: No enabled Extenders are configured")
     for device in ["controller"] + extenders:
-        interface = "wifi1.3"
         device_failed = False
         try:
+            interface = initialize.read_from_database(
+                device, "backhaul_interface"
+            )
+            if not interface:
+                validation_result = False
+                device_failed = True
+                report_logger.print_error(
+                    f"FAIL: {device}: backhaul_interface is missing from platform.yaml"
+                )
+                continue
             info = initialize.get_iw_interface_details(device, interface)
             if not info["exists"] or info["type"] != "managed" or info["four_addr"] != "on":
                 validation_result = False
