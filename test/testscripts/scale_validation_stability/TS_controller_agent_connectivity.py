@@ -31,7 +31,6 @@ def test_em_scale_controller_agent_stability(initialize):
     if actual_agent_count != expected_agent_count:
         report_logger.print_error(f"Expected {expected_agent_count} configured extenders, but found {actual_agent_count}: {agents}")
     report_logger.print_success(f"PASS: Found {actual_agent_count} configured extenders")
-
     report_logger.print_step("STEP 2: Capture the baseline active extenders")
     baseline = get_extender_presence_snapshot(initialize, agents)
     report_logger.print_info(f"INFO: Baseline active extenders snapshot: {baseline}")
@@ -51,6 +50,7 @@ def test_em_scale_controller_agent_stability(initialize):
         )
         if mismatches:
             report_logger.print_error(f"Topology mismatch at poll #{poll_count}: {mismatches}")
+
         remaining_time = end_time - time.time()
         if remaining_time > 0:
             time.sleep(min(POLL_INTERVAL_SEC, remaining_time))
