@@ -97,11 +97,7 @@ def test_em_fronthaul_phyrate_stability(initialize):
         report_logger.print_step("STEP 4: Capture final PHY rates for all clients and validate the allowed baseline drop limit")
         for client_index, client in enumerate(clients, start=1):
             try:
-<<<<<<< HEAD
                 report_logger.print_info(f"INFO: Capturing final PHY rates for client #{client_index} '{client}'")
-=======
-            report_logger.print_info(f"INFO: Capturing final PHY rates for client #{client_index} '{client}'")
->>>>>>> b0e5ef072ff1d5a0bbdaa537170ffab5b1eea238
                 bssid = initialize.get_association_status(client, "cli")
                 host = get_device_advertising_bssid(initialize, bssid)
                 state = get_client_phy_rates(initialize, client, host)

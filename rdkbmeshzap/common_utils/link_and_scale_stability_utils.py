@@ -175,7 +175,7 @@ def get_fronthaul_station_macs_by_device(initialize, devices: list) -> dict:
             observed = ", ".join(sorted(station_macs))
             observation = observed or "no clients currently connected"
             report_logger.print_info(
-                f"INFO: Observed {device}/{interface} fronthaul station MACs: "
+                f"INFO: Observed {device}  fronthaul station MACs: "
                 f"{observation}")
         except Exception as err:
             report_logger.print_error(
@@ -234,8 +234,7 @@ def get_extender_presence_snapshot(initialize, agents: list) -> dict:
                 connected_agents.add(agent)
             else:
                 report_logger.print_info(
-                    f"INFO: {agent}: no active backhaul connection on "
-                    f"{stored_interface}")
+                    f"INFO: {agent}: no active backhaul connection")
         except Exception as err:
             report_logger.print_error(
                 f"Backhaul presence check failed on {agent}: {err}")

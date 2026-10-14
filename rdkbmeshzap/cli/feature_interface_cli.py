@@ -88,7 +88,9 @@ class FeatureInterfaceCLI(DatabaseModule,
         return str(output).strip()
 
     def get_wireless_interfaces_list(self, device: str) -> list:
-        """Return unique non-MLD wireless interfaces reported by ``iw dev``."""
+        """
+        Return wireless interfaces reported by ``iw dev``.
+        """
         interfaces = (
             line.split(maxsplit=1)[1]
             for line in self.get_iw_dev_info(device).splitlines()
@@ -183,7 +185,9 @@ class FeatureInterfaceCLI(DatabaseModule,
         }
 
     def get_iw_link_details(self, device: str, interface: str, value: str) -> list:
-        """Return normalized details from ``iw dev <interface> link`` output."""
+        """
+        Return normalized details from ``iw dev <interface> link`` output.
+        """
         lines = [
             line.strip()
             for line in self.get_iw_dev_link_info(device, interface).splitlines()
@@ -208,9 +212,7 @@ class FeatureInterfaceCLI(DatabaseModule,
             if (match := re.match(pattern, line, re.IGNORECASE))
         ]
 
-    def get_iw_station_details(
-        self, device: str, interface: str, value: str
-    ) -> list:
+    def get_iw_station_details(self, device: str, interface: str, value: str) -> list:
         """
         Get normalized details from ``iw dev <interface> station dump``.
         """
@@ -250,10 +252,10 @@ class FeatureInterfaceCLI(DatabaseModule,
             return [(match.group(1), match.group(2)) for match in matches]
         return [match.group(1) for match in matches]
 
-    def get_backhaul_interface_details(
-        self, device: str, interface: str
-    ) -> dict:
-        """Return connection, BSSID, RSSI, and uptime for a backhaul interface."""
+    def get_backhaul_interface_details(self, device: str, interface: str) -> dict:
+        """
+        Return connection, BSSID, RSSI, and uptime for a backhaul interface.
+        """
         bssids = self.get_iw_link_details(device, interface, "bssid")
         signals = self.get_iw_link_details(device, interface, "signal")
         connected_times = self.get_iw_station_details(
@@ -299,7 +301,6 @@ class FeatureInterfaceCLI(DatabaseModule,
                 f"Command execution failed: {command}. stderr: {error.strip()}"
             )
         return str(output).strip()
-
 
     def set_ssid(self,
                  device: str,

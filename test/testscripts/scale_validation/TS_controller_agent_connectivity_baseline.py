@@ -20,19 +20,21 @@ from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
 
 def test_em_scale_controller_agent_connectivity(initialize):
     """
-    Verify that the configured number of scale agents is present.
+    Verify that the configured number of scale extenders is present.
     """
     report_logger.print_test("Entering test_em_scale_controller_agent_connectivity")
-    report_logger.print_step("STEP 1: Read the configured scale-agent list and capture current agent presence")
-    agents = device_utils.get_enabled_extenders(initialize)
-    report_logger.print_info(f"INFO: Discovered {len(agents)} configured scale devices: {agents}")
-    expected_agent_count = get_enabled_scale_setup(initialize)["expected_agent_count"]
-    presence = get_extender_presence_snapshot(initialize, agents)
-    actual_agent_count = presence["agent_count"]
-    report_logger.print_step("STEP 2: Validate that the connected agent count matches the configured count")
-    report_logger.print_info(f"INFO: Expected result: {expected_agent_count} configured scale devices")
-    if actual_agent_count < expected_agent_count:
-        report_logger.print_error(f"Expected {expected_agent_count} connected agents, but found {actual_agent_count}: {sorted(presence['agents'])}")
-    else:
-        report_logger.print_success(f"PASS: Found the expected {actual_agent_count} configured scale devices")
-    report_logger.print_test("Exiting test_em_scale_controller_agent_connectivity")
+    try:
+        report_logger.print_step("STEP 1: Read the configured extender list and capture current active extenders")
+        agents = device_utils.get_enabled_extenders(initialize)
+        report_logger.print_info(f"INFO: Discovered {len(agents)} configured active extenders: {agents}")
+        expected_agent_count = get_enabled_scale_setup(initialize)["expected_agent_count"]
+        presence = get_extender_presence_snapshot(initialize, agents)
+        actual_agent_count = presence["agent_count"]
+        report_logger.print_step("STEP 2: Validate that the connected active extender count matches the configured count")
+        report_logger.print_info(f"INFO: Expected result: {expected_agent_count} configured active extenders")
+        if actual_agent_count < expected_agent_count:
+            report_logger.print_error(f"Expected {expected_agent_count} connected active extenders, but found {actual_agent_count}: {sorted(presence['agents'])}")
+        else:
+            report_logger.print_success(f"PASS: Found the expected {actual_agent_count} configured active extenders")
+    finally:
+        report_logger.print_test("Exiting test_em_scale_controller_agent_connectivity")
