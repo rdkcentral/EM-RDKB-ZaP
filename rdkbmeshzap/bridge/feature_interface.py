@@ -66,7 +66,7 @@ class FeatureInterface(FeatureInterfaceModules):
 
     def get_wireless_interfaces_list(self, device: str, method: str = 'cli') -> list:
         """
-        Get unique non-MLD wireless interfaces for a device.
+        Get wireless interfaces for a device.
         """
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)

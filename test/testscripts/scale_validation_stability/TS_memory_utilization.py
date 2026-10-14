@@ -39,7 +39,9 @@ def test_em_scale_memory_utilization(initialize):
 		except Exception as err:
 			report_logger.print_error(f"Baseline memory collection failed on {device}: {err}")
 			continue
-	report_logger.print_info(f"INFO: Baseline memory snapshot: {baseline}")
+	for device in devices:
+		if device in baseline:
+			report_logger.print_info(f"INFO: Baseline {device}: available={baseline[device]['available_percent']:.1f}%, used={baseline[device]['used_percent']:.1f}%, total={baseline[device]['total_mb']:.1f} MB")
 	report_logger.print_step("STEP 2: Monitor memory metrics at the configured interval and validate limits, growth, and baseline changes for each device")
 	start_time = time.time()
 	sample_count = 0

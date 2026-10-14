@@ -16,8 +16,9 @@
 # limitations under the License.
 
 import time
-from rdkbmeshzap.common_utils import device_utils, report_logger
-from rdkbmeshzap.common_utils.client_utils import connect_wlan_clients
+from rdkbmeshzap.common_utils.device_utils import *
+from rdkbmeshzap.common_utils.client_utils import *
+from rdkbmeshzap.common_utils.test_report_utils import *
 from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
 
 def test_em_fronthaul_rssi_stability(initialize):
@@ -94,11 +95,7 @@ def test_em_fronthaul_rssi_stability(initialize):
         report_logger.print_step("STEP 4: Capture final RSSI for all clients and validate the allowed baseline degradation")
         for client_index, client in enumerate(clients, start=1):
             try:
-<<<<<<< HEAD
                 report_logger.print_info(f"INFO: Performing final RSSI check for client #{client_index} '{client}'")
-=======
-            report_logger.print_info(f"INFO: Performing final RSSI check for client #{client_index} '{client}'")
->>>>>>> b0e5ef072ff1d5a0bbdaa537170ffab5b1eea238
                 bssid = initialize.get_association_status(client, "cli")
                 host = get_device_advertising_bssid(initialize, bssid)
                 state = get_client_rssi(initialize, client, host)

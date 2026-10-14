@@ -25,10 +25,10 @@ def test_em_scale_client_association_baseline(initialize):
     """
     report_logger.print_test("Entering test_em_scale_client_association_baseline")
     try:
-        report_logger.print_step("STEP 1: Discover configured scale agents and WLAN clients for baseline validation")
+        report_logger.print_step("STEP 1: Discover configured extenders and WLAN clients for baseline validation")
         agents = device_utils.get_enabled_extenders(initialize)
         clients = device_utils.get_enabled_clients(initialize)
-        report_logger.print_info(f"INFO: Discovered {len(agents)} scale devices and {len(clients)} configured WLAN clients: agents={agents}, clients={clients}")
+        report_logger.print_info(f"INFO: Discovered {len(agents)} extenders and {len(clients)} configured WLAN clients: extenders={agents}, clients={clients}")
         if not clients:
             report_logger.print_error("No WLAN clients are marked present in the database")
             return
@@ -38,15 +38,15 @@ def test_em_scale_client_association_baseline(initialize):
         report_logger.print_success(f"PASS: Connected clients before baseline validation: {', '.join(clients)}")
         expected_client_count = get_enabled_scale_setup(initialize)["expected_client_count"]
         all_devices = ["controller", *agents]
-        report_logger.print_step("STEP 3: Capture fronthaul client MAC associations from the controller and each agent")
+        report_logger.print_step("STEP 3: Capture client MAC associations from the controller and each active extender")
         baseline = get_fronthaul_station_macs_by_device(initialize, all_devices)
         observed_client_count = sum(len(macs) for macs in baseline.values())
-        report_logger.print_info(f"INFO: Captured {observed_client_count} client associations across {len(all_devices)} devices")
-        report_logger.print_step("STEP 4: Validate that the observed client-association count matches the expected count")
-        report_logger.print_info(f"INFO: Observed {observed_client_count} associations across {len(all_devices)} devices; snapshot={baseline}")
+        report_logger.print_info(f"INFO: Captured {observed_client_count} client associations across the discovered devices")
+        report_logger.print_step("STEP 4: Validate that the observed client-connection count matches the expected count")
+        report_logger.print_info(f"INFO: Observed {observed_client_count} client connections across the discovered devices; snapshot={baseline}")
         if observed_client_count < expected_client_count:
             report_logger.print_error(f"Observed {observed_client_count} clients, expected exactly {expected_client_count}: {baseline}")
         else:
-            report_logger.print_success(f"PASS: Initial client-association baseline captured: {observed_client_count} client(s)")
+            report_logger.print_success(f"PASS: Initial client connections baseline captured: {observed_client_count} client(s)")
     finally:
         report_logger.print_test("Exiting test_em_scale_client_association_baseline")
