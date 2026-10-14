@@ -271,6 +271,11 @@ def pytest_html_results_summary(prefix, summary, postfix):
 			)
 	if _protocol_validation_results:
 		test_sections = []
+		failed_test_names = "<br>".join(
+			f'<strong style="color:red;">FAIL: {escape(result["test_name"])}</strong>'
+			for result in _protocol_validation_results
+			if result["errors"]
+		)
 		for result in _protocol_validation_results:
 			analysis_html = "<br>".join(
 				report_logger.format_report_line(line)
@@ -288,15 +293,18 @@ def pytest_html_results_summary(prefix, summary, postfix):
 			)
 			test_sections.append(
 				f'<details class="protocol_validation_test" style="margin:6px 0;">'
-				f'<summary><strong>{escape(result["test_name"])}</strong></summary>'
+				f'<summary><strong style="color:#003366;">{escape(result["test_name"])}</strong></summary>'
 				f"<div>{analysis_html}{errors_section}</div>"
 				"</details>"
 			)
-		postfix.append(
+		prefix.append(
 			'<details class="protocol_validation" style="margin-bottom:10px;">'
-			'<summary><strong style="color:#003366;">Common Protocol Validation</strong></summary>'
-			f"<div>{''.join(test_sections)}</div>"
-			"</details>"
+			'<summary>'
+			'<strong style="color:#003366;">Common Protocol Validation</strong> <br>'
+			f'{failed_test_names}'
+			'</summary>'
+			f'<div style="margin-top:8px;">{"".join(test_sections)}</div>'
+			'</details>'
 		)
 
 @pytest.fixture(scope="function", autouse=True)
