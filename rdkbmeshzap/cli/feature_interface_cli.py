@@ -87,6 +87,22 @@ class FeatureInterfaceCLI(DatabaseModule,
             raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
         return str(output).strip()
 
+    def get_wireless_interfaces_list(self, device: str) -> list:
+        """Return unique non-MLD wireless interfaces reported by ``iw dev``."""
+        interfaces = (
+            line.split(maxsplit=1)[1]
+            for line in self.get_iw_dev_info(device).splitlines()
+            if line.strip().startswith("Interface ")
+            and len(line.split(maxsplit=1)) == 2
+        )
+        return list(
+            dict.fromkeys(
+                interface
+                for interface in interfaces
+                if not interface.lower().startswith("mld")
+            )
+        )
+
     def get_iw_dev_interface_info(self, device: str, iface: str) -> str:
         """
         Get `iw dev <interface> info` output for the device.
@@ -166,6 +182,92 @@ class FeatureInterfaceCLI(DatabaseModule,
             "link_ids": link_ids, "link_macs": link_macs, "radios": radios,
         }
 
+    def get_iw_link_details(self, device: str, interface: str, value: str) -> list:
+        """Return normalized details from ``iw dev <interface> link`` output."""
+        lines = [
+            line.strip()
+            for line in self.get_iw_dev_link_info(device, interface).splitlines()
+        ]
+        if value not in {"bssid", "ssid", "signal", "rates"}:
+            raise ValueError(f"Unsupported iw link value: {value}")
+        patterns = {
+            "bssid": (r"Connected\s+to\s+([0-9a-f:]{17})", (1,)),
+            "ssid": (r"SSID:\s*(.+?)\s*$", (1,)),
+            "signal": (r"signal:\s*(-?\d+)\s*dBm", (1,)),
+            "rates": (
+                r"(tx|rx) bitrate:\s*([\d.]+)\s+([MGK]Bit/s)",
+                (1, 2, 3),
+            ),
+        }
+        pattern, groups = patterns[value]
+        return [
+            tuple(match.group(group) for group in groups)
+            if len(groups) > 1
+            else match.group(groups[0])
+            for line in lines
+            if (match := re.match(pattern, line, re.IGNORECASE))
+        ]
+
+    def get_iw_station_details(
+        self, device: str, interface: str, value: str
+    ) -> list:
+        """
+        Get normalized details from ``iw dev <interface> station dump``.
+        """
+        lines = [
+            line.rstrip()
+            for line in self.get_iw_dev_sta_dump(device, interface).splitlines()
+        ]
+        valid_values = {
+            "records", "macs", "connected_time", "tx_rate", "rx_rate"
+        }
+        if value not in valid_values:
+            raise ValueError(f"Unsupported iw station value: {value}")
+        if value in {"records", "macs"}:
+            records = []
+            current = None
+            for line in lines:
+                station = re.match(r"^Station\s+([0-9a-f:]{17})\b", line, re.IGNORECASE)
+                if station:
+                    if current:
+                        records.append(current)
+                    current = [station.group(1), []]
+                elif current:
+                    current[1].append(line)
+            if current:
+                records.append(current)
+            if value == "records":
+                return [(mac, "\n".join(details)) for mac, details in records]
+            return [mac for mac, _ in records]
+        patterns = {
+            "connected_time": r"^\s*connected time:\s*(\d+) seconds",
+            "tx_rate": r"^\s*tx bitrate:\s*([\d.]+)\s+([MGK]Bit/s)",
+            "rx_rate": r"^\s*rx bitrate:\s*([\d.]+)\s+([MGK]Bit/s)",
+        }
+        pattern = re.compile(patterns[value], re.IGNORECASE)
+        matches = [match for line in lines if (match := pattern.match(line))]
+        if value in {"tx_rate", "rx_rate"}:
+            return [(match.group(1), match.group(2)) for match in matches]
+        return [match.group(1) for match in matches]
+
+    def get_backhaul_interface_details(
+        self, device: str, interface: str
+    ) -> dict:
+        """Return connection, BSSID, RSSI, and uptime for a backhaul interface."""
+        bssids = self.get_iw_link_details(device, interface, "bssid")
+        signals = self.get_iw_link_details(device, interface, "signal")
+        connected_times = self.get_iw_station_details(
+            device, interface, "connected_time"
+        )
+        return {
+            "connected": bool(bssids),
+            "bssid": bssids[0] if bssids else None,
+            "rssi_dbm": int(signals[0]) if signals else None,
+            "connected_time": (
+                int(connected_times[0]) if connected_times else None
+            ),
+        }
+
     def get_cpu_utilization(self, device: str) -> str:
         """
         Get one non-interactive CPU snapshot from the device.
@@ -197,6 +299,7 @@ class FeatureInterfaceCLI(DatabaseModule,
                 f"Command execution failed: {command}. stderr: {error.strip()}"
             )
         return str(output).strip()
+
 
     def set_ssid(self,
                  device: str,

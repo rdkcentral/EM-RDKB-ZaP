@@ -16,7 +16,6 @@
 # limitations under the License.
 
 import time
-import pytest
 from rdkbmeshzap.common_utils import device_utils, report_logger
 from rdkbmeshzap.common_utils.client_utils import connect_wlan_clients
 from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
@@ -27,136 +26,88 @@ def test_em_fronthaul_rssi_stability(initialize):
     """
     report_logger.print_test("Entering test_em_fronthaul_rssi_stability")
     try:
-        report_logger.print_step(
-            "STEP 1: Identify all present WLAN clients and connect each client to its assigned device"
-        )
+        report_logger.print_step("STEP 1: Identify configured WLAN clients, connect them to their assigned devices, and verify availability")
         present_clients = device_utils.get_enabled_clients(initialize)
         if not present_clients:
-            report_logger.print_error(
-                "No fronthaul clients are marked present in the database"
-            )
+            report_logger.print_error("No fronthaul clients are marked present in the database")
         try:
             clients = connect_wlan_clients(
-                initialize, present_clients, require_all=False
-            )
+                initialize, present_clients, require_all=False)
         except Exception as err:
-            report_logger.print_error(
-                f"Unable to prepare fronthaul clients for RSSI monitoring: {err}"
-            )
+            report_logger.print_error(f"Unable to prepare fronthaul clients for RSSI monitoring: {err}")
         unavailable = [
             f"{client}: connection unavailable"
             for client in present_clients
             if client not in clients
         ]
         if unavailable:
-            report_logger.print_error(
-                "Unable to establish association for "
-                f"all configured WLAN clients: {unavailable}"
-            )
+            report_logger.print_error(f"Unable to establish association for all configured WLAN clients: {unavailable}")
             return
-        report_logger.print_success(
-            f"PASS: Connected clients before RSSI test: {', '.join(clients)}"
-        )
+        report_logger.print_success(f"PASS: Connected clients before RSSI test: {', '.join(clients)}")
         poll_interval_sec = POLL_INTERVAL_SEC
         test_duration_sec = TEST_DURATION_SEC
-        report_logger.print_step(
-            "STEP 2: Capture and validate baseline RSSI"
-        )
-        report_logger.print_info(
-            f"INFO: Capturing baseline RSSI for {len(clients)} client(s)"
-        )
+        report_logger.print_step("STEP 2: Capture each client's baseline RSSI and validate that the signal sample is available")
+        report_logger.print_info(f"INFO: Capturing baseline RSSI for {len(clients)} client(s)")
         baseline_rssi = {}
-        for client in clients:
+        for client_index, client in enumerate(clients, start=1):
             try:
-                report_logger.print_info(f"Monitoring the client {client} RSSI")
+            report_logger.print_info(f"INFO: Capturing baseline RSSI for client #{client_index} '{client}'")
                 bssid = initialize.get_association_status(client, "cli")
-                host = get_device_for_bssid(initialize, bssid)
-                state = client_rssi(initialize, client, host)
-                error = validate_rssi(state)
+                host = get_device_advertising_bssid(initialize, bssid)
+                state = get_client_rssi(initialize, client, host)
+                error = validate_client_rssi(state)
             except Exception as err:
-                report_logger.print_error(
-                    f"Unable to capture baseline RSSI for '{client}': {err}"
-                )
+                report_logger.print_error(f"Unable to capture baseline RSSI for '{client}': {err}")
                 continue
             if error:
-                report_logger.print_error(
-                    f"Client '{client}' failed baseline RSSI validation: {error}"
-                )
+                report_logger.print_error(f"Client '{client}' failed baseline RSSI validation: {error}")
                 continue
             baseline_rssi[client] = state["rssi_dbm"]
-            report_logger.print_success(
-                f"PASS: Client '{client}' baseline RSSI: {state['rssi_dbm']} dBm "
-                f"on {state['host']}/{state['interface']}"
-            )
-        report_logger.print_info(
-            f"INFO: Baseline captured for all {len(baseline_rssi)} configured "
-            "present WLAN client(s)"
-        )
-        report_logger.print_step(
-            "STEP 3: Monitor each client's RSSI and compare it with the baseline "
-            "for the configured duration"
-        )
+            report_logger.print_success(f"PASS: Client '{client}' baseline RSSI: {state['rssi_dbm']} dBm on {state['host']}/{state['interface']}")
+        report_logger.print_info(f"INFO: Baseline captured for all {len(baseline_rssi)} configured present WLAN client(s)")
+        report_logger.print_step("STEP 3: Monitor each client's RSSI and validate the allowed baseline degradation throughout the test")
         start_time = time.time()
         poll_count = 0
         while time.time() - start_time < test_duration_sec:
             poll_count += 1
             elapsed_sec = int(time.time() - start_time)
-            report_logger.print_step(
-                f"STEP 3.{poll_count}: Monitor the client RSSI rates at poll"
-            )
-            report_logger.print_info(
-                f"INFO: Poll #{poll_count} at {elapsed_sec}s elapsed"
-            )
-            for client in clients:
+            report_logger.print_step(f"STEP 3.{poll_count}: Validate each client's RSSI against its baseline")
+            report_logger.print_info(f"INFO: Poll #{poll_count} at {elapsed_sec}s elapsed")
+            for client_index, client in enumerate(clients, start=1):
                 try:
-                    report_logger.print_info(
-                        f" Monitoring the client {client} RSSI "
-                    )
+                    report_logger.print_step(f"STEP 3.{poll_count}.{client_index}: Validate RSSI for client #{client_index} '{client}'")
                     bssid = initialize.get_association_status(client, "cli")
-                    host = get_device_for_bssid(initialize, bssid)
-                    state = client_rssi(initialize, client, host)
-                    error = validate_rssi(state, baseline_rssi[client], MAX_RSSI_DEGRADATION_DB)
+                    host = get_device_advertising_bssid(initialize, bssid)
+                    state = get_client_rssi(initialize, client, host)
+                    error = validate_client_rssi(state, baseline_rssi[client], MAX_RSSI_DEGRADATION_DB)
                 except Exception as err:
-                    report_logger.print_error(
-                        f"RSSI poll #{poll_count} failed for '{client}': {err}"
-                    )
+                    report_logger.print_error(f"RSSI poll #{poll_count} failed for '{client}': {err}")
                     continue
                 if error:
-                    report_logger.print_error(
-                        f"Client '{client}' RSSI check failed: {error}"
-                    )
+                    report_logger.print_error(f"Client '{client}' RSSI check failed: {error}")
                     continue
                 report_logger.print_success(
                     f"PASS: Client '{client}' RSSI is {state['rssi_dbm']} dBm "
                     f"(baseline {baseline_rssi[client]} dBm) on "
-                    f"{state['host']}/{state['interface']}"
-                )
+                    f"{state['host']}/{state['interface']}")
             time.sleep(poll_interval_sec)
-        report_logger.print_step(
-            "STEP 4: Capture final RSSIfor all clients and "
-            "verify they remain within the allowed drop limit"
-        )
-        for client in clients:
+        report_logger.print_step("STEP 4: Capture final RSSI for all clients and validate the allowed baseline degradation")
+        for client_index, client in enumerate(clients, start=1):
             try:
-                report_logger.print_info(f"Final RSSI Monitoring check for {client}")
+            report_logger.print_info(f"INFO: Performing final RSSI check for client #{client_index} '{client}'")
                 bssid = initialize.get_association_status(client, "cli")
-                host = get_device_for_bssid(initialize, bssid)
-                state = client_rssi(initialize, client, host)
+                host = get_device_advertising_bssid(initialize, bssid)
+                state = get_client_rssi(initialize, client, host)
             except Exception as err:
-                report_logger.print_error(
-                    f"Final RSSI Monitoring check failed for '{client}': {err}"
-                )
+                report_logger.print_error(f"Final RSSI Monitoring check failed for '{client}': {err}")
                 continue
-            error = validate_rssi(state, baseline_rssi[client], MAX_RSSI_DEGRADATION_DB)
+            error = validate_client_rssi(state, baseline_rssi[client], MAX_RSSI_DEGRADATION_DB)
             if error:
-                report_logger.print_error(
-                    f"Client '{client}' final RSSI validation failed: {error}"
-                )
+                report_logger.print_error(f"Client '{client}' final RSSI validation failed: {error}")
                 continue
             report_logger.print_success(
                 f"PASS: Client '{client}' final RSSI is {state['rssi_dbm']} dBm; "
                 f"no degradation beyond {MAX_RSSI_DEGRADATION_DB} dB on "
-                f"{state['host']}/{state['interface']}"
-            )
+                f"{state['host']}/{state['interface']}")
     finally:        
         report_logger.print_test("Exiting test_em_fronthaul_rssi_stability")

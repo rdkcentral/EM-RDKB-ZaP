@@ -16,7 +16,6 @@
 # limitations under the License.
 
 import time
-import pytest
 from rdkbmeshzap.common_utils import device_utils, report_logger
 from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
 
@@ -31,91 +30,54 @@ def test_em_scale_cpu_utilization(initialize):
 	devices = ["controller", *agents]
 	consecutive_limit = 2
 	high_cpu_counts = {device: {} for device in devices}
-	report_logger.print_step(
-	    "STEP 1: Capture baseline CPU usage for each device and verify that "
-    	"CPU utilization remains below 80%, idle CPU stays above 20%, and "
-    	"no process is consuming excessive CPU resources"
-	)
+	report_logger.print_step("STEP 1: Capture baseline CPU metrics and validate idle CPU, baseline utilization, and high-CPU process limits for each device")
 	baseline = {}
 	for device in devices:
 		try:
-			baseline[device] = collect_device_cpu_utilization(initialize, device)
+			snapshot = device_utils.get_device_cpu_utilization(initialize, device)
+			snapshot["device"] = device
+			baseline[device] = snapshot
 			validate_cpu_utilization_limits(
-				baseline[device], high_cpu_counts[device], consecutive_limit
-			)
-			report_logger.print_success(
-				f"PASS: Baseline observed on {device}: "
-				f"idle={baseline[device]['idle_percent']:.1f}%, "
-				f"utilization={baseline[device]['utilization_percent']:.1f}%"
-			)
+				baseline[device], high_cpu_counts[device], consecutive_limit)
+			report_logger.print_success(f"PASS: Baseline observed on {device}: idle={baseline[device]['idle_percent']:.1f}%, utilization={baseline[device]['utilization_percent']:.1f}%")
 		except Exception as err:
-			report_logger.print_error(
-				f"Baseline CPU collection failed on {device}: {err}"
-			)
+			report_logger.print_error(f"Baseline CPU collection failed on {device}: {err}")
 			continue
-
-	report_logger.print_step(
-    "STEP 2: Monitor CPU usage on each device and compare it against the baseline values"
-	)
-	report_logger.print_info(
-    f"INFO: Monitoring CPU usage for {test_duration_sec} seconds at "
-    f"{poll_interval_sec}-second intervals"
-	)
+	report_logger.print_step("STEP 2: Monitor CPU metrics on each device and validate limits and changes against the baseline")
+	report_logger.print_info(f"INFO: Monitoring CPU usage for {test_duration_sec} seconds at {poll_interval_sec}-second intervals")
 	start_time = time.time()
 	sample_count = 0
 	while time.time() - start_time < test_duration_sec:
 		sample_count += 1
-		for device in devices:
+		for device_index, device in enumerate(devices, start=1):
 			try:
-				report_logger.print_step(
-        		    f"STEP 2.{sample_count}: Monitor CPU usage on {device}"
-        		)
-				snapshot = collect_device_cpu_utilization(initialize, device)
+				report_logger.print_step(f"STEP 2.{sample_count}.{device_index}: Validate CPU limits and baseline change for device #{device_index} '{device}'")
+				snapshot = device_utils.get_device_cpu_utilization(initialize, device)
+				snapshot["device"] = device
 				validate_cpu_utilization_limits(
 					snapshot, high_cpu_counts[device], consecutive_limit,
-					baseline[device]
-				)
-				report_logger.print_success(
-					f"PASS: Monitoring check #{sample_count} observed on {device}: "
-					f"idle={snapshot['idle_percent']:.1f}%, "
-					f"utilization={snapshot['utilization_percent']:.1f}%"
-				)
+					baseline[device])
+				report_logger.print_success(f"PASS: Monitoring check #{sample_count} observed on {device}: idle={snapshot['idle_percent']:.1f}%, utilization={snapshot['utilization_percent']:.1f}%")
 			except Exception as err:
-				report_logger.print_error(
-					f"CPU monitoring failed on {device}: {err}"
-				)
+				report_logger.print_error(f"CPU monitoring failed on {device}: {err}")
 				continue
 		time.sleep(poll_interval_sec)
-
-	report_logger.print_step(
-		"STEP 3: Capture final CPU statistics and validate CPU usage remains within expected limits"
-	)
+	report_logger.print_step("STEP 3: Capture final CPU metrics and validate limits and baseline changes for each device")
 	final = {}
 	for device in devices:
 		try:
-			final[device] = collect_device_cpu_utilization(initialize, device)
+			snapshot = device_utils.get_device_cpu_utilization(initialize, device)
+			snapshot["device"] = device
+			final[device] = snapshot
 			validate_cpu_utilization_limits(
 				final[device], high_cpu_counts[device], consecutive_limit,
-				baseline[device]
-			)
-			report_logger.print_success(
-				f"PASS: Final observed result for {device}: "
-				f"idle={final[device]['idle_percent']:.1f}%, "
-				f"utilization={final[device]['utilization_percent']:.1f}%"
-			)
+				baseline[device])
+			report_logger.print_success(f"PASS: Final observed result for {device}: idle={final[device]['idle_percent']:.1f}%, utilization={final[device]['utilization_percent']:.1f}%")
 		except Exception as err:
-			report_logger.print_error(
-				f"Final CPU collection failed on {device}: {err}"
-			)
+			report_logger.print_error(f"Final CPU collection failed on {device}: {err}")
 			continue	
 	if final:
-		report_logger.print_success(
-            f"PASS: CPU utilization remained within configured limits for "
-            f"devices: {', '.join(final.keys())} across "
-        f"{sample_count} monitoring samples"
-    )
+		report_logger.print_success(f"PASS: CPU utilization remained within configured limits for devices: {', '.join(final.keys())} across {sample_count} monitoring samples")
 	else:
-		report_logger.print_error(
-        	"ERROR: No reachable devices were available for final CPU validation"
-    )
+		report_logger.print_error("ERROR: No reachable devices were available for final CPU validation")
 	report_logger.print_test("Exiting test_em_scale_cpu_utilization")
