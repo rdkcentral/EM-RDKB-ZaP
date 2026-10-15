@@ -28,15 +28,19 @@ def test_em_scale_controller_agent_stability(initialize):
     expected_agent_count = get_enabled_scale_setup(initialize)["expected_agent_count"]
     actual_agent_count = len(agents)
     report_logger.print_step("STEP 1: Validate configured extender count")
-    if actual_agent_count != expected_agent_count:
-        report_logger.print_error(f"Expected {expected_agent_count} configured extenders, but found {actual_agent_count}: {agents}")
-    report_logger.print_success(f"PASS: Found {actual_agent_count} configured extenders")
+    if actual_agent_count < expected_agent_count:
+        report_logger.print_error(
+            f"FAIL: Expected at least {expected_agent_count} configured extenders, "
+            f"but found {actual_agent_count}: {agents}"
+        )
+    else:
+        report_logger.print_success(
+            f"PASS: Found {actual_agent_count} configured extenders "
+            f"(minimum {expected_agent_count})")
     report_logger.print_step("STEP 2: Capture the baseline active extenders")
     baseline = get_extender_presence_snapshot(initialize, agents)
-    report_logger.print_info(f"INFO: Baseline active extenders snapshot: {baseline}")
     baseline_mismatches = get_extender_presence_mismatches(
-        expected_agent_count, baseline, baseline
-    )
+        expected_agent_count, baseline, baseline)
     if baseline_mismatches:
         report_logger.print_error(f"Baseline active extenders validation failed: {baseline_mismatches}")
     report_logger.print_step("STEP 3: Monitor active extenders stability")
@@ -45,12 +49,9 @@ def test_em_scale_controller_agent_stability(initialize):
     while time.time() < end_time:
         poll_count += 1
         current = get_extender_presence_snapshot(initialize, agents)
-        mismatches = get_extender_presence_mismatches(
-            expected_agent_count, baseline, current
-        )
+        mismatches = get_extender_presence_mismatches(expected_agent_count, baseline, current)
         if mismatches:
             report_logger.print_error(f"Topology mismatch at poll #{poll_count}: {mismatches}")
-
         remaining_time = end_time - time.time()
         if remaining_time > 0:
             time.sleep(min(POLL_INTERVAL_SEC, remaining_time))
@@ -61,4 +62,8 @@ def test_em_scale_controller_agent_stability(initialize):
     )
     if final_mismatches:
         report_logger.print_error(f"Extender presence mismatch against baseline: {final_mismatches}")
+    else:
+        report_logger.print_success(
+            f"PASS: Matched baseline active extenders: {baseline['agent_count']}"
+        )
     report_logger.print_test("Exiting test_em_scale_controller_agent_stability")

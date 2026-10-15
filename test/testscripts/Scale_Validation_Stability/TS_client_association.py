@@ -31,7 +31,11 @@ def test_em_scale_client_association(initialize):
             report_logger.print_error("No clients are marked present in the database")
             return
         report_logger.print_step("STEP 2: Connect configured WLAN clients and verify availability before baseline capture")
-        clients = connect_wlan_clients(initialize, clients)
+        try:
+            clients = connect_wlan_clients(initialize, clients)
+        except Exception as error:
+            report_logger.print_error(f"FAIL: {error}")
+            return
         report_logger.print_success(f"PASS: Connected clients before client-presence test: {', '.join(clients)}")
         expected_client_count = get_enabled_scale_setup(initialize)["expected_client_count"]
         poll_interval_sec = POLL_INTERVAL_SEC
@@ -53,7 +57,7 @@ def test_em_scale_client_association(initialize):
                 report_logger.print_error(f"Extender '{agent}' did not become reachable before baseline capture")
         report_logger.print_step("STEP 4: Capture fronthaul client MACs on each device and validate the baseline count")
         baseline = get_fronthaul_station_macs_by_device(initialize, all_devices)
-        total_baseline = sum(len(macs) for macs in baseline.values())
+        total_baseline = len(set().union(*baseline.values())) if baseline else 0
         report_logger.print_info(f"INFO: Baseline client presence: observed {total_baseline}, expected {expected_client_count}")
         if total_baseline < expected_client_count:
             report_logger.print_error(f"Baseline client count mismatch: observed {total_baseline}, expected exactly {expected_client_count}")
@@ -68,17 +72,17 @@ def test_em_scale_client_association(initialize):
             report_logger.print_info(f"INFO: Poll #{poll_count} at ~{elapsed_min} min elapsed")
             current = get_fronthaul_station_macs_by_device(initialize, all_devices)
             mismatches = get_client_association_mismatches(baseline, current)
-            current_client_count = sum(len(macs) for macs in current.values())
+            current_client_count = len(set().union(*current.values())) if current else 0
             report_logger.print_info(f"INFO: Poll #{poll_count}: {current_client_count} connected client(s) checked against baseline")
             if mismatches:
                 report_logger.print_error(f"Poll #{poll_count} ({elapsed_min} min): Client-presence mismatch — {mismatches}")
             else:
-                report_logger.print_success(f"PASS: Poll #{poll_count}: Client presence matches baseline ({current_client_count} clients)")
+                report_logger.print_success(f"PASS: Client presence matches baseline ({current_client_count} clients)")
             time.sleep(poll_interval_sec)
         report_logger.print_step("STEP 6: Capture latest client MAC associations and validate count and baseline membership")
         final = get_fronthaul_station_macs_by_device(initialize, all_devices)
         final_mismatches = get_client_association_mismatches(baseline, final)
-        final_client_count = sum(len(macs) for macs in final.values())
+        final_client_count = len(set().union(*final.values())) if final else 0
         report_logger.print_info(f"INFO: Latest client presence: observed {final_client_count}, expected {expected_client_count}")
         if final_client_count < expected_client_count or final_mismatches:
             if final_client_count < expected_client_count:

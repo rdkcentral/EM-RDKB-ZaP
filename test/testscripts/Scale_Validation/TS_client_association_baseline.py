@@ -34,16 +34,20 @@ def test_em_scale_client_association_baseline(initialize):
             return
         report_logger.print_step("STEP 2: Connect configured WLAN clients and verify availability for baseline capture")
         report_logger.print_info(f"INFO: WLAN clients selected for connection: {clients}")
-        clients = connect_wlan_clients(initialize, clients)
+        try:
+            clients = connect_wlan_clients(initialize, clients)
+        except Exception as error:
+            report_logger.print_error(f"FAIL: {error}")
+            return
         report_logger.print_success(f"PASS: Connected clients before baseline validation: {', '.join(clients)}")
         expected_client_count = get_enabled_scale_setup(initialize)["expected_client_count"]
         all_devices = ["controller", *agents]
         report_logger.print_step("STEP 3: Capture client MAC associations from the controller and each active extender")
         baseline = get_fronthaul_station_macs_by_device(initialize, all_devices)
-        observed_client_count = sum(len(macs) for macs in baseline.values())
+        observed_client_count = len(set().union(*baseline.values())) if baseline else 0
         report_logger.print_info(f"INFO: Captured {observed_client_count} client associations across the discovered devices")
         report_logger.print_step("STEP 4: Validate that the observed client-connection count matches the expected count")
-        report_logger.print_info(f"INFO: Observed {observed_client_count} client connections across the discovered devices; snapshot={baseline}")
+        report_logger.print_info(f"INFO: Observed {observed_client_count} client connections across the discovered devices")
         if observed_client_count < expected_client_count:
             report_logger.print_error(f"Observed {observed_client_count} clients, expected exactly {expected_client_count}: {baseline}")
         else:

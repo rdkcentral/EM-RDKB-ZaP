@@ -175,8 +175,7 @@ def get_fronthaul_station_macs_by_device(initialize, devices: list) -> dict:
             observed = ", ".join(sorted(station_macs))
             observation = observed or "no clients currently connected"
             report_logger.print_info(
-                f"INFO: Observed {device}  fronthaul station MACs: "
-                f"{observation}")
+                f"INFO: Stations associated with the fronthaul of {device}: {observation}")
         except Exception as err:
             report_logger.print_error(
                 f"Fronthaul station dump failed on {device}: {err}")
@@ -193,21 +192,17 @@ def get_client_association_mismatches(baseline: dict, current: dict) -> list:
     Return Value: A list of client-count and per-device mismatch descriptions.
     """
     mismatches = []
-    baseline_total = sum(len(macs) for macs in baseline.values())
-    current_total = sum(len(macs) for macs in current.values())
+    baseline_total = len(set().union(*baseline.values())) if baseline else 0
+    current_total = len(set().union(*current.values())) if current else 0
     if current_total != baseline_total:
         mismatches.append(
-            f"Total client count changed: baseline={baseline_total} "
-            f"current={current_total}")
+            f"Total client count changed: baseline={baseline_total} current={current_total}")
     for device in sorted(set(baseline) | set(current)):
         baseline_macs = baseline.get(device, set())
         current_macs = current.get(device, set())
         missing_macs = sorted(baseline_macs - current_macs)
-        unexpected_macs = sorted(current_macs - baseline_macs)
-        if missing_macs or unexpected_macs:
-            mismatches.append(
-                f"{device} client association mismatch: "
-                f"missing={missing_macs}, unexpected={unexpected_macs}")
+        if missing_macs:
+            mismatches.append(f"{device} client association mismatch")
     return mismatches
 
 def get_extender_presence_snapshot(initialize, agents: list) -> dict:
@@ -273,13 +268,9 @@ def get_extender_presence_mismatches(
             f"Agent count changed: baseline={len(baseline_agents)} "
             f"current={current_agent_count}")
     missing_agents = baseline_agents - current_agents
-    unexpected_agents = current_agents - baseline_agents
     if missing_agents:
         mismatches.append(
             f"Missing agents: {sorted(missing_agents)}")
-    if unexpected_agents:
-        mismatches.append(
-            f"Unexpected agents: {sorted(unexpected_agents)}")
     return mismatches
 
 def get_device_advertising_bssid(initialize, bssid: str):

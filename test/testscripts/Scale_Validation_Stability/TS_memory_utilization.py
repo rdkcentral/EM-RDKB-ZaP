@@ -69,7 +69,11 @@ def test_em_scale_memory_utilization(initialize):
 			report_logger.print_error(f"Final memory collection failed on {device}: {err}")
 			continue
 	if final:
-		report_logger.print_success(f"PASS: Final memory snapshot: {final}")
+		final_summary = ", ".join(
+			f"{device}: used={snapshot['used_percent']:.1f}%, available={snapshot['available_percent']:.1f}%, used_mb={snapshot['used_mb']:.1f} MB"
+			for device, snapshot in final.items())
+		report_logger.print_success(
+			f"PASS: Final memory snapshot summary for {len(final)} reachable devices: {final_summary}")
 		report_logger.print_success(f"PASS: Memory utilization remained within configured limits for {len(final)} reachable devices across {sample_count} monitoring checks")
 	else:
 		report_logger.print_error("ERROR: No reachable devices were available for final Memory validation")

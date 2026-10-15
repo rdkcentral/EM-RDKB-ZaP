@@ -74,17 +74,33 @@ def retrieve_and_store_runtime_data(initialize):
             report_logger.print_title(f"Update the Runtime database for {device}")
             report_logger.print_info(f"INFO: [{device}] Retrieving 2G, 5G, and 6G fronthaul BSSIDs")
             wireless_interfaces = initialize.get_wireless_interfaces_list(device)
-            managed_interfaces = [
-                interface
-                for interface in wireless_interfaces
-                if str(
-                    initialize.get_iw_interface_details(device, interface).get("type", "")
-                ).lower() == "managed"
-            ]
+            managed_interfaces = []
+            for interface in wireless_interfaces:
+                try:
+                    interface_info = initialize.get_iw_interface_details(
+                        device, interface)
+                except Exception as error:
+                    report_logger.print_error(
+                        f"FAIL: [{device}] Failed to read {interface}: {error}"
+                    )
+                    continue
+                if str(interface_info.get("type", "")).lower() == "managed":
+                    managed_interfaces.append(interface)
             if not managed_interfaces:
-                report_logger.print_error(f"FAIL: No managed backhaul interface found for {device}")
+                report_logger.print_error(
+                    f"FAIL: [{device}] Managed backhaul interface is not present; "
+                    "runtime database update failed"
+                )
                 return False
-            initialize.db_obj.write_into_database(device, "backhaul_interface", managed_interfaces[0])
+            try:
+                initialize.db_obj.write_into_database(
+                    device, "backhaul_interface", managed_interfaces[0])
+            except Exception as error:
+                report_logger.print_error(
+                    f"FAIL: [{device}] Failed to write backhaul_interface "
+                    f"to the runtime database: {error}"
+                )
+                return False
             report_logger.print_info(f"INFO: [{device}] Stored backhaul_interface = {managed_interfaces[0]}")
             bssids = initialize.get_fronthaul_bssids(device, "cli")
             if len(bssids) < 3:
@@ -96,7 +112,17 @@ def retrieve_and_store_runtime_data(initialize):
                 for mac in bssids]
             interface_macs = {}
             for iface in interfaces:
-                iw_output = initialize.get_iw_dev_interface_info(device,iface)
+                try:
+                    iw_output = initialize.get_iw_dev_interface_info(
+                        device, iface)
+                except Exception as error:
+                    if "No such device" in str(error):
+                        raise RuntimeError(
+                            f"{device}: {iface} is not available"
+                        ) from error
+                    raise RuntimeError(
+                        f"{device}: failed to read {iface}: {error}"
+                    ) from error
                 actual_mac = None
                 for line in iw_output.splitlines():
                     line = line.strip()
@@ -118,9 +144,16 @@ def retrieve_and_store_runtime_data(initialize):
                 matched[matching_interface] = bssid
             if len(matched) != 3:
                 raise RuntimeError(f"{device}: Expected 3 unique radio MAC matches, but found {len(matched)}. Matches: {matched}")
-            initialize.db_obj.write_into_database(device,"2g_radio_mac",matched["wifi0"])
-            initialize.db_obj.write_into_database(device,"5g_radio_mac",matched["wifi1"])
-            initialize.db_obj.write_into_database(device,"6g_radio_mac", matched["wifi2"])
+            for iface, database_key in radio_db_keys.items():
+                try:
+                    initialize.db_obj.write_into_database(
+                        device, database_key, matched[iface])
+                except Exception as error:
+                    report_logger.print_error(
+                        f"FAIL: [{device}] Failed to write {database_key} "
+                        f"from {iface} to the runtime database: {error}"
+                    )
+                    return False
             report_logger.print_success(f"PASS: [{device}] Stored 2g_radio_mac = {matched['wifi0']}")
             report_logger.print_success(f"PASS: [{device}] Stored 5g_radio_mac = {matched['wifi1']}")
             report_logger.print_success(f"PASS: [{device}] Stored 6g_radio_mac = {matched['wifi2']}")
@@ -280,7 +313,14 @@ def verify_mesh_backhaul_interfaces(initialize):
         except Exception as error:
             validation_result = False
             device_failed = True
-            report_logger.print_error(f"FAIL: {device}: {interface} validation failed: {error}")
+            if "No such device" in str(error):
+                report_logger.print_error(
+                    f"FAIL: {device}: {interface} is not available"
+                )
+            else:
+                report_logger.print_error(
+                    f"FAIL: {device}: {interface} validation failed: {error}"
+                )
         if not device_failed:
             report_logger.print_success(f"PASS: {device}: Valid mesh backhaul interface")
     if validation_result:
