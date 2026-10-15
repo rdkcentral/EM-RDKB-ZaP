@@ -15,6 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
 import zaero
 import pytest
 import time
@@ -23,26 +24,42 @@ from rdkbmeshzap.common_utils import device_utils, report_logger
 def test_client_association_discovery_easymesh_ssid(initialize):
     """
     Verify that  Wi-Fi client devices can discover and see the EasyMesh SSID broadcast by the mesh network (Controller and all 3 Agent devices)
-    """    
-    report_logger.print_test("Entering EM_Client_Association_Discovery_EasyMesh_SSID")
-    report_logger.print_step("STEP 1: Get SSID from DataElements")
-    ssid = initialize.get_ssid("controller", "controller_device_index", 'de')
-    report_logger.print_success(f"PASS: Retrieved SSID: {ssid}")
-    report_logger.print_step("STEP 2: Wait for some time for SSID propagation")
-    time.sleep(10)
-    report_logger.print_step("STEP 3: Initiate WiFi scan on each wlan client of the devices")
-    clients = device_utils.get_enabled_clients(initialize)
-    for client in clients:
-        if initialize.read_from_database(client, "device_present"):
-            output = []
-            try:
-                output = initialize.get_ap_ssid_visibility(client, ssid, 'cli')
-                time.sleep(20)
-                report_logger.print_success(f"PASS: WiFi scan initiated successfully on {client} with SSID: {ssid} and output: {output}")
-                report_logger.print_step(f"STEP 4: Count SSID occurrences for {client}")
-                if len(output) >= 2:
-                    report_logger.print_success(f"PASS: {client}: SSID Count: {len(output)}")
-                else:
-                    report_logger.print_error(f"FAIL: {client}: SSID count: {len(output)}")
-            except Exception as e:
-                report_logger.print_error(f"FAIL: Failed to initiate WiFi scan on {client}: {e}")
+    """ 
+    report_logger.print_test("Entering test_client_association_discovery_easymesh_ssid")
+    try: 
+        report_logger.print_step(f"STEP 1: Retrieving and storing device index into the database for controller and enabled extenders")
+        devices = ["controller"] + device_utils.get_enabled_extenders(initialize)
+        for device in devices:
+            device_mac = initialize.read_from_database(device, "2g_radio_mac")
+            device_index = device_utils.retrieve_and_store_device_index(initialize, device, device_mac)   
+            report_logger.print_info(f"INFO: Device index for {device}: {device_index}")
+        report_logger.print_step("STEP 2: Get SSID from DataElements")
+        ssid = initialize.get_ssid("controller", "controller_device_index", 'de')
+        report_logger.print_success(f"PASS: Retrieved SSID: {ssid}")
+        report_logger.print_step("STEP 3: Wait for some time for SSID propagation")
+        time.sleep(10)
+        report_logger.print_step("STEP 4: Initiate WiFi scan on each wlan client of the devices")
+        step_passed = True
+        clients = device_utils.get_enabled_clients(initialize)
+        for client in clients:
+            if initialize.read_from_database(client, "device_present"):
+                output = []
+                try:
+                    output = initialize.get_ap_ssid_visibility(client, ssid, 'cli')
+                    time.sleep(20)
+                    report_logger.print_info(f"INFO: WiFi scan initiated successfully on {client} with SSID: {ssid} and output: {output}")
+                    report_logger.print_step(f"STEP 5: Count SSID occurrences for {client}")
+                    ssid_occurrences = re.findall(r'\d+\s*MHz', output)
+                    frequency_count = len(ssid_occurrences)
+                    if frequency_count >= 2:
+                        report_logger.print_success(f"PASS: {client}: SSID Count: {frequency_count}")
+                    else:
+                        report_logger.print_error(f"FAIL: {client}: SSID count: {frequency_count}")
+                        step_passed = False
+                except Exception as e:
+                    report_logger.print_error(f"FAIL: Failed to initiate WiFi scan on {client}: {e}")
+                    step_passed = False
+        if step_passed:
+            report_logger.print_success("PASS: All connected clients can discover and see the EasyMesh SSID broadcast by the mesh network")
+    finally:
+        report_logger.print_test("Exiting test_client_association_discovery_easymesh_ssid")
