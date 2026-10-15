@@ -24,15 +24,15 @@ def test_client_association_authentication_correct_credentials(initialize):
     """
     Verify that  Wi-Fi client devices can successfully authenticate and associate to the EasyMesh SSID using correct credentials, whether it associates to the Controller or to any of the 3 Agents.
     """
+    report_logger.print_test(" Entering test_client_association_authentication_correct_credentials")
     try:
-        report_logger.print_test(" Entering test_client_association_authentication_correct_credentials")
-        report_logger.print_info(f"INFO: Retrieving and storing device index into the database for controller and enabled extenders")
+        report_logger.print_step(f"STEP 1: Retrieving and storing device index into the database for controller and enabled extenders")
         devices = ["controller"] + device_utils.get_enabled_extenders(initialize)
         for device in devices:
             device_mac = initialize.read_from_database(device, "2g_radio_mac")
             device_index = device_utils.retrieve_and_store_device_index(initialize, device, device_mac)   
             report_logger.print_info(f"INFO: Device index for {device}: {device_index}")
-        report_logger.print_step("STEP 1: Get SSID AKM Configuration from DataElements")
+        report_logger.print_step("STEP 2: Get SSID AKM Configuration from DataElements")
         try:
             ssid_akm = initialize.get_ssid_AKMAllowed( "controller","controller_device_index",'de')
             if not ssid_akm:
@@ -42,7 +42,7 @@ def test_client_association_authentication_correct_credentials(initialize):
         except Exception as e:
             report_logger.print_error(f"FAIL: Failed to query SSID AKM Configuration from DataElements: {e}")
             pytest.fail(f"DataElements query failed: {e}")
-        report_logger.print_step("STEP 2: Get PMF Configuration from DataElements")
+        report_logger.print_step("STEP 3: Get PMF Configuration from DataElements")
         try:
             pmf_config = initialize.get_ssid_MFPConfig("controller","controller_device_index",'de')
             if not pmf_config:
@@ -52,12 +52,16 @@ def test_client_association_authentication_correct_credentials(initialize):
         except Exception as e:
             report_logger.print_error(f"FAIL: Failed to query PMF Configuration from DataElements: {e}")
             pytest.fail(f"DataElements query failed: {e}")
-        report_logger.print_step("STEP 3: Get Passphrase from GUI")
+        report_logger.print_step("STEP 4: Get Passphrase from GUI")
         password = initialize.get_fronthaul_password("controller","gui")
-        report_logger.print_success(f"PASS: Fronthaul password retrieved successfully")
-        report_logger.print_step("STEP 4: Wait for some time for SSID propagation")
+        if password is not None:
+            report_logger.print_success(f"PASS: Fronthaul password retrieved successfully")
+        else:
+            report_logger.print_error(f"FAIL: Failed to retrieve Fronthaul password from GUI")
+            pytest.fail("Failed to retrieve Fronthaul password from GUI")
+        report_logger.print_step("STEP 5: Wait for some time for SSID propagation")
         time.sleep(10)
-        report_logger.print_step("STEP 5: Connect client with correct credentials and verify the connection status" )
+        report_logger.print_step("STEP 6: Connect client with correct credentials and verify the connection status" )
         step_passed = True
         ssid = initialize.get_ssid("controller","controller_device_index",'de')
         clients = device_utils.get_enabled_clients(initialize)
@@ -76,24 +80,28 @@ def test_client_association_authentication_correct_credentials(initialize):
                     if not device_bssid:
                         report_logger.print_info(f"{radio} radio MAC is not available for {device}, skipping")
                         continue
-                    report_logger.print_info(f"Trying to connect client {client} to {radio} radio ({device_bssid})")
+                    report_logger.print_info(f"INFO: Deleting any existing connection for {client} before attempting to connect to SSID {ssid}")
+                    initialize.remove_all_wifi_connections(client)
+                    report_logger.print_info(f"INFO:Trying to connect {client} to {radio} radio ({device_bssid})")
                     try:
                         initialize.connect_client_to_ssid(client,ssid,password,device_bssid)
                         time.sleep(10)
                         report_logger.print_info(f"INFO: {client} connected to SSID {ssid} through {radio} radio ({device_bssid})")
                         connected = True
+                        step_passed = True
                         break
                     except Exception as e:
                         report_logger.print_info(f"INFO: {client} failed to connect through {radio} radio ({device_bssid}): {e}")
                         step_passed = False
                 if not connected:
-                    pytest.fail(f" FAIL: {client} could not connect to SSID {ssid} through 2G, 5G or 6G radio")
+                    report_logger.print_error(f" FAIL: {client} could not connect to SSID {ssid} through 2G, 5G or 6G radio")
+                    step_passed = False
             except Exception as e:
                 report_logger.print_error(f"FAIL: Failed to connect client {client} to SSID {ssid}: {e}")
                 step_passed = False
         if step_passed:
             report_logger.print_success("PASS: All clients connected to the EasyMesh SSID using correct credentials")
-        report_logger.print_step("STEP 6: Verify association status on clients")
+        report_logger.print_step("STEP 7: Verify association status on clients")
         step_passed = True
         for client in clients:
             if not initialize.read_from_database( client,"device_present"):
@@ -122,7 +130,7 @@ def test_client_association_authentication_correct_credentials(initialize):
                 step_passed = False
         if step_passed:
             report_logger.print_success("PASS: Association status verified successfully for all connected clients")
-        report_logger.print_step("STEP 7: Verify negotiated security on clients")
+        report_logger.print_step("STEP 9: Verify negotiated security on clients")
         step_passed = True
         for client in clients:
             if initialize.read_from_database(client,"device_present"):
@@ -130,7 +138,6 @@ def test_client_association_authentication_correct_credentials(initialize):
                     client_security = initialize.get_client_encryption( client)
                     expected_security = device_utils.normalize_security( ssid_akm)
                     actual_security = device_utils.normalize_security(client_security)
-                    report_logger.print_info(f"Comparing security for {client}: Controller AKM='{ssid_akm}' ({expected_security}) vs Client negotiated='{client_security}' ({actual_security})")
                     if expected_security == actual_security:
                         report_logger.print_info(f"INFO: {client} negotiated security matches: {client_security} ({actual_security}) is consistent with controller AKM {ssid_akm} ({expected_security})")
                     else:
@@ -141,7 +148,7 @@ def test_client_association_authentication_correct_credentials(initialize):
                     step_passed = False
         if step_passed:
             report_logger.print_success("PASS: Clients negotiated security matches the controller AKM configuration")
-        report_logger.print_step("STEP 8: Test connectivity by pinging 8.8.8.8")
+        report_logger.print_step("STEP 10: Test connectivity by pinging 8.8.8.8")
         step_passed = True
         for client in clients:
             if initialize.read_from_database(client,"device_present"):

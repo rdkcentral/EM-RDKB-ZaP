@@ -24,8 +24,8 @@ def test_multi_agent_onboarding_topology_device_count(initialize):
     """
     Verify that after onboarding, the Controller's topology data model reflects exactly 3 onboarded Agents (plus the Controller itself), with each Agent represented by a distinct Device entry.
     """
+    report_logger.print_test("Entering test_multi_agent_onboarding_topology_device_count")
     try:
-        report_logger.print_test("Entering test_multi_agent_onboarding_topology_device_count")
         report_logger.print_step("STEP 1: Get initial topology device count for controller from DataElements")
         try:
             device_count = initialize.get_device_number_of_entries("controller", "de")
@@ -35,13 +35,13 @@ def test_multi_agent_onboarding_topology_device_count(initialize):
                 report_logger.print_success(f"PASS: Device count for controller retrieved successfully: {device_count}")
         except Exception as e:
             report_logger.print_error(f"Failed to query device count for controller: {e}")
-        report_logger.print_info(f"INFO: Retrieving and storing device index into the database for controller and enabled extenders")
+        report_logger.print_step(f"STEP 2: Retrieving and storing device index into the database for controller and enabled extenders")
         devices = ["controller"] + device_utils.get_enabled_extenders(initialize)
         for device in devices:
             device_mac = initialize.read_from_database(device, "2g_radio_mac")
             device_index = device_utils.retrieve_and_store_device_index(initialize, device, device_mac)
             report_logger.print_info(f"INFO: Device index for {device}: {device_index}")
-        report_logger.print_step("STEP 2: Get device ID for controller and enabled extenders from DataElements")
+        report_logger.print_step("STEP 3: Get device ID for controller and enabled extenders from DataElements")
         step_passed = True
         present_devices = []
         index = []
@@ -68,7 +68,7 @@ def test_multi_agent_onboarding_topology_device_count(initialize):
                 report_logger.print_info(f"INFO: Device ID for {device} retrieved successfully: {ids}")
         if step_passed:
             report_logger.print_success("PASS: Device IDs for controller and enabled extenders retrieved successfully.")
-        report_logger.print_step(f"STEP 3: Verify that each returned AL MAC matches the known MAC address of the controller and all enabled extenders.")
+        report_logger.print_step(f"STEP 4: Verify that each returned AL MAC matches the known MAC address of the controller and all enabled extenders.")
         step_passed = True
         for device in devices:
             if initialize.read_from_database(device, "device_present"):
@@ -84,7 +84,7 @@ def test_multi_agent_onboarding_topology_device_count(initialize):
                     step_passed = False
         if step_passed:
             report_logger.print_success("PASS: All device BSSIDs verified successfully against their respective device IDs.")
-        report_logger.print_step(f"STEP 4: Get device radio count for each extender from DataElements")
+        report_logger.print_step(f"STEP 5: Get device radio count for each extender from DataElements")
         step_passed = True
         radio_counts = {}
         for extender in devices:
@@ -102,7 +102,7 @@ def test_multi_agent_onboarding_topology_device_count(initialize):
                         step_passed = False
         if step_passed:
             report_logger.print_success("PASS: Device radio counts for all enabled extenders retrieved successfully.")
-        report_logger.print_step(f"STEP 5: Compare initial and updated device counts after short idle time")
+        report_logger.print_step(f"STEP 6: Compare initial and updated device counts after short idle time")
         time.sleep(10)
         try:
             updated_device_count = initialize.get_device_number_of_entries("controller", "de")

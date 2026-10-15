@@ -24,15 +24,15 @@ def test_client_association_dhcp_ip_assignment(initialize):
     """
     Verify that  Wi-Fi client devices receives a valid IP address via DHCP after successful authentication and association to the EasyMesh SSID, regardless of whether it associates to the Controller or one of the 3 Agents .
     """
+    report_logger.print_test("Entering test_client_association_dhcp_ip_assignment")
     try:
-        report_logger.print_test("Entering test_client_association_dhcp_ip_assignment")
-        report_logger.print_info(f"INFO: Retrieving and storing device index into the database for controller and enabled extenders")
+        report_logger.print_step(f"STEP 1: Retrieving and storing device index into the database for controller and enabled extenders")
         devices = ["controller"] + device_utils.get_enabled_extenders(initialize)
         for device in devices:
             device_mac = initialize.read_from_database(device, "2g_radio_mac")
             device_index = device_utils.retrieve_and_store_device_index(initialize, device, device_mac)   
             report_logger.print_info(f"INFO: Device index for {device}: {device_index}")
-        report_logger.print_step("STEP 1: Get DHCP Server is enabled or not")
+        report_logger.print_step("STEP 2: Get DHCP Server is enabled or not")
         try:
             dhcp_server_enabled = initialize.get_dhcpv4_server_enable("controller",'de')
             if dhcp_server_enabled:
@@ -42,7 +42,7 @@ def test_client_association_dhcp_ip_assignment(initialize):
         except Exception as e:
             report_logger.print_error(f"FAIL: Failed to query DHCP Server status from DataElements: {e}")
             pytest.fail(f"DataElements query failed: {e}")
-        report_logger.print_step("STEP 2: Retrieve DHCP Server Pool minimum address from DataElements")
+        report_logger.print_step("STEP 3: Retrieve DHCP Server Pool minimum address from DataElements")
         try:
             dhcp_pool_min_address = initialize.get_dhcpv4_server_pool_Minaddress("controller","controller_device_index",'de')
             if not dhcp_pool_min_address:
@@ -52,7 +52,7 @@ def test_client_association_dhcp_ip_assignment(initialize):
         except Exception as e:
             report_logger.print_error(f"FAIL: Failed to query DHCP Server Pool minimum address from DataElements: {e}")
             pytest.fail(f"DataElements query failed: {e}")
-        report_logger.print_step("STEP 3: Retrieve DHCP Server Pool maximum address from DataElements")
+        report_logger.print_step("STEP 4: Retrieve DHCP Server Pool maximum address from DataElements")
         try:
             dhcp_pool_max_address = initialize.get_dhcpv4_server_pool_Maxaddress("controller","controller_device_index",'de')
             if not dhcp_pool_max_address:
@@ -62,11 +62,11 @@ def test_client_association_dhcp_ip_assignment(initialize):
         except Exception as e:
             report_logger.print_error(f"FAIL: Failed to query DHCP Server Pool maximum address from DataElements: {e}")
             pytest.fail(f"DataElements query failed: {e}")
-        report_logger.print_step("STEP 4: Retrieve SSID from DataElements for client association")
+        report_logger.print_step("STEP 5: Retrieve SSID from DataElements for client association")
         ssid = initialize.get_ssid("controller","controller_device_index",'de')
         report_logger.print_info(f"INFO: Retrieved SSID: {ssid}")
         clients = device_utils.get_enabled_clients(initialize)
-        report_logger.print_step("STEP 5: Connect client with correct credentials and verify the connection status")
+        report_logger.print_step("STEP 6: Connect client with correct credentials and verify the connection status")
         step_passed = True
         password = initialize.get_fronthaul_password("controller","gui")
         try:
@@ -93,12 +93,15 @@ def test_client_association_dhcp_ip_assignment(initialize):
                     if not device_bssid:
                         report_logger.print_info(f"INFO: {radio} radio MAC is not available for {device}, skipping")
                         continue
-                    report_logger.print_info(f"INFO: Trying to connect client {client} to {radio} radio ({device_bssid})")
+                    report_logger.print_info(f"INFO: Deleting any existing connection for {client} before attempting to connect to SSID {ssid}")
+                    initialize.remove_all_wifi_connections(client)
+                    report_logger.print_info(f"INFO: Trying to connect {client} to {radio} radio ({device_bssid})")
                     try:
                         initialize.connect_client_to_ssid(client,ssid,password,device_bssid)
                         time.sleep(10)
                         report_logger.print_info(f"INFO: {client} connected to SSID {ssid} through {radio} radio ({device_bssid})")
                         connected = True
+                        step_passed = True
                         break
                     except Exception as e:
                         report_logger.print_info(f"INFO: {client} failed to connect through {radio} radio ({device_bssid})")
@@ -110,9 +113,9 @@ def test_client_association_dhcp_ip_assignment(initialize):
                 step_passed = False
         if step_passed:
             report_logger.print_success("PASS: All clients connected to the EasyMesh SSID using correct credentials")
-        report_logger.print_step("STEP 6: Wait for some time for association completion")
+        report_logger.print_step("STEP 7: Wait for some time for association completion")
         time.sleep(10)
-        report_logger.print_step("STEP 7: Validate the Client's association with expected AP")
+        report_logger.print_step("STEP 8: Validate the Client's association with expected AP")
         step_passed = True
         for client in clients:
             if not initialize.read_from_database(client,"device_present"):
@@ -140,7 +143,7 @@ def test_client_association_dhcp_ip_assignment(initialize):
                 step_passed = False
         if step_passed:
             report_logger.print_success("PASS: Association status verified successfully ")
-        report_logger.print_step("STEP 8: Confirm the DHCP Process is successful for each client")
+        report_logger.print_step("STEP 9: Confirm the DHCP Process is successful for each client")
         step_passed = True
         for client in clients:
             if not initialize.read_from_database(client,"device_present"):
@@ -157,7 +160,7 @@ def test_client_association_dhcp_ip_assignment(initialize):
                 step_passed = False
         if step_passed:
             report_logger.print_success("PASS: DHCP processes verification successful for all connected clients")
-        report_logger.print_step("STEP 9: Verify IP address assignment on clients")
+        report_logger.print_step("STEP 11: Verify IP address assignment on clients")
         step_passed = True
         for client in clients:
             if not initialize.read_from_database(client,"device_present"):
@@ -174,7 +177,7 @@ def test_client_association_dhcp_ip_assignment(initialize):
                 step_passed = False
         if step_passed:
             report_logger.print_success("PASS: All connected clients have been assigned valid IP addresses")
-        report_logger.print_step("STEP 10: Verify IP Address assignment is within the DHCP pool range")
+        report_logger.print_step("STEP 12: Verify IP Address assignment is within the DHCP pool range")
         step_passed = True
         for client in clients:
             if not initialize.read_from_database(client,"device_present"):

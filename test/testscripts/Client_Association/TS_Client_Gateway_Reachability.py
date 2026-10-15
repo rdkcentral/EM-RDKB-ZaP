@@ -24,21 +24,21 @@ def test_client_association_gateway_reachability(initialize):
     """
     Verify that Wi-Fi client devices can successfully ping and reach the gateway after receiving a valid IP address via DHCP and associating to the EasyMesh SSID, whether attached to the Controller or one of the 3 Agents.
     """
+    report_logger.print_test("Entering test_client_association_gateway_reachability")
     try:
-        report_logger.print_test("Entering test_client_association_gateway_reachability")
-        report_logger.print_info(f"INFO: Retrieving and storing device index into the database for controller and enabled extenders")
+        report_logger.print_step(f"STEP 1: Retrieving and storing device index into the database for controller and enabled extenders")
         devices = ["controller"] + device_utils.get_enabled_extenders(initialize)
         for device in devices:
             device_mac = initialize.read_from_database(device, "2g_radio_mac")
             device_index = device_utils.retrieve_and_store_device_index(initialize, device, device_mac)   
             report_logger.print_info(f"INFO: Device index for {device}: {device_index}")
-        report_logger.print_step("STEP 1: Get Gateway interface is up or not from DataElements")
+        report_logger.print_step("STEP 2: Get Gateway interface is up or not from DataElements")
         gateway_interface = initialize.get_IP_Interface_Enable("controller", "controller_device_index",'de')
         if  gateway_interface != "true":
             report_logger.print_error(f"FAIL: Gateway interface is not up")
         else:
             report_logger.print_success(f"PASS: Gateway interface is up")
-        report_logger.print_step("STEP 2: Get Gateway IP address from DataElements and compare with controller gateway IP Address")
+        report_logger.print_step("STEP 3: Get Gateway IP address from DataElements and compare with controller gateway IP Address")
         try:
             gateway_ip = initialize.get_IP_Interface_IPv4Address_IPAddress("controller", "gateway_ip_index", "ip_index", 'de')
             if not gateway_ip:
@@ -53,7 +53,7 @@ def test_client_association_gateway_reachability(initialize):
             report_logger.print_error(f"FAIL: Gateway IP address {gateway_ip} does not match controller gateway IP address {controller_gateway_ip}")
         else:
             report_logger.print_success(f"PASS: Gateway IP address {gateway_ip} matches controller gateway IP address {controller_gateway_ip}")
-        report_logger.print_step("STEP 3: Verify client IP Address assignment")
+        report_logger.print_step("STEP 4: Verify client IP Address assignment")
         step_passed = True
         clients = device_utils.get_enabled_clients(initialize)
         for client in clients:
@@ -71,7 +71,7 @@ def test_client_association_gateway_reachability(initialize):
                 step_passed = False
         if step_passed:
             report_logger.print_success("PASS: Valid IP addresses have been assigned to all connected clients")
-        report_logger.print_step("STEP 4: Verify IP route on clients")
+        report_logger.print_step("STEP 5: Verify IP route on clients")
         step_passed = True
         for client in clients:
             if not initialize.read_from_database(client, "device_present"):
@@ -88,7 +88,7 @@ def test_client_association_gateway_reachability(initialize):
                 step_passed = False
         if step_passed:
             report_logger.print_success("PASS: Valid IP routes have been configured on all connected clients")
-        report_logger.print_step("STEP 5: Ping to gateway IP address from clients and verify the connectivity")
+        report_logger.print_step("STEP 6: Ping to gateway IP address from clients and verify the connectivity")
         step_passed = True
         for client in clients:
             if not initialize.read_from_database(client, "device_present"):
@@ -105,7 +105,7 @@ def test_client_association_gateway_reachability(initialize):
                 step_passed = False
         if step_passed:
             report_logger.print_success("PASS: Gateway reachability verified successfully from all connected clients")
-        report_logger.print_step("STEP 6: Get count of connected clients")
+        report_logger.print_step("STEP 7: Get count of connected clients")
         clients_count = initialize.get_dhcpv4_server_pool_clientNumberOfEntries("controller", "controller_device_index", 'de')
         if int(clients_count) >= 1:
             report_logger.print_success(f"PASS: Number of connected clients: {clients_count}")
