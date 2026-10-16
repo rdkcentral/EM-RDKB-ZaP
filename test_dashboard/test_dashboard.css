@@ -49,11 +49,6 @@ div[data-testid="stButton"]:has(button p) button[kind="primary"] { background: #
 div[data-testid="stButton"]:has(button p) button[kind="primary"]:hover { background: #0E614D !important; box-shadow: 0 5px 12px rgba(22, 122, 98, 0.32); }
 div[data-testid="stAlert"] { background: #FFF4E8; border: 1px solid #F4A261; color: #243B6B !important; }
 div[data-testid="stAlert"] p { color: #243B6B !important; }
-.run-busy { display: flex; align-items: center; gap: 0.75rem; background: linear-gradient(135deg, #FFF8E8, #FFFFFF); border: 1px solid #E5B84B; border-left: 5px solid #D99516; border-radius: 9px; padding: 0.75rem 0.9rem; margin: 0.5rem 0; box-shadow: 0 3px 9px rgba(150, 105, 15, 0.1); }
-.run-busy-icon { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; background: #FFF0C2; color: #A66B00; font-size: 1.1rem; }
-.run-busy strong, .run-busy span { display: block; }
-.run-busy strong { color: #805300; font-size: 0.95rem; }
-.run-busy div span { color: #6F6250 !important; font-size: 0.82rem; margin-top: 0.15rem; }
 div[data-testid="stExpander"]:has(summary p strong) { border: 1px solid #A8C7F0; border-left: 5px solid #4C8BF5; background: #F7FAFF; box-shadow: 0 3px 9px rgba(36, 59, 107, 0.08); }
 div[data-testid="stExpander"]:has(summary p strong) summary { color: #2459A6; font-weight: 800; }
 .empty-state { box-sizing: border-box; background: #FFFFFF; border: 1px dashed #4C8BF5; border-radius: 10px; padding: 0.8rem 1rem; margin: 0.4rem 0 0.7rem; }

@@ -20,6 +20,7 @@ import subprocess
 import sys
 import yaml
 import questionary
+from filelock import FileLock, Timeout
 
 # Terminal-only labels for the interactive suite selector.
 SUITE_ICONS = {
@@ -146,9 +147,13 @@ if __name__ == "__main__":
         selected_files = select_test_suite(base_dir, test_files)
         if not selected_files:
             raise SystemExit(0)
-        from main import run_tests
-        result, _ = run_tests(base_dir, selected_files)
-        raise SystemExit(result)
+        try:
+            with FileLock(str(base_dir / ".pytest_dashboard_session.lock"), timeout=0):
+                from main import run_tests
+                result, _ = run_tests(base_dir, selected_files)
+                raise SystemExit(result)
+        except Timeout:
+            raise SystemExit("Another test run is already in progress.")
     try:
         import streamlit  # noqa: F401
     except ImportError:

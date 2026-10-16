@@ -19,19 +19,19 @@ import os
 import re
 import threading
 import time
-from contextlib import contextmanager
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from filelock import FileLock, Timeout
+
 import streamlit as st
 import yaml
+from filelock import FileLock, Timeout
 from trigger_test import get_test_files, get_test_suites
 
 # Dashboard configuration and shared runtime paths.
 BASE_DIR = Path(__file__).resolve().parent.parent
 CSS_PATH = Path(__file__).resolve().parent / "test_dashboard.css"
 REPORT_HOST = os.environ.get("REPORT_HOST", "127.0.0.1")
-RUN_LOCK_PATH = BASE_DIR / ".pytest_dashboard.lock"
+EXECUTION_LOCK_PATH = BASE_DIR / ".pytest_dashboard_session.lock"
 SUITE_DETAILS = {
     "Client_Association": "Client discovery, authentication, DHCP, and gateway reachability",
     "Controller_Recovery": "Controller reboot and extender reconnection validation",
@@ -58,20 +58,6 @@ def get_report_url(report_path):
     server = get_report_server(report_path.parent)
     return f"http://{REPORT_HOST}:{server.server_port}/{report_path.name}"
 
-# Prevent concurrent validation runs from sharing the testbed.
-@contextmanager
-def acquire_run_lock():
-    try:
-        lock = FileLock(str(RUN_LOCK_PATH), timeout=0)
-        lock.acquire()
-    except Timeout:
-        yield False
-        return
-    try:
-        yield True
-    finally:
-        lock.release()
-
 # Build the active-device summary shown in the dashboard.
 def get_testbed_summary():
     infra_path = BASE_DIR / "test" / "config" / "infra.yaml"
@@ -92,6 +78,7 @@ def get_testbed_summary():
         "LAN Clients": sum("_lan_client_" in device for device in devices),
     }
 
+# Load the testbed summary without blocking the dashboard indefinitely.
 def get_testbed_summary_with_timeout(timeout_seconds=5):
     summary = {}
     def load_summary():
@@ -109,7 +96,7 @@ def get_testbed_summary_with_timeout(timeout_seconds=5):
         "LAN Clients": "Loading",
     }
 
-# Read execution totals from the current pytest HTML report.
+# Extract pass, fail, and skip totals from the generated report.
 def get_execution_counts(report_path, fallback_count, result):
     counts = {"Passed": 0, "Failed": 0, "Skipped": 0}
     if report_path and report_path.exists():
@@ -123,12 +110,13 @@ def get_execution_counts(report_path, fallback_count, result):
     counts["Passed" if result == 0 else "Failed"] = fallback_count
     return counts
 
-# Apply pending session-state changes before rendering the dashboard.
+# Reset selections requested after a completed execution.
 if st.session_state.pop("reset_test_selection", False):
     for state_key in list(st.session_state):
         if isinstance(state_key, str) and state_key.startswith(("suite_", "case_")):
             st.session_state[state_key] = False
 
+# Display the closed-session screen and stop this dashboard session.
 if st.session_state.get("test_session_closed"):
     st.markdown(
         """
@@ -145,12 +133,13 @@ if st.session_state.get("test_session_closed"):
     time.sleep(5)
     os._exit(0)
 
-# Load the external dashboard stylesheet.
+# Load and apply the dashboard stylesheet.
 st.markdown(
     f"<style>{CSS_PATH.read_text(encoding='utf-8')}</style>",
     unsafe_allow_html=True,
 )
 
+# Display the initial dashboard loading state.
 loading_placeholder = st.empty()
 loading_placeholder.markdown(
     """
@@ -165,7 +154,7 @@ loading_placeholder.markdown(
     unsafe_allow_html=True,
 )
 
-# Load available tests and testbed data before rendering selectors.
+# Discover test files and group them into suites.
 test_files = get_test_files(BASE_DIR)
 suites = get_test_suites(BASE_DIR, test_files)
 
@@ -181,6 +170,7 @@ loading_placeholder.markdown(
     """,
     unsafe_allow_html=True,
 )
+# Load the configured testbed summary.
 testbed_summary = get_testbed_summary_with_timeout()
 loading_placeholder.empty()
 
@@ -220,7 +210,7 @@ with st.sidebar.expander("Execution History", expanded=False):
             else:
                 st.caption(f"{run_dir.name} | Report missing")
 
-# Render the dashboard header and testbed summary.
+# Render the dashboard title and environment summary.
 st.markdown(
     """
     <div class="hero">
@@ -334,22 +324,20 @@ with st.container(border=True):
         from main import run_tests
 
         case_files = st.session_state.pop("pending_case_files", case_files)
-        with acquire_run_lock() as lock_acquired:
-            if not lock_acquired:
-                st.markdown(
-                    '<div class="run-busy"><span class="run-busy-icon">&#9208;</span>'
-                    '<div><strong>Execution in progress</strong>'
-                    '<span>Another validation run is using the testbed. Please try again shortly.</span></div></div>',
-                    unsafe_allow_html=True,
-                )
-                st.stop()
-
-            started_at = time.perf_counter()
-            try:
-                with st.spinner("Running selected test suites..."):
-                    result, report_path = run_tests(BASE_DIR, case_files)
-            finally:
-                st.session_state["execution_in_progress"] = False
+        session_lock = FileLock(str(EXECUTION_LOCK_PATH), timeout=0)
+        try:
+            session_lock.acquire()
+        except Timeout:
+            st.session_state["execution_in_progress"] = False
+            st.session_state["run_lock_rejected"] = True
+            st.rerun()
+        started_at = time.perf_counter()
+        try:
+            with st.spinner("Running selected test suites..."):
+                result, report_path = run_tests(BASE_DIR, case_files)
+        finally:
+            session_lock.release()
+            st.session_state["execution_in_progress"] = False
         elapsed_seconds = time.perf_counter() - started_at
         current_report = report_path if report_path.exists() else None
         execution_counts = get_execution_counts(current_report, len(case_files), result)
@@ -367,6 +355,9 @@ with st.container(border=True):
         }
         st.session_state["reset_test_selection"] = True
         st.rerun()
+
+if st.session_state.pop("run_lock_rejected", False):
+    st.warning("Another test run is already in progress. Please try again shortly.")
 
 # Show the most recent execution result.
 last_execution_report = st.session_state.get("last_execution_report")
