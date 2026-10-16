@@ -15,22 +15,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pathlib import Path
 import os
 import re
 import threading
 import time
+from contextlib import contextmanager
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from filelock import FileLock, Timeout
 import streamlit as st
 import yaml
 from trigger_test import get_test_files, get_test_suites
 
-
+# Dashboard configuration and shared runtime paths.
 BASE_DIR = Path(__file__).resolve().parent.parent
 CSS_PATH = Path(__file__).resolve().parent / "test_dashboard.css"
-REPORT_SERVERS = {}
-# Dashboard defaults that can be changed without modifying test behavior.
 REPORT_HOST = os.environ.get("REPORT_HOST", "127.0.0.1")
+RUN_LOCK_PATH = BASE_DIR / ".pytest_dashboard.lock"
 SUITE_DETAILS = {
     "Client_Association": "Client discovery, authentication, DHCP, and gateway reachability",
     "Controller_Recovery": "Controller reboot and extender reconnection validation",
@@ -40,8 +41,89 @@ SUITE_DETAILS = {
     "ref_test": "Reference and protocol validation tests",
 }
 
+# Configure the Streamlit page before rendering any dashboard content.
 st.set_page_config(page_title="EM-RDKB Automation Dashboard", page_icon="🧪", layout="wide")
 
+# Serve generated reports from a cached local HTTP server.
+@st.cache_resource(show_spinner=False)
+def get_report_server(report_root):
+    handler = lambda *args, **kwargs: SimpleHTTPRequestHandler(
+        *args, directory=str(report_root), **kwargs
+    )
+    server = ThreadingHTTPServer((REPORT_HOST, 0), handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    return server
+
+def get_report_url(report_path):
+    server = get_report_server(report_path.parent)
+    return f"http://{REPORT_HOST}:{server.server_port}/{report_path.name}"
+
+# Prevent concurrent validation runs from sharing the testbed.
+@contextmanager
+def acquire_run_lock():
+    try:
+        lock = FileLock(str(RUN_LOCK_PATH), timeout=0)
+        lock.acquire()
+    except Timeout:
+        yield False
+        return
+    try:
+        yield True
+    finally:
+        lock.release()
+
+# Build the active-device summary shown in the dashboard.
+def get_testbed_summary():
+    infra_path = BASE_DIR / "test" / "config" / "infra.yaml"
+    with infra_path.open(encoding="utf-8") as infra_file:
+        infra = yaml.safe_load(infra_file) or {}
+    devices = [
+        device
+        for device, details in infra.items()
+        if isinstance(details, dict) and details.get("device_present", False)
+    ]
+    return {
+        "Controllers": sum(device == "controller" for device in devices),
+        "Extenders": sum(
+            device.startswith("extender") and "_client_" not in device
+            for device in devices
+        ),
+        "Wi-Fi Clients": sum("wlan" in device or "wifi" in device for device in devices),
+        "LAN Clients": sum("_lan_client_" in device for device in devices),
+    }
+
+def get_testbed_summary_with_timeout(timeout_seconds=5):
+    summary = {}
+    def load_summary():
+        try:
+            summary.update(get_testbed_summary())
+        except Exception:
+            pass
+    loader = threading.Thread(target=load_summary, daemon=True)
+    loader.start()
+    loader.join(timeout_seconds)
+    return summary or {
+        "Controllers": "Loading",
+        "Extenders": "Loading",
+        "Wi-Fi Clients": "Loading",
+        "LAN Clients": "Loading",
+    }
+
+# Read execution totals from the current pytest HTML report.
+def get_execution_counts(report_path, fallback_count, result):
+    counts = {"Passed": 0, "Failed": 0, "Skipped": 0}
+    if report_path and report_path.exists():
+        report_html = report_path.read_text(encoding="utf-8", errors="ignore")
+        for label in counts:
+            match = re.search(rf"(\d+) {label}", report_html, re.IGNORECASE)
+            if match:
+                counts[label] = int(match.group(1))
+        if sum(counts.values()) > 0:
+            return counts
+    counts["Passed" if result == 0 else "Failed"] = fallback_count
+    return counts
+
+# Apply pending session-state changes before rendering the dashboard.
 if st.session_state.pop("reset_test_selection", False):
     for state_key in list(st.session_state):
         if isinstance(state_key, str) and state_key.startswith(("suite_", "case_")):
@@ -63,77 +145,8 @@ if st.session_state.get("test_session_closed"):
     time.sleep(5)
     os._exit(0)
 
-
-def get_report_url(report_path):
-    report_root = report_path.parent
-    server = REPORT_SERVERS.get(report_root)
-    if server is None:
-        handler = lambda *args, **kwargs: SimpleHTTPRequestHandler(
-            *args, directory=str(report_root), **kwargs
-        )
-        server = ThreadingHTTPServer((REPORT_HOST, 0), handler)
-        threading.Thread(target=server.serve_forever, daemon=True).start()
-        REPORT_SERVERS[report_root] = server
-    return f"http://{REPORT_HOST}:{server.server_port}/{report_path.name}"
-
-
-def get_testbed_summary():
-    infra_path = BASE_DIR / "test" / "config" / "infra.yaml"
-    with infra_path.open(encoding="utf-8") as infra_file:
-        infra = yaml.safe_load(infra_file) or {}
-    devices = [
-        device
-        for device, details in infra.items()
-        if isinstance(details, dict) and details.get("device_present", False)
-    ]
-    return {
-        "Controllers": sum(device == "controller" for device in devices),
-        "Extenders": sum(
-            device.startswith("extender") and "_client_" not in device
-            for device in devices
-        ),
-        "Wi-Fi Clients": sum("wlan" in device or "wifi" in device for device in devices),
-        "LAN Clients": sum("_lan_client_" in device for device in devices),
-    }
-
-
-def get_testbed_summary_with_timeout(timeout_seconds=5):
-    summary = {}
-
-    def load_summary():
-        try:
-            summary.update(get_testbed_summary())
-        except Exception:
-            pass
-
-    loader = threading.Thread(target=load_summary, daemon=True)
-    loader.start()
-    loader.join(timeout_seconds)
-    return summary or {
-        "Controllers": "Loading",
-        "Extenders": "Loading",
-        "Wi-Fi Clients": "Loading",
-        "LAN Clients": "Loading",
-    }
-
-
-def get_execution_counts(report_path, fallback_count, result):
-    counts = {"Passed": 0, "Failed": 0, "Skipped": 0}
-    if report_path and report_path.exists():
-        report_html = report_path.read_text(encoding="utf-8", errors="ignore")
-        for label in counts:
-            match = re.search(rf"(\d+) {label}", report_html, re.IGNORECASE)
-            if match:
-                counts[label] = int(match.group(1))
-        if sum(counts.values()) > 0:
-            return counts
-
-    counts["Passed" if result == 0 else "Failed"] = fallback_count
-    return counts
-
-
+# Load the external dashboard stylesheet.
 st.markdown(
-    # Load dashboard styles from the external stylesheet.
     f"<style>{CSS_PATH.read_text(encoding='utf-8')}</style>",
     unsafe_allow_html=True,
 )
@@ -152,6 +165,7 @@ loading_placeholder.markdown(
     unsafe_allow_html=True,
 )
 
+# Load available tests and testbed data before rendering selectors.
 test_files = get_test_files(BASE_DIR)
 suites = get_test_suites(BASE_DIR, test_files)
 
@@ -170,6 +184,7 @@ loading_placeholder.markdown(
 testbed_summary = get_testbed_summary_with_timeout()
 loading_placeholder.empty()
 
+# Render sidebar navigation and execution history.
 st.sidebar.markdown(
     '<div class="sidebar-brand">Easy Mesh Test Hub</div>'
     '<div class="sidebar-subtitle">Explore suites, cases, and previous runs</div>',
@@ -205,6 +220,7 @@ with st.sidebar.expander("Execution History", expanded=False):
             else:
                 st.caption(f"{run_dir.name} | Report missing")
 
+# Render the dashboard header and testbed summary.
 st.markdown(
     """
     <div class="hero">
@@ -236,9 +252,11 @@ st.markdown(
         unsafe_allow_html=True,
 )
 
+# Render suite and case selection controls.
 st.markdown('<div class="step-heading">Select Test Suites</div>', unsafe_allow_html=True)
 st.markdown('<div class="section-note">Choose one or more test suites.</div>', unsafe_allow_html=True)
 selected_names = []
+execution_in_progress = st.session_state.get("execution_in_progress", False)
 columns = st.columns(2)
 for index, suite_name in enumerate(sorted(suites)):
     with columns[index % 2]:
@@ -246,6 +264,7 @@ for index, suite_name in enumerate(sorted(suites)):
             f"{suite_name.replace('_', ' ')}  |  {len(suites[suite_name])} test cases",
             key=f"suite_{suite_name}",
             help=SUITE_DETAILS.get(suite_name, "Test suite"),
+            disabled=execution_in_progress,
         ):
             selected_names.append(suite_name)
 
@@ -255,11 +274,12 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-case_files = []
+selected_cases_by_suite = {}
 st.markdown('<div class="step-heading">Select Test Cases</div>', unsafe_allow_html=True)
 if selected_names:
     st.markdown('<div class="section-note">Choose the test cases you want to run.</div>', unsafe_allow_html=True)
     for suite_name in selected_names:
+        selected_cases = []
         with st.container(border=True):
             st.markdown(
                 f'<div class="case-panel-title">{suite_name.replace("_", " ")} test cases</div>',
@@ -267,12 +287,16 @@ if selected_names:
             )
             for path in suites[suite_name]:
                 case_name = path.stem.removeprefix("TS_").replace('_', ' ')
+                case_key = f"case_{path.as_posix()}"
+                if case_key not in st.session_state:
+                    st.session_state[case_key] = True
                 if st.checkbox(
                     case_name,
-                    value=True,
-                    key=f"case_{path.as_posix()}",
+                    key=case_key,
+                    disabled=execution_in_progress,
                 ):
-                    case_files.append(path)
+                    selected_cases.append(path)
+        selected_cases_by_suite[suite_name] = selected_cases
 else:
     st.markdown(
         '<div class="empty-state"><strong>No test suite selected</strong>'
@@ -280,38 +304,59 @@ else:
         unsafe_allow_html=True,
     )
 
+case_files = [
+    path
+    for suite_cases in selected_cases_by_suite.values()
+    for path in suite_cases
+]
+
 st.markdown(
     f'<div class="count-card case-count"><span class="count-label">Selected test cases</span>'
     f'<span class="count-value">{len(case_files)}</span></div>',
     unsafe_allow_html=True,
 )
 
+# Execute the selected cases while controls are locked.
 with st.container(border=True):
     st.markdown('<div class="step-heading">STEP 3 &nbsp;|&nbsp; Execute selected tests</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-note">Prerequisite checks run automatically before the selected cases begin.</div>', unsafe_allow_html=True)
     if st.button(
         "Run Validation",
         type="primary",
-        disabled=not case_files,
+        disabled=not case_files or execution_in_progress,
         use_container_width=True,
     ):
+        st.session_state["pending_case_files"] = case_files
+        st.session_state["execution_in_progress"] = True
+        st.rerun()
+
+    if execution_in_progress:
         from main import run_tests
 
-        started_at = time.perf_counter()
-        with st.spinner("Running selected test suites..."):
-            result = run_tests(BASE_DIR, case_files)
+        case_files = st.session_state.pop("pending_case_files", case_files)
+        with acquire_run_lock() as lock_acquired:
+            if not lock_acquired:
+                st.markdown(
+                    '<div class="run-busy"><span class="run-busy-icon">&#9208;</span>'
+                    '<div><strong>Execution in progress</strong>'
+                    '<span>Another validation run is using the testbed. Please try again shortly.</span></div></div>',
+                    unsafe_allow_html=True,
+                )
+                st.stop()
+
+            started_at = time.perf_counter()
+            try:
+                with st.spinner("Running selected test suites..."):
+                    result, report_path = run_tests(BASE_DIR, case_files)
+            finally:
+                st.session_state["execution_in_progress"] = False
         elapsed_seconds = time.perf_counter() - started_at
-        report_files = sorted(
-            (BASE_DIR / "Reports").glob("TestRun_*/report.html"),
-            key=lambda path: path.stat().st_mtime,
-            reverse=True,
-        )
-        report_path = report_files[0] if report_files else None
-        execution_counts = get_execution_counts(report_path, len(case_files), result)
+        current_report = report_path if report_path.exists() else None
+        execution_counts = get_execution_counts(current_report, len(case_files), result)
         report_location = (
-            f'Report Generated: <a href="{get_report_url(report_path)}" target="_blank">'
-            f'{report_path}</a>'
-            if report_path else "Report file was not found"
+            f'Report Generated: <a href="{get_report_url(current_report)}" target="_blank">'
+            f'{current_report}</a>'
+            if current_report else "Current execution report is not available"
         )
         st.session_state["last_execution_report"] = {
             "status": "Completed",
@@ -323,6 +368,7 @@ with st.container(border=True):
         st.session_state["reset_test_selection"] = True
         st.rerun()
 
+# Show the most recent execution result.
 last_execution_report = st.session_state.get("last_execution_report")
 if last_execution_report:
     counts = last_execution_report["counts"]

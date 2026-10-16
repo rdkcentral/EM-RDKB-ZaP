@@ -23,14 +23,13 @@ import questionary
 
 # Terminal-only labels for the interactive suite selector.
 SUITE_ICONS = {
-    "Client_Association": "[CLIENT]",
-    "Controller_Recovery": "[RECOVERY]",
-    "Device_Stability": "[STABILITY]",
-    "Metrics_Collection": "[METRICS]",
-    "Multi_Agent_Onboarding": "[ONBOARDING]",
+    "Client_Association": "[CLIENT ASSOCIATION]",
+    "Controller_Recovery": "[CONTROLLER RECOVERY]",
+    "Device_Stability": "[DEVICE STABILITY]",
+    "Metrics_Collection": "[METRICS COLLECTION]",
+    "Multi_Agent_Onboarding": "[MULTI AGENT ONBOARDING]",
     "ref_test": "[REFERENCE]",
 }
-
 
 def get_test_files(base_dir):
     """
@@ -41,7 +40,6 @@ def get_test_files(base_dir):
         for path in (base_dir / "test").rglob("*.py")
         if path.name.startswith(("test_", "TS_"))
     )
-
 
 def get_execution_mode(base_dir):
     """
@@ -57,7 +55,6 @@ def get_execution_mode(base_dir):
             "'terminal' or 'browser'"
         )
     return mode
-
 
 def get_test_suites(base_dir, test_files):
     """
@@ -76,7 +73,6 @@ def get_test_suites(base_dir, test_files):
         suites.setdefault(suite_name, []).append(path)
     return suites
 
-
 def select_test_suite(base_dir, test_files):
     """
     Interactively select test cases grouped by suite.
@@ -86,11 +82,10 @@ def select_test_suite(base_dir, test_files):
         suite_name: list(paths)
         for suite_name, paths in get_test_suites(base_dir, test_files).items()
     }
-
     while True:
         suite_names = sorted(remaining_cases)
         suite_name = questionary.select(
-            "TESTBED TEST CONSOLE | Select a test suite",
+            f"TESTBED TEST CONSOLE | Select a test suite ({len(selected_files)} selected)",
             choices=[
                 questionary.Choice(
                     f"{SUITE_ICONS.get(name, '[SUITE]')} {name} ({len(remaining_cases[name])} test cases)",
@@ -109,7 +104,6 @@ def select_test_suite(base_dir, test_files):
                 print("No test case selected. Please select at least one case.")
                 continue
             return selected_files
-
         case_choices = [
             questionary.Choice(
                 path.relative_to(base_dir / "test").as_posix(),
@@ -125,30 +119,40 @@ def select_test_suite(base_dir, test_files):
         ).ask()
         if cases is None:
             return []
-        if not cases:
-            print("No test case selected. Please choose at least one case.")
-            continue
-
-        selected_files = list(dict.fromkeys(selected_files + cases))
-
-    return selected_files
-
+        previous_suite_files = [
+            path for path in selected_files if path in remaining_cases[suite_name]
+        ]
+        selected_case_names = [path.name for path in cases]
+        print(
+            "Selected test cases: "
+            + (", ".join(selected_case_names) if selected_case_names else "None")
+        )
+        deselected_case_names = [
+            path.name for path in previous_suite_files if path not in cases
+        ]
+        if deselected_case_names:
+            print(f"Deselected test cases: {', '.join(deselected_case_names)}")
+        selected_files = [
+            path for path in selected_files if path not in remaining_cases[suite_name]
+        ]
+        selected_files.extend(cases or [])
 
 if __name__ == "__main__":
     base_dir = Path(__file__).resolve().parent
     dashboard = base_dir / "test_dashboard" / "test_dashboard.py"
     execution_mode = get_execution_mode(base_dir)
     if execution_mode == "terminal":
-        from main import run_tests
         test_files = get_test_files(base_dir)
         selected_files = select_test_suite(base_dir, test_files)
-        raise SystemExit(run_tests(base_dir, selected_files))
-
+        if not selected_files:
+            raise SystemExit(0)
+        from main import run_tests
+        result, _ = run_tests(base_dir, selected_files)
+        raise SystemExit(result)
     try:
         import streamlit  # noqa: F401
     except ImportError:
         raise SystemExit("Streamlit is required when execution_mode is 'browser'.")
-
     raise SystemExit(subprocess.call([
         sys.executable,
         "-m",

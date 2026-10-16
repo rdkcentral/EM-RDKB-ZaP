@@ -1,3 +1,21 @@
+/* If not stated otherwise in this file or this component LICENSE file the
+ * following copyright and licenses apply:
+ *
+ * Copyright 2026 RDK Management
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 .stApp { background: #F4F7FB; }
 .block-container { max-width: 1180px; padding: 1.5rem 2rem 2rem; }
 h1, h2, h3 { color: #243B6B !important; }
@@ -31,9 +49,13 @@ div[data-testid="stButton"]:has(button p) button[kind="primary"] { background: #
 div[data-testid="stButton"]:has(button p) button[kind="primary"]:hover { background: #0E614D !important; box-shadow: 0 5px 12px rgba(22, 122, 98, 0.32); }
 div[data-testid="stAlert"] { background: #FFF4E8; border: 1px solid #F4A261; color: #243B6B !important; }
 div[data-testid="stAlert"] p { color: #243B6B !important; }
+.run-busy { display: flex; align-items: center; gap: 0.75rem; background: linear-gradient(135deg, #FFF8E8, #FFFFFF); border: 1px solid #E5B84B; border-left: 5px solid #D99516; border-radius: 9px; padding: 0.75rem 0.9rem; margin: 0.5rem 0; box-shadow: 0 3px 9px rgba(150, 105, 15, 0.1); }
+.run-busy-icon { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; background: #FFF0C2; color: #A66B00; font-size: 1.1rem; }
+.run-busy strong, .run-busy span { display: block; }
+.run-busy strong { color: #805300; font-size: 0.95rem; }
+.run-busy div span { color: #6F6250 !important; font-size: 0.82rem; margin-top: 0.15rem; }
 div[data-testid="stExpander"]:has(summary p strong) { border: 1px solid #A8C7F0; border-left: 5px solid #4C8BF5; background: #F7FAFF; box-shadow: 0 3px 9px rgba(36, 59, 107, 0.08); }
 div[data-testid="stExpander"]:has(summary p strong) summary { color: #2459A6; font-weight: 800; }
-.run-panel { background: #FFFFFF; border: 1px solid #C9D6E6; border-radius: 10px; padding: 0.5rem 0.8rem; margin-top: 0.3rem; }
 .empty-state { box-sizing: border-box; background: #FFFFFF; border: 1px dashed #4C8BF5; border-radius: 10px; padding: 0.8rem 1rem; margin: 0.4rem 0 0.7rem; }
 .empty-state strong { color: #243B6B; display: block; font-size: 0.95rem; }
 .empty-state span { color: #425466; font-size: 0.82rem; }
@@ -41,19 +63,9 @@ div[data-testid="stExpander"]:has(summary p strong) summary { color: #2459A6; fo
 .hero h1, .hero p { color: #243B6B !important; margin: 0; }
 .hero p { color: #425466 !important; margin-top: 0.25rem; }
 .section-note { color: #425466 !important; font-size: 0.9rem; line-height: 1.35; margin: 0.3rem 0 0.65rem; }
-.dashboard-heading { color: #243B6B; font-size: 1.1rem; font-weight: 800; margin: 0.2rem 0 0.45rem; }
 .step-heading { display: block; color: #243B6B; font-size: 1rem; line-height: 1.3; font-weight: 800; margin: 0.9rem 0 0.3rem; padding-bottom: 0.4rem; border-bottom: 1px solid #DCE5F0; }
 .case-panel { box-sizing: border-box; background: #FFFFFF; border: 1px solid #C9D6E6; border-radius: 10px; padding: 0.45rem 0.7rem 0.2rem; margin-top: 0.35rem; }
 .case-panel-title { color: #243B6B; font-size: 0.86rem; font-weight: 800; margin: 0.1rem 0 0.35rem; }
-.overview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-bottom: 1rem; }
-.overview-card { background: #FFFFFF; border: 1px solid #C9D6E6; border-radius: 8px; padding: 0.65rem 0.8rem; }
-.overview-card:nth-child(1) { border-top: 3px solid #4C8BF5; }
-.overview-card:nth-child(2) { border-top: 3px solid #F4A261; }
-.overview-card:nth-child(3) { border-top: 3px solid #3BB273; }
-.overview-card strong { display: block; color: #243B6B; font-size: 1.35rem; }
-.overview-card span { color: #425466; font-size: 0.78rem; font-weight: 700; }
-.readiness-track { height: 7px; background: #FFFFFF; border: 1px solid #C9D6E6; border-radius: 6px; overflow: hidden; margin-top: 0.35rem; }
-.readiness-fill { height: 100%; background: #3BB273; }
 .report-card { background: linear-gradient(135deg, #F0F7FF, #FFFFFF); border: 1px solid #9CC3F5; border-radius: 10px; padding: 0.9rem 1rem; margin-top: 0.7rem; }
 .report-card strong { display: block; color: #2459A6; font-size: 1.05rem; margin-bottom: 0.7rem; }
 .report-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.55rem; color: #425466; font-size: 0.78rem; }
@@ -67,19 +79,11 @@ div[data-testid="stExpander"]:has(summary p strong) summary { color: #2459A6; fo
 .report-stat.failed b { color: #B33A3A; }
 .report-stat.skipped { border-left: 4px solid #D6A52C; background: #FFF9E8; }
 .report-stat.skipped b { color: #9A7417; }
-.chart-shell { background: #FFFFFF; border: 1px solid #DCE5F0; border-radius: 10px; padding: 0.55rem 0.7rem 0.7rem; }
-.chart-legend { display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; margin-top: -0.35rem; }
-.chart-legend-item { color: #425466; font-size: 0.78rem; font-weight: 700; }
-.chart-legend-item b { color: #243B6B; margin-left: 0.2rem; }
-.legend-dot { display: inline-block; width: 0.6rem; height: 0.6rem; border-radius: 50%; margin-right: 0.25rem; }
 .report-link { background: #EAF2FF; border: 1px solid #4C8BF5; border-radius: 7px; padding: 0.55rem 0.7rem; margin-top: 0.65rem; color: #243B6B; font-size: 0.84rem; font-weight: 700; overflow-wrap: anywhere; }
 .report-link a { color: #2459A6 !important; font-weight: 700; }
 a { text-decoration: none; color: #464FEB; }
 tr th, tr td { border: 1px solid #E6E6E6; }
 tr th { background-color: #F5F5F5; }
-.history-row { background: #FFFFFF; border: 1px solid #DCE5F0; border-radius: 7px; padding: 0.55rem 0.7rem; margin: 0.35rem 0; }
-.history-row strong { color: #243B6B; }
-.history-meta { color: #425466; font-size: 0.8rem; }
 .summary-panel { background: #FFFFFF; border: 1px solid #C9D6E6; border-radius: 10px; padding: 0.9rem 1rem 1rem; margin: 0.8rem 0 1rem; }
 .summary-title { color: #243B6B; font-size: 1.05rem; font-weight: 800; margin-bottom: 0.7rem; }
 .summary-subtitle { color: #425466; font-size: 0.82rem; font-weight: 700; margin: 0.65rem 0 0.35rem; }

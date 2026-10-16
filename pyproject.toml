@@ -35,6 +35,7 @@ dependencies = [
     "questionary==2.1.1",
     "pyserial==3.5",
     "pytest-html>=4.0.0",
+    "filelock>=3.0.0",
     "streamlit==1.65.0"
 ]
 

@@ -33,10 +33,10 @@
 # limitations under the License.
 
 import datetime
-from pathlib import Path
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 def run_tests(base_dir, test_files, cli_args=None):
     cli_args = list(cli_args or [])
@@ -57,5 +57,6 @@ def run_tests(base_dir, test_files, cli_args=None):
         *cli_args,
         *(str(path) for path in test_files),
     ]
-    return subprocess.run(pytest_command, cwd=base_dir).returncode
+    result = subprocess.run(pytest_command, cwd=base_dir).returncode
+    return result, reports_path / "report.html"
 
