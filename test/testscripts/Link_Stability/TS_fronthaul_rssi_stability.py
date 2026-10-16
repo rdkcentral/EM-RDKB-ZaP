@@ -87,10 +87,7 @@ def test_em_fronthaul_rssi_stability(initialize):
                 if error:
                     report_logger.print_error(f"Client '{client}' RSSI check failed: {error}")
                     continue
-                report_logger.print_success(
-                    f"PASS: Client '{client}' RSSI is {state['rssi_dbm']} dBm "
-                    f"(baseline {baseline_rssi[client]} dBm) on "
-                    f"{state['host']}/{state['interface']}")
+                report_logger.print_success(f"PASS: Client '{client}' RSSI is {state['rssi_dbm']} dBm (baseline {baseline_rssi[client]} dBm) on {state['host']}/{state['interface']}")
             time.sleep(poll_interval_sec)
         report_logger.print_step("STEP 4: Capture final RSSI for all clients and validate the allowed baseline degradation")
         for client_index, client in enumerate(clients, start=1):
@@ -106,9 +103,6 @@ def test_em_fronthaul_rssi_stability(initialize):
             if error:
                 report_logger.print_error(f"Client '{client}' final RSSI validation failed: {error}")
                 continue
-            report_logger.print_success(
-                f"PASS: Client '{client}' final RSSI is {state['rssi_dbm']} dBm; "
-                f"no degradation beyond {MAX_RSSI_DEGRADATION_DB} dB on "
-                f"{state['host']}/{state['interface']}")
+            report_logger.print_success(f"PASS: Client '{client}' final RSSI is {state['rssi_dbm']} dBm; no degradation beyond {MAX_RSSI_DEGRADATION_DB} dB on {state['host']}/{state['interface']}")
     finally:        
         report_logger.print_test("Exiting test_em_fronthaul_rssi_stability")

@@ -32,27 +32,23 @@ def get_device_cpu_utilization(initialize, device: str) -> dict:
     output = initialize.get_cpu_utilization(device)
     if output is None or not str(output).strip():
         raise RuntimeError(f"top returned no output on {device}")
-
     lines = [line.strip() for line in str(output).splitlines() if line.strip()]
     idle_match = re.search(
         r"(?:%?Cpu\([^)]*\).*?(?P<cpu>[\d.]+)\s*id|"
         r"\b(?P<idle>[\d.]+)%?\s*idle\b)",
         " ".join(lines),
-        re.IGNORECASE,
-    )
+        re.IGNORECASE,)
     if not idle_match:
         raise ValueError("Could not find CPU idle percentage in top output")
     idle_percent = float(idle_match.group("cpu") or idle_match.group("idle"))
     if not 0 <= idle_percent <= 100:
         raise ValueError(f"CPU idle percentage is outside 0-100: {idle_percent}")
-
     cpu_header = []
     for line in lines:
         fields = line.upper().split()
         if "%CPU" in fields:
             cpu_header = fields
             break
-
     high_cpu_processes = {}
     if cpu_header:
         cpu_column = cpu_header.index("%CPU")
@@ -68,7 +64,6 @@ def get_device_cpu_utilization(initialize, device: str) -> dict:
                 continue
             process_name = " ".join(fields[cpu_column + 1:]) or "unknown"
             high_cpu_processes[f"PID {fields[0]} ({process_name})"] = cpu_value
-
     return {
         "device": device,
         "idle_percent": idle_percent,
@@ -88,29 +83,20 @@ def get_device_memory_utilization(initialize, device: str) -> dict:
     output = initialize.get_memory_utilization(device)
     if output is None or not str(output).strip():
         raise RuntimeError(f"free returned no output on {device}")
-
     lines = [line.strip() for line in str(output).splitlines() if line.strip()]
     rows = [line.split() for line in lines]
     header = next((row for row in rows if row[0].lower() == "total"), None)
     values = next((row[1:] for row in rows if row[0].lower() == "mem:"), None)
     if not header or not values or len(values) < len(header):
         raise ValueError("Could not find a complete Mem row in free output")
-
     columns = {
         name.lower().rstrip(":"): float(value)
-        for name, value in zip(header, values)
-    }
+        for name, value in zip(header, values)}
     total = columns.get("total")
     used = columns.get("used")
     if total is None or used is None or total <= 0:
         raise ValueError("free output does not contain valid total and used values")
-    available = columns.get(
-        "available",
-        sum(
-            columns.get(name, 0.0)
-            for name in ("free", "buffers", "buff/cache", "cached")
-        ),
-    )
+    available = columns.get("available", sum(columns.get(name, 0.0)for name in ("free", "buffers", "buff/cache", "cached")),)
     return {
         "device": device,
         "total_mb": total,

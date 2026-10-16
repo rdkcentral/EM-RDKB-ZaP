@@ -45,7 +45,6 @@ def test_em_scale_client_association_baseline(initialize):
         report_logger.print_step("STEP 3: Capture client MAC associations from the controller and each active extender")
         baseline = get_fronthaul_station_macs_by_device(initialize, all_devices)
         observed_client_count = len(set().union(*baseline.values())) if baseline else 0
-        report_logger.print_info(f"INFO: Captured {observed_client_count} client associations across the discovered devices")
         report_logger.print_step("STEP 4: Validate that the observed client-connection count matches the expected count")
         report_logger.print_info(f"INFO: Observed {observed_client_count} client connections across the discovered devices")
         if observed_client_count < expected_client_count:

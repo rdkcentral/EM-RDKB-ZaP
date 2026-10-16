@@ -64,8 +64,7 @@ def test_em_backhaul_link_stability(initialize):
                 baseline[(agent, interface)] = state
         report_logger.print_info(f"INFO: Baseline captured for {len(baseline)} managed backhaul link(s)")
         previous_connected_times = {
-            key: state["connected_time"] for key, state in baseline.items()
-        }
+            key: state["connected_time"] for key, state in baseline.items()}
         report_logger.print_step("STEP 2: Monitor backhaul connectivity and validate stable connections, parent BSSIDs, and connection times")
         start = time.time()
         poll = 0
@@ -93,10 +92,7 @@ def test_em_backhaul_link_stability(initialize):
                     report_logger.print_error(f"Poll #{poll}: '{agent}/{interface}' connected time unavailable")
                     poll_failure += 1
                 elif current["connected_time"] < previous_connected_times[key]:
-                    report_logger.print_error(
-                        f"Poll #{poll}: '{agent}/{interface}' connected time reset "
-                        f"from {previous_connected_times[key]} to "
-                        f"{current['connected_time']} seconds")
+                    report_logger.print_error(f"Poll #{poll}: '{agent}/{interface}' connected time reset from {previous_connected_times[key]} to {current['connected_time']} seconds")
                     poll_failure += 1
                 else:
                     previous_connected_times[key] = current["connected_time"]

@@ -41,9 +41,7 @@ MAX_RSSI_DEGRADATION_DB = 10
 # Minimum acceptable RSSI threshold (dBm) for a stable link.
 MIN_RSSI_DBM = -80
 
-def validate_memory_utilization_limits(
-    snapshot: dict, used_history: list, baseline: dict | None = None
-):
+def validate_memory_utilization_limits(snapshot: dict, used_history: list, baseline: dict | None = None):
     """
     Syntax : validate_memory_utilization_limits(snapshot, used_history, baseline=None)
     Description : Validates memory thresholds and detects sustained memory growth.
@@ -55,37 +53,22 @@ def validate_memory_utilization_limits(
     """
     device = snapshot["device"]
     if snapshot["available_percent"] <= AVAILABLE_MEMORY_PERCENT:
-        report_logger.print_error(
-            f"FAIL: {device}: available memory {snapshot['available_percent']:.1f}% "
-            f"is at or below the {AVAILABLE_MEMORY_PERCENT:.1f}% limit")
+        report_logger.print_error(f"FAIL: {device}: available memory {snapshot['available_percent']:.1f}% is at or below the {AVAILABLE_MEMORY_PERCENT:.1f}% limit")
     if snapshot["used_percent"] >= MAX_USED_MEMORY_PERCENT:
-        report_logger.print_error(
-            f"FAIL: {device}: used memory {snapshot['used_percent']:.1f}% "
-            f"is at or above the {MAX_USED_MEMORY_PERCENT:.1f}% limit")
+        report_logger.print_error(f"FAIL: {device}: used memory {snapshot['used_percent']:.1f}% is at or above the {MAX_USED_MEMORY_PERCENT:.1f}% limit")
     if baseline:
         increase = snapshot["used_percent"] - baseline["used_percent"]
         if increase > MAX_BASELINE_USED_INCREASE_PERCENT:
-            raise Exception(
-                f"{device}: abnormal used-memory increase vs baseline: "
-                f"{increase:.1f} percentage points")
+            message = (f"{device}: abnormal used-memory increase vs baseline: {increase:.1f} percentage points")
+            raise Exception(message)    
     used_history.append(snapshot["used_mb"])
     recent = used_history[-MONOTONIC_GROWTH_SAMPLES:]
-    if (
-        len(recent) == MONOTONIC_GROWTH_SAMPLES
+    if (len(recent) == MONOTONIC_GROWTH_SAMPLES
         and all(older < newer for older, newer in zip(recent, recent[1:]))
-        and recent[-1] - recent[0] >= MIN_MONOTONIC_GROWTH_MB
-    ):
-        report_logger.print_error(
-            f"FAIL: {device}: used memory increased by "
-            f"{recent[-1] - recent[0]:.1f} MB across "
-            f"{MONOTONIC_GROWTH_SAMPLES} samples: {recent} MB")
+        and recent[-1] - recent[0] >= MIN_MONOTONIC_GROWTH_MB):
+        report_logger.print_error(f"FAIL: {device}: used memory increased by {recent[-1] - recent[0]:.1f} MB across {MONOTONIC_GROWTH_SAMPLES} samples: {recent} MB")
 
-def validate_cpu_utilization_limits(
-    snapshot: dict,
-    high_cpu_counts: dict,
-    consecutive_limit: int,
-    baseline: dict | None = None,
-):
+def validate_cpu_utilization_limits(snapshot: dict, high_cpu_counts: dict, consecutive_limit: int, baseline: dict | None = None,):
     """
     Syntax : validate_cpu_utilization_limits(snapshot, high_cpu_counts, consecutive_limit, baseline=None)
     Description : Validates CPU thresholds and repeated high-CPU process usage.
@@ -99,15 +82,12 @@ def validate_cpu_utilization_limits(
     device = snapshot["device"]
     idle_percent = snapshot["idle_percent"]
     if idle_percent <= 20:
-        report_logger.print_error(
-            f"FAIL: {device}: CPU limit exceeded: idle={idle_percent:.1f}% "
-            f"(minimum 20.0%), utilization={snapshot['utilization_percent']:.1f}%")
+        report_logger.print_error(f"FAIL: {device}: CPU limit exceeded: idle={idle_percent:.1f}% (minimum 20.0%), utilization={snapshot['utilization_percent']:.1f}%")
     if baseline:
         increase = snapshot["utilization_percent"] - baseline["utilization_percent"]
         if increase > MAX_BASELINE_INCREASE_PERCENT:
-            raise Exception(
-                f"{device}: abnormal utilization increase vs baseline: "
-                f"{increase:.1f} percentage points")
+            message = (f"{device}: abnormal utilization increase vs baseline: {increase:.1f} percentage points")
+            raise Exception(message)                
     current_processes = set(snapshot["high_cpu_processes"])
     for process in list(high_cpu_counts):
         if process not in current_processes:
@@ -115,10 +95,7 @@ def validate_cpu_utilization_limits(
     for process in current_processes:
         high_cpu_counts[process] = high_cpu_counts.get(process, 0) + 1
         if high_cpu_counts[process] >= consecutive_limit:
-            report_logger.print_error(
-                f"FAIL: {device}: process exceeded 50% CPU for "
-                f"{high_cpu_counts[process]} consecutive samples: "
-                f"{process} ({snapshot['high_cpu_processes'][process]:.1f}%)")
+            report_logger.print_error(f"FAIL: {device}: process exceeded 50% CPU for {high_cpu_counts[process]} consecutive samples: {process} ({snapshot['high_cpu_processes'][process]:.1f}%)")
             continue
 
 def get_enabled_scale_setup(initialize, scale: str | None = None) -> dict:
@@ -133,23 +110,17 @@ def get_enabled_scale_setup(initialize, scale: str | None = None) -> dict:
     scale_setups = initialize.read_from_database(
         "test_parameters", "scalesetup")
     if not isinstance(scale_setups, dict):
-        raise ValueError(
-            "Scale setups are missing from test_parameters in platform YAML")
+        raise ValueError("Scale setups are missing from test_parameters in platform YAML")
     if scale:
         setup = scale_setups.get(scale)
         if not isinstance(setup, dict):
             raise ValueError(
-                f"Scale setup '{scale}' is missing from "
-                "test_parameters.scalesetup in platform YAML")
+                f"Scale setup '{scale}' is missing from test_parameters.scalesetup in platform YAML")
         return setup
     setups = [scale_setups.get(name) for name in ("small", "medium", "large")]
     if not all(isinstance(setup, dict) for setup in setups):
-        raise ValueError(
-            "One or more scale setups are missing from "
-            "test_parameters.scalesetup in platform YAML")
-    enabled_setups = [
-        setup for setup in setups if setup.get("enabled", False) is True
-    ]
+        raise ValueError("One or more scale setups are missing from test_parameters.scalesetup in platform YAML")
+    enabled_setups = [setup for setup in setups if setup.get("enabled", False) is True]
     if len(enabled_setups) > 1:
         raise ValueError("Multiple scale setups are enabled in platform YAML")
     if not enabled_setups:
@@ -174,11 +145,9 @@ def get_fronthaul_station_macs_by_device(initialize, devices: list) -> dict:
             associations[device] = station_macs
             observed = ", ".join(sorted(station_macs))
             observation = observed or "no clients currently connected"
-            report_logger.print_info(
-                f"INFO: Stations associated with the fronthaul of {device}: {observation}")
+            report_logger.print_info(f"INFO: Stations associated with the fronthaul of {device}: {observation}")
         except Exception as err:
-            report_logger.print_error(
-                f"Fronthaul station dump failed on {device}: {err}")
+            report_logger.print_error(f"Fronthaul station dump failed on {device}: {err}")
             associations[device] = set()
     return associations
 
@@ -220,12 +189,9 @@ def get_extender_presence_snapshot(initialize, agents: list) -> dict:
             stored_interface = initialize.read_from_database(
                 agent, "backhaul_interface")
             if not stored_interface:
-                report_logger.print_error(
-                    f"FAIL: {agent}: backhaul_interface is missing from platform.yaml")
+                report_logger.print_error(f"FAIL: {agent}: backhaul_interface is missing from platform.yaml")
                 continue
-            if initialize.get_wireless_backhaul_connection_status(
-                agent, stored_interface
-            ):
+            if initialize.get_wireless_backhaul_connection_status(agent, stored_interface):
                 connected_agents.add(agent)
             else:
                 report_logger.print_info(
@@ -235,17 +201,13 @@ def get_extender_presence_snapshot(initialize, agents: list) -> dict:
                 f"Backhaul presence check failed on {agent}: {err}")
             continue
     connected_agents = set(connected_agents)
-    report_logger.print_info(
-        f"INFO: Connected agents: {sorted(connected_agents)} "
-        f"(count={len(connected_agents)})")
+    report_logger.print_info(f"INFO: Connected agents: {sorted(connected_agents)} (count={len(connected_agents)})")
     return {
         "agent_count": len(connected_agents),
         "agents": connected_agents,
     }
 
-def get_extender_presence_mismatches(
-    expected_count: int, baseline: dict, current: dict
-) -> list:
+def get_extender_presence_mismatches(expected_count: int, baseline: dict, current: dict) -> list:
     """
     Syntax : get_extender_presence_mismatches(expected_count, baseline, current)
     Description : Validates controller-side agent count and presence.
@@ -260,17 +222,12 @@ def get_extender_presence_mismatches(
     current_agents = set(current.get("agents", set()))
     current_agent_count = len(current_agents)
     if current_agent_count < expected_count:
-        mismatches.append(
-            f"Agent count below minimum: expected={expected_count} "
-            f"current={current_agent_count}")
+        mismatches.append(f"Agent count below minimum: expected={expected_count} current={current_agent_count}")
     if current_agent_count != len(baseline_agents):
-        mismatches.append(
-            f"Agent count changed: baseline={len(baseline_agents)} "
-            f"current={current_agent_count}")
+        mismatches.append(f"Agent count changed: baseline={len(baseline_agents)} current={current_agent_count}")
     missing_agents = baseline_agents - current_agents
     if missing_agents:
-        mismatches.append(
-            f"Missing agents: {sorted(missing_agents)}")
+        mismatches.append(f"Missing agents: {sorted(missing_agents)}")
     return mismatches
 
 def get_device_advertising_bssid(initialize, bssid: str):
@@ -325,9 +282,7 @@ def rate_to_mbps(rate: str | float, unit: str) -> float:
         return rate_mbps / 1000
     return rate_mbps
 
-def get_client_phy_rates(
-    initialize, client: str, host: str | None
-) -> dict | None:
+def get_client_phy_rates(initialize, client: str, host: str | None) -> dict | None:
     """
     Syntax : get_client_phy_rates(initialize, client, host)
     Description : Reads a client's primary transmit and receive PHY rates.
@@ -341,9 +296,7 @@ def get_client_phy_rates(
         return None
     client_mac = initialize.read_from_database(client, "mac").lower()
     interface = device_utils.get_fronthaul_interface(initialize, host)
-    for station_mac, _ in initialize.get_iw_station_details(
-        host, interface, "records"
-    ):
+    for station_mac, _ in initialize.get_iw_station_details(host, interface, "records"):
         station_mac = station_mac.lower()
         if station_mac != client_mac:
             continue
@@ -357,11 +310,7 @@ def get_client_phy_rates(
         }
     return None
 
-def validate_client_phy_rates(
-    current_rates: dict | None,
-    baseline_rates: dict | None = None,
-    drop_percent_limit: float = PHY_RATE_DROP_PERCENT,
-) -> str | None:
+def validate_client_phy_rates(current_rates: dict | None, baseline_rates: dict | None = None, drop_percent_limit: float = PHY_RATE_DROP_PERCENT,) -> str | None:
     """
     Syntax : validate_client_phy_rates(current_rates, baseline_rates=None, drop_percent_limit=PHY_RATE_DROP_PERCENT)
     Description : Validates PHY rates and optional baseline degradation.
@@ -383,15 +332,10 @@ def validate_client_phy_rates(
                 continue
             drop_percent = (baseline_rate - current_rate) / baseline_rate * 100
             if drop_percent > drop_percent_limit:
-                return (
-                    f"{direction[:-5].upper()} PHY rate dropped by "
-                    f"{drop_percent:.1f}% from {baseline_rate:.1f} to "
-                    f"{current_rate:.1f} Mbps")
+                return (f"{direction[:-5].upper()} PHY rate dropped by {drop_percent:.1f}% from {baseline_rate:.1f} to {current_rate:.1f} Mbps")
     return None
 
-def get_client_rssi(
-    initialize, client: str, host: str | None
-) -> dict | None:
+def get_client_rssi(initialize, client: str, host: str | None) -> dict | None:
     """
     Syntax : get_client_rssi(initialize, client, host)
     Description : Reads a client's fronthaul RSSI and station state.
@@ -406,8 +350,7 @@ def get_client_rssi(
     interface = device_utils.get_fronthaul_interface(initialize, host)
     client_mac = initialize.read_from_database(client, "mac").lower()
     for station_mac, details in initialize.get_iw_station_details(
-        host, interface, "records"
-    ):
+        host, interface, "records"):
         station_mac = station_mac.lower()
         if station_mac != client_mac:
             continue
@@ -422,11 +365,7 @@ def get_client_rssi(
         }
     return None
 
-def validate_client_rssi(
-    current_rssi: dict | None,
-    baseline_rssi: int | None = None,
-    max_rssi_degradation_db: int = MAX_RSSI_DEGRADATION_DB,
-) -> str | None:
+def validate_client_rssi(current_rssi: dict | None, baseline_rssi: int | None = None, max_rssi_degradation_db: int = MAX_RSSI_DEGRADATION_DB,) -> str | None:
     """
     Syntax : validate_client_rssi(current_rssi, baseline_rssi=None, max_rssi_degradation_db=MAX_RSSI_DEGRADATION_DB)
     Description : Validates RSSI data and degradation.
@@ -443,7 +382,5 @@ def validate_client_rssi(
     if baseline_rssi is not None:
         degradation = baseline_rssi - current_rssi["rssi_dbm"]
         if degradation > max_rssi_degradation_db:
-            return (
-                f"RSSI degraded by {degradation} dB from {baseline_rssi} dBm "
-                f"to {current_rssi['rssi_dbm']} dBm")
+            return (f"RSSI degraded by {degradation} dB from {baseline_rssi} dBm to {current_rssi['rssi_dbm']} dBm")
     return None

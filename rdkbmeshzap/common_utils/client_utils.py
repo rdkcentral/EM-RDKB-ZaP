@@ -35,11 +35,9 @@ def get_client_bssids(client, ssid, ssh):
     """
     ssh.switch_connection(client)
     report_logger.print_info(
-        f"INFO: Scanning for SSID '{ssid}' on {client}"
-    )
+        f"INFO: Scanning for SSID '{ssid}' on {client}")
     result = ssh.execute_command(
-        "nmcli -t --escape no -f BSSID,SSID device wifi list"
-    )
+        "nmcli -t --escape no -f BSSID,SSID device wifi list")
     bssids = []
     for row in (result or "").splitlines():
         row = row.replace("\\:", ":")
@@ -64,24 +62,19 @@ def get_present_device_bssids(initialize):
         present = initialize.read_from_database(device, "device_present")
         if present is False or (
             isinstance(present, str)
-            and present.strip().lower() in {"false", "no", "0", "off"}
-        ):
+            and present.strip().lower() in {"false", "no", "0", "off"}):
             continue
         try:
             bssids.update(
                 bssid.lower()
-                for bssid in initialize.get_fronthaul_bssids(device)
-            )
+                for bssid in initialize.get_fronthaul_bssids(device))
         except Exception as error:
             report_logger.print_info(
                 f"Unable to read fronthaul BSSIDs from present device "
-                f"'{device}': {error}"
-            )
+                f"'{device}': {error}")
     return bssids
 
-def connect_client_to_bssid(
-    initialize, client, ssid, passphrase, bssid, ssh, allowed_bssids=None
-):
+def connect_client_to_bssid(initialize, client, ssid, passphrase, bssid, ssh, allowed_bssids=None):
     """"
     Syntax: connect_client_to_bssid( initialize, client, ssid, passphrase, bssid, ssh, allowed_bssids=None
     Description: Connects a client to the specified BSSID and verifies the resulting association. 
@@ -101,31 +94,26 @@ def connect_client_to_bssid(
         f"printf '%s\\n' {shlex.quote(client_password)} | "
         f"sudo -S -p '' nmcli device wifi connect {shlex.quote(ssid)} "
         f"password {shlex.quote(passphrase)} bssid {shlex.quote(bssid.upper())} "
-        f"ifname {shlex.quote(wifi_interface)}"
-    )
+        f"ifname {shlex.quote(wifi_interface)}")
     ssh.switch_connection(client)
     output = ssh.execute_command(command)
     try:
         connected_bssid = (
-            initialize.get_association_status(client, "cli").lower()
-        )
+            initialize.get_association_status(client, "cli").lower())
     except Exception as error:
         report_logger.print_error(
-            f"Failed to get connected BSSID for {client}: {error}"
-        )
+            f"Failed to get connected BSSID for {client}: {error}")
         return None
     accepted_bssids = (
         {value.lower() for value in allowed_bssids}
         if allowed_bssids is not None
-        else {bssid.lower()}
-    )
+        else {bssid.lower()})
     if connected_bssid in accepted_bssids:
         if connected_bssid != bssid.lower():
             owner = client.rsplit("_wlan_client_", 1)[0]
             report_logger.print_info(
                 f"INFO: Client '{client}' is associated with BSSID "
-                f"'{connected_bssid}'."
-            )
+                f"'{connected_bssid}'.")
         return
     if "successfully activated" not in output.lower() and connected_bssid is None:
         message = f"Failed to connect {client} to BSSID {bssid}: {output}"
@@ -133,9 +121,7 @@ def connect_client_to_bssid(
     message = (f"{client} connected to {connected_bssid}, expected BSSID {bssid}: {output}") 
     raise Exception(message)
 
-def connect_client_to_target_device(
-    initialize, client_devices, extender, allowed_bssids=None
-):
+def connect_client_to_target_device(initialize, client_devices, extender, allowed_bssids=None):
     """
     Syntax: connect_client_to_target_device(initialize, client_devices, extender, allowed_bssids=None) 
     Description: Connects WLAN clients to a visible fronthaul BSSID advertised by the specified extender and verifies successful association.
@@ -150,21 +136,18 @@ def connect_client_to_target_device(
     ssid, passphrase = initialize.get_fronthaul_credentials("controller")
     extender_bssids = initialize.get_fronthaul_bssids(extender)
     normalized_extender_bssids = {
-        bssid.lower() for bssid in extender_bssids
-    }
+        bssid.lower() for bssid in extender_bssids}
     accepted_bssids = (
         {bssid.lower() for bssid in allowed_bssids}
         if allowed_bssids is not None
-        else normalized_extender_bssids
-    )
+        else normalized_extender_bssids)
     for client in client_devices:
         password = initialize.read_from_database(client, "password")
         interface = initialize.read_from_database(client, "data_iface")
         ssh.switch_connection(client)
         ssh.execute_command(
             f"printf '%s\\n' {shlex.quote(password)} | "
-            f"sudo -S -p '' nmcli device disconnect {shlex.quote(interface)}"
-        )
+            f"sudo -S -p '' nmcli device disconnect {shlex.quote(interface)}")
         time.sleep(2)
         initialize.check_ap_ssid_visibility(client, ssid)
         visible_bssids = get_client_bssids(client, ssid, ssh)
@@ -172,24 +155,12 @@ def connect_client_to_target_device(
             (
                 bssid
                 for bssid in visible_bssids
-                if bssid in normalized_extender_bssids
-            ),
-            None,
-        )
+                if bssid in normalized_extender_bssids),
+            None,)
         if not target_bssid:
-            message = (f"No expected BSSID for '{ssid}' was visible; "
-                        f"expected={sorted(normalized_extender_bssids)}, "
-                        f"visible={sorted(visible_bssids)}")
+            message = (f"No expected BSSID for '{ssid}' was visible; expected={sorted(normalized_extender_bssids)}, visible={sorted(visible_bssids)}")
             raise Exception(message)
-        connect_client_to_bssid(
-            initialize,
-            client,
-            ssid,
-            passphrase,
-            target_bssid,
-            ssh,
-            accepted_bssids,
-        )
+        connect_client_to_bssid(initialize, client, ssid, passphrase, target_bssid, ssh, accepted_bssids,)
 
 def connect_wlan_clients(initialize, client_devices, require_all=True):
     """
@@ -217,20 +188,16 @@ def connect_wlan_clients(initialize, client_devices, require_all=True):
             match = re.fullmatch(r"(.+)_wlan_client_\d+", client)
             if not match:
                 raise ValueError(
-                    f"Cannot determine owning device from client name '{client}'"
-                )
+                    f"Cannot determine owning device from client name '{client}'")
             connect_client_to_target_device(
-                initialize, [client], match.group(1), allowed_bssids
-            )
+                initialize, [client], match.group(1), allowed_bssids)
             connected_bssid = initialize.get_association_status(client, "cli").lower()
             if connected_bssid is None:
                 message = (f"{client} is not connected after connection attempt")
                 raise Exception(message)
             if connected_bssid not in allowed_bssids:
-                message = (
-                    f"{client} is connected to {connected_bssid}, not an "
-                    f"allowed present-device BSSID {sorted(allowed_bssids)}"
-                )
+                message = (f"{client} is connected to {connected_bssid}, not an "
+                            f"allowed present-device BSSID {sorted(allowed_bssids)}")
                 raise Exception(message)
             connected_clients.append(client)
         except Exception as error:
@@ -242,25 +209,16 @@ def connect_wlan_clients(initialize, client_devices, require_all=True):
                     connected_bssid = None
                 if connected_bssid in allowed_bssids:
                     report_logger.print_info(
-                        f"Client '{client}' remains connected to BSSID "
-                        f"{connected_bssid}; connection setup failed "
-                        f"({error}), continuing with link validation"
-                    )
+                        f"Client '{client}' remains connected to BSSID {connected_bssid}; connection setup failed ({error}), continuing with link validation")
                     connected_clients.append(client)
                     continue
-            report_logger.print_info(
-                f"Client '{client}' connection attempt failed: {error}"
-            )
+            report_logger.print_info(f"Client '{client}' connection attempt failed: {error}")
     if not require_all:
         unavailable = [client for client in clients if client not in connected_clients]
         if unavailable:
-            report_logger.print_info(
-                "Skipping unavailable WLAN clients after one attempt: "
-                f"{', '.join(unavailable)}"
-            )
+            report_logger.print_info(f"Skipping unavailable WLAN clients after one attempt: {', '.join(unavailable)}")
         return connected_clients
     if len(connected_clients) == len(clients):
         return connected_clients
     raise Exception(
-        f"Unable to connect all clients after one attempt: {last_errors}"
-    ) from next(iter(last_errors.values()), None)
+        f"Unable to connect all clients after one attempt: {last_errors}") from next(iter(last_errors.values()), None)

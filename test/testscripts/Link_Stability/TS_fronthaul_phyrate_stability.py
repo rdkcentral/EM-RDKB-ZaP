@@ -63,11 +63,7 @@ def test_em_fronthaul_phyrate_stability(initialize):
                 report_logger.print_error(f"Client '{client}' failed baseline PHY-rate validation: {error}")
                 continue
             baseline_rates[client] = state
-            report_logger.print_success(
-                f"PASS: Client '{client}' baseline PHY rate: "
-                f"TX {state['tx_mbps']:.1f} Mbps, RX {state['rx_mbps']:.1f} Mbps "
-                f"on {state['host']}/{state['interface']}")
-        report_logger.print_info(f"INFO: Baseline captured for all {len(baseline_rates)} configured present WLAN client(s)")
+            report_logger.print_success(f"PASS: Client '{client}' baseline PHY rate: TX {state['tx_mbps']:.1f} Mbps, RX {state['rx_mbps']:.1f} Mbps on {state['host']}/{state['interface']}")
         report_logger.print_step("STEP 3: Monitor each client's TX/RX PHY rates and validate the allowed baseline drop throughout the test")
         start_time = time.time()
         poll_count = 0
@@ -89,10 +85,7 @@ def test_em_fronthaul_phyrate_stability(initialize):
                 if error:
                     report_logger.print_error(f"Client '{client}' PHY-rate check failed: {error}")
                     continue
-                report_logger.print_success(
-                    f"PASS: Client '{client}' PHY rate: TX {state['tx_mbps']:.1f} Mbps, "
-                    f"RX {state['rx_mbps']:.1f} Mbps on "
-                    f"{state['host']}/{state['interface']}")
+                report_logger.print_success(f"PASS: Client '{client}' PHY rate: TX {state['tx_mbps']:.1f} Mbps, RX {state['rx_mbps']:.1f} Mbps on {state['host']}/{state['interface']}")
             time.sleep(poll_interval_sec)
         report_logger.print_step("STEP 4: Capture final PHY rates for all clients and validate the allowed baseline drop limit")
         for client_index, client in enumerate(clients, start=1):
@@ -108,10 +101,6 @@ def test_em_fronthaul_phyrate_stability(initialize):
             if error:
                 report_logger.print_error(f"Client '{client}' final PHY validation failed: {error}")
                 continue
-            report_logger.print_success(
-                f"PASS: Client '{client}' final PHY rate: "
-                f"TX {state['tx_mbps']:.1f} Mbps, "
-                f"RX {state['rx_mbps']:.1f} Mbps on "
-                f"{state['host']}/{state['interface']}")
+            report_logger.print_success(f"PASS: Client '{client}' final PHY rate: TX {state['tx_mbps']:.1f} Mbps, RX {state['rx_mbps']:.1f} Mbps on {state['host']}/{state['interface']}")
     finally:        
         report_logger.print_test("Exiting test_em_fronthaul_phyrate_stability")

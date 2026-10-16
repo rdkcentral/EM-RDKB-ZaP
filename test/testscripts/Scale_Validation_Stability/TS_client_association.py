@@ -58,7 +58,6 @@ def test_em_scale_client_association(initialize):
         report_logger.print_step("STEP 4: Capture fronthaul client MACs on each device and validate the baseline count")
         baseline = get_fronthaul_station_macs_by_device(initialize, all_devices)
         total_baseline = len(set().union(*baseline.values())) if baseline else 0
-        report_logger.print_info(f"INFO: Baseline client presence: observed {total_baseline}, expected {expected_client_count}")
         if total_baseline < expected_client_count:
             report_logger.print_error(f"Baseline client count mismatch: observed {total_baseline}, expected exactly {expected_client_count}")
         report_logger.print_success(f"PASS: Baseline captured: {total_baseline} clients across the discovered devices")

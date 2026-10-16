@@ -57,10 +57,7 @@ def test_em_backhaul_rssi_stability(initialize):
                     report_logger.print_error(f"RSSI baseline unavailable on required backhaul link '{agent}/{interface}': {state}")
                     continue
                 if state["rssi_dbm"] < MIN_RSSI_DBM:
-                    report_logger.print_error(
-                        f"Baseline RSSI on required backhaul link "
-                        f"'{agent}/{interface}' is {state['rssi_dbm']} dBm, "
-                        f"below {MIN_RSSI_DBM} dBm")
+                    report_logger.print_error(f"Baseline RSSI on required backhaul link '{agent}/{interface}' is {state['rssi_dbm']} dBm, below {MIN_RSSI_DBM} dBm")
                     continue
                 baseline[(agent, interface)] = state["rssi_dbm"]
             report_logger.print_info(f"INFO: Baseline RSSI captured for {len(baseline)} backhaul link(s)")
@@ -76,22 +73,19 @@ def test_em_backhaul_rssi_stability(initialize):
                     state = initialize.get_backhaul_interface_details(agent, interface)
                 except Exception as err:
                     poll_failure += 1
-                    report_logger.print_error(f"{agent}/{interface}: state collection failed: {err}")
+                    report_logger.print_error(f"{agent}: state collection failed: {err}")
                     continue
                 report_logger.print_info(f"INFO: Poll #{poll}, link #{link_index} {agent}/{interface}: {state}")
                 if not state["connected"] or state["rssi_dbm"] is None:
-                    report_logger.print_error(f"{agent}/{interface}: RSSI unavailable: {state}")
+                    report_logger.print_error(f"{agent}: RSSI unavailable: {state}")
                     poll_failure += 1
                     continue
                 if state["rssi_dbm"] < MIN_RSSI_DBM:
-                    report_logger.print_error(f"{agent}/{interface}: RSSI {state['rssi_dbm']} dBm below {MIN_RSSI_DBM} dBm")
+                    report_logger.print_error(f"{agent}: RSSI {state['rssi_dbm']} dBm below {MIN_RSSI_DBM} dBm")
                     poll_failure += 1
                     continue
                 if initial_rssi - state["rssi_dbm"] > MAX_RSSI_DEGRADATION_DB:
-                    report_logger.print_error(
-                        f"RSSI degraded by more than {MAX_RSSI_DEGRADATION_DB} dB "
-                        f"for '{agent}/{interface}': {initial_rssi} -> "
-                        f"{state['rssi_dbm']} dBm")
+                    report_logger.print_error(f"RSSI degraded by more than {MAX_RSSI_DEGRADATION_DB} dB for '{agent}/{interface}': {initial_rssi} -> {state['rssi_dbm']} dBm")
                     poll_failure += 1
                 if poll_failure == 0:
                     report_logger.print_success(f"PASS: {agent}/{interface} RSSI is {state['rssi_dbm']} dBm")
@@ -111,12 +105,10 @@ def test_em_backhaul_rssi_stability(initialize):
             elif current_rssi < MIN_RSSI_DBM:
                 error = f"{agent}/{interface}: latest RSSI {current_rssi} dBm below {MIN_RSSI_DBM} dBm"
             elif initial_rssi - current_rssi > MAX_RSSI_DEGRADATION_DB:
-                error = (
-                    f"{agent}/{interface}: baseline RSSI {initial_rssi} -> "
-                    f"latest RSSI {current_rssi} dBm")
+                error = (f"{agent}/{interface}: baseline RSSI {initial_rssi} -> latest RSSI {current_rssi} dBm")
             if error:
                 report_logger.print_error(error)
             else:
-                report_logger.print_success(f"PASS: {agent}/{interface} final RSSI validation passed")
+                report_logger.print_success(f"PASS: {agent} final RSSI validation passed")
     finally:
         report_logger.print_test("Exiting test_em_backhaul_rssi_stability")

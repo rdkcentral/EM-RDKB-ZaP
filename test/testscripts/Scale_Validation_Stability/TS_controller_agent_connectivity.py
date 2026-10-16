@@ -29,14 +29,9 @@ def test_em_scale_controller_agent_stability(initialize):
     actual_agent_count = len(agents)
     report_logger.print_step("STEP 1: Validate configured extender count")
     if actual_agent_count < expected_agent_count:
-        report_logger.print_error(
-            f"FAIL: Expected at least {expected_agent_count} configured extenders, "
-            f"but found {actual_agent_count}: {agents}"
-        )
+        report_logger.print_error(f"FAIL: Expected at least {expected_agent_count} configured extenders, but found {actual_agent_count}: {agents}")
     else:
-        report_logger.print_success(
-            f"PASS: Found {actual_agent_count} configured extenders "
-            f"(minimum {expected_agent_count})")
+        report_logger.print_success(f"PASS: Found {actual_agent_count} configured extenders (minimum {expected_agent_count})")
     report_logger.print_step("STEP 2: Capture the baseline active extenders")
     baseline = get_extender_presence_snapshot(initialize, agents)
     baseline_mismatches = get_extender_presence_mismatches(
@@ -57,13 +52,9 @@ def test_em_scale_controller_agent_stability(initialize):
             time.sleep(min(POLL_INTERVAL_SEC, remaining_time))
     report_logger.print_step("STEP 4: Compare baseline and latest active extenders")
     final = get_extender_presence_snapshot(initialize, agents)
-    final_mismatches = get_extender_presence_mismatches(
-        expected_agent_count, baseline, final
-    )
+    final_mismatches = get_extender_presence_mismatches(expected_agent_count, baseline, final)
     if final_mismatches:
         report_logger.print_error(f"Extender presence mismatch against baseline: {final_mismatches}")
     else:
-        report_logger.print_success(
-            f"PASS: Matched baseline active extenders: {baseline['agent_count']}"
-        )
+        report_logger.print_success(f"PASS: Matched baseline active extenders: {baseline['agent_count']}")
     report_logger.print_test("Exiting test_em_scale_controller_agent_stability")
