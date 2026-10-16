@@ -35,9 +35,7 @@ def validate_device_accessibility(initialize):
                 raise RuntimeError("connection API returned False")
         except Exception as error:
             validation_result = False
-            report_logger.print_error(
-                f"FAIL: {device} accessibility validation failed: {error}"
-            )
+            report_logger.print_error(f"FAIL: {device} accessibility validation failed: {error}")
         else:
             report_logger.print_success(f"PASS: {device} is accessible over SSH")
     return validation_result
@@ -80,26 +78,18 @@ def retrieve_and_store_runtime_data(initialize):
                     interface_info = initialize.get_iw_interface_details(
                         device, interface)
                 except Exception as error:
-                    report_logger.print_error(
-                        f"FAIL: [{device}] Failed to read {interface}: {error}"
-                    )
+                    report_logger.print_error(f"FAIL: [{device}] Failed to read {interface}: {error}")
                     continue
                 if str(interface_info.get("type", "")).lower() == "managed":
                     managed_interfaces.append(interface)
             if not managed_interfaces:
-                report_logger.print_error(
-                    f"FAIL: [{device}] Managed backhaul interface is not present; "
-                    "runtime database update failed"
-                )
+                report_logger.print_error(f"FAIL: [{device}] Managed backhaul interface is not present runtime database update failed")
                 return False
             try:
                 initialize.db_obj.write_into_database(
                     device, "backhaul_interface", managed_interfaces[0])
             except Exception as error:
-                report_logger.print_error(
-                    f"FAIL: [{device}] Failed to write backhaul_interface "
-                    f"to the runtime database: {error}"
-                )
+                report_logger.print_error(f"FAIL: [{device}] Failed to write backhaul_interface to the runtime database: {error}")
                 return False
             report_logger.print_info(f"INFO: [{device}] Stored backhaul_interface = {managed_interfaces[0]}")
             bssids = initialize.get_fronthaul_bssids(device, "cli")
@@ -117,12 +107,8 @@ def retrieve_and_store_runtime_data(initialize):
                         device, iface)
                 except Exception as error:
                     if "No such device" in str(error):
-                        raise RuntimeError(
-                            f"{device}: {iface} is not available"
-                        ) from error
-                    raise RuntimeError(
-                        f"{device}: failed to read {iface}: {error}"
-                    ) from error
+                        raise RuntimeError(f"{device}: {iface} is not available") from error
+                    raise RuntimeError(f"{device}: failed to read {iface}: {error}") from error
                 actual_mac = None
                 for line in iw_output.splitlines():
                     line = line.strip()
@@ -146,13 +132,9 @@ def retrieve_and_store_runtime_data(initialize):
                 raise RuntimeError(f"{device}: Expected 3 unique radio MAC matches, but found {len(matched)}. Matches: {matched}")
             for iface, database_key in radio_db_keys.items():
                 try:
-                    initialize.db_obj.write_into_database(
-                        device, database_key, matched[iface])
+                    initialize.db_obj.write_into_database(device, database_key, matched[iface])
                 except Exception as error:
-                    report_logger.print_error(
-                        f"FAIL: [{device}] Failed to write {database_key} "
-                        f"from {iface} to the runtime database: {error}"
-                    )
+                    report_logger.print_error(f"FAIL: [{device}] Failed to write {database_key} from {iface} to the runtime database: {error}")
                     return False
             report_logger.print_success(f"PASS: [{device}] Stored 2g_radio_mac = {matched['wifi0']}")
             report_logger.print_success(f"PASS: [{device}] Stored 5g_radio_mac = {matched['wifi1']}")
@@ -252,12 +234,10 @@ def validate_mld0_links_to_private_vaps(initialize):
                 device_failed = True
                 report_logger.print_error(f"FAIL: {device}: expected mld0 link IDs {sorted(expected_link_ids)}, found {sorted(mld_info['link_ids'])}")
                 continue
-            wifi_macs = {
-                f"wifi{radio}": initialize.get_iw_interface_details(
+            wifi_macs = {f"wifi{radio}": initialize.get_iw_interface_details(
                     device, f"wifi{radio}"
                 )["addr"]
-                for radio in range(3)
-            }
+                for radio in range(3)}
             mac_to_wifi = {mac: interface for interface, mac in wifi_macs.items() if mac}
             for link_id in sorted(expected_link_ids):
                 mld_mac = mld_info["link_macs"].get(link_id, "")
@@ -295,15 +275,11 @@ def verify_mesh_backhaul_interfaces(initialize):
     for device in ["controller"] + extenders:
         device_failed = False
         try:
-            interface = initialize.read_from_database(
-                device, "backhaul_interface"
-            )
+            interface = initialize.read_from_database(device, "backhaul_interface")
             if not interface:
                 validation_result = False
                 device_failed = True
-                report_logger.print_error(
-                    f"FAIL: {device}: backhaul_interface is missing from platform.yaml"
-                )
+                report_logger.print_error(f"FAIL: {device}: backhaul_interface is missing from platform.yaml")
                 continue
             info = initialize.get_iw_interface_details(device, interface)
             if not info["exists"] or info["type"] != "managed" or info["four_addr"] != "on":
@@ -314,13 +290,9 @@ def verify_mesh_backhaul_interfaces(initialize):
             validation_result = False
             device_failed = True
             if "No such device" in str(error):
-                report_logger.print_error(
-                    f"FAIL: {device}: {interface} is not available"
-                )
+                report_logger.print_error(f"FAIL: {device}: {interface} is not available")
             else:
-                report_logger.print_error(
-                    f"FAIL: {device}: {interface} validation failed: {error}"
-                )
+                report_logger.print_error(f"FAIL: {device}: {interface} validation failed: {error}")
         if not device_failed:
             report_logger.print_success(f"PASS: {device}: Valid mesh backhaul interface")
     if validation_result:
