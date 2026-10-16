@@ -90,7 +90,7 @@ def update_runtime_database(initialize, validate_setup_accessibility):
 	global _setup_failure
 	captured_output = io.StringIO()
 	with redirect_stdout(captured_output):
-		database_update_result = test_environment_checks.retrieve_and_store_radio_macs(initialize)
+		database_update_result = test_environment_checks.retrieve_and_store_runtime_data(initialize)
 	_setup_sections["database_update"] = captured_output.getvalue()
 	print(_setup_sections["database_update"], end="")
 	if database_update_result is False:

@@ -64,6 +64,14 @@ class FeatureInterface(FeatureInterfaceModules):
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.get_iw_dev_info(device)
 
+    def get_wireless_interfaces_list(self, device: str, method: str = 'cli') -> list:
+        """
+        Get wireless interfaces for a device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_wireless_interfaces_list(device)
+
     def get_iw_dev_interface_info(
         self, device: str, iface: str, method: str = 'cli') -> str:
         """
@@ -92,11 +100,35 @@ class FeatureInterface(FeatureInterfaceModules):
     def get_iw_interface_details(
         self, device: str, interface: str, method: str = 'cli') -> dict:
         """
-        Return normalized details for a Wi-Fi interface from ``iw dev`` output.
+        Get normalized details for a Wi-Fi interface from ``iw dev`` output.
         """
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.get_iw_interface_details(device, interface)
+
+    def get_iw_link_details(self, device: str, interface: str, value: str, method: str = 'cli') -> list:
+        """
+        Get normalized details from ``iw dev <interface> link`` output.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_iw_link_details(device, interface, value)
+
+    def get_iw_station_details(self, device: str, interface: str, value: str, method: str = 'cli') -> list:
+        """
+        Get normalized details from station-dump output.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_iw_station_details(device, interface, value)
+
+    def get_backhaul_interface_details(self, device: str, interface: str, method: str = 'cli') -> dict:
+        """
+        Get normalized link and station details for a backhaul interface.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_backhaul_interface_details(device, interface)
 
     def get_cpu_utilization(self, device: str, method: str = 'cli') -> str:
         """
@@ -201,7 +233,7 @@ class FeatureInterface(FeatureInterfaceModules):
     def get_fronthaul_credentials(self, device: str,
                                   method: str = 'cli') -> tuple:
         """
-        Return the fronthaul SSID and passphrase.
+        Get the fronthaul SSID and passphrase.
         """
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
@@ -210,7 +242,7 @@ class FeatureInterface(FeatureInterfaceModules):
     def get_fronthaul_bssids(self, device: str,
                              method: str = 'cli') -> list:
         """
-        Return the fronthaul BSSIDs of a device.
+        Get the fronthaul BSSIDs of a device.
         """
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
