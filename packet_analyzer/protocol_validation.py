@@ -20,12 +20,12 @@ from contextlib import redirect_stdout
 from packet_analyzer.packet_dissector import packet_analyzer
 from zaero.utils import zi_logger
 
-def common_protocol_validation(pcap_file):
+def common_protocol_validation(pcap_file, initialize):
     zi_logger.log(f"Executing COMMON PROTOCOL validation : {pcap_file}")
     captured_pcap_analysis = io.StringIO()
 
     with redirect_stdout(captured_pcap_analysis):
-        packet_analyzer(pcap_file)
+        packet_analyzer(pcap_file, initialize)
     return captured_pcap_analysis.getvalue()
  
 def analyse_ssid_packets(pcap_file):

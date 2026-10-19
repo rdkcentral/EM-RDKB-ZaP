@@ -134,3 +134,8 @@ test_parameters:
         ssid_update_max_count: 100                              # Stability test Maximum number of SSID updates during the test
         channel_update_max_count: 100                           # Stability test Maximum number of channel updates during the test
         fronthaul_toggle_max_count: 100                         # Stability test Maximum number of fronthaul toggles during the test
+
+profile_type:
+    <update_controller_al_mac> : <update_profile_type>          # Controller AL MAC and its  profile type
+    <update_collocated_agent_al_mac> : <update_profile_type>    # Collocated Agent AL MAC and profile type
+    # <update_extender_al_mac> : <update_profile_type>          # Extender AL MAC and profile type

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from pathlib import Path
+import sys
 import pytest
 from scapy.all import rdpcap
 from scapy.all import Ether
@@ -249,6 +250,7 @@ def verify_tlv_presence_with_type(requested_message_type, tlv_to_verify, payload
     frame_number = message_frame_map.get((message_type, message_id))
     tlv_presence_flag = False
     tlv_length_valid_flag = False
+    tlv_presence_link_metric_response = False
     expected_tlv_length = ""
     found_tlvs, tlv_length, tlv_values, _, error = parse_tlvs(payload)
     if error or not found_tlvs:
@@ -312,11 +314,11 @@ def validate_1905_message(tlv_data_from_config, profiletype, message, payload, c
     profiles_cfg = tlv_data_from_config.get("profiles", {})
     profile_cfg = profiles_cfg.get(profiletype)
     if profile_cfg is None:
-        zi_logger.log(f"Profile {profiletype} is not defined in the configuration. Skipping validation for {message_type_string}.")
+        report_logger.print_info(f"Profile {profiletype} is not defined in the configuration. Skipping validation for {message_type_string}.")
         return
     message_cfg = profile_cfg.get(message)
     if message_cfg is None:
-        zi_logger.log(
+        report_logger.print_info(
             f"No TLV definition found for {message_type_string} (0x{message:04X}) in profile {profiletype}. "
             "Skipping validation for this message."
         )
@@ -324,7 +326,7 @@ def validate_1905_message(tlv_data_from_config, profiletype, message, payload, c
     if controller_or_agent == "controller":
         role_cfg = message_cfg.get("controller_tlvs")
         if role_cfg is None:
-            zi_logger.log(
+            report_logger.print_info(
                 f"No controller-specific TLV definition found for {message_type_string} in profile {profiletype}. "
                 "Skipping validation for this message."
             )
@@ -334,7 +336,7 @@ def validate_1905_message(tlv_data_from_config, profiletype, message, payload, c
     elif controller_or_agent == "agent":
         role_cfg = message_cfg.get("agent_tlvs")
         if role_cfg is None:
-            zi_logger.log(
+            report_logger.print_info(
                 f"No agent-specific TLV definition found for {message_type_string} in profile {profiletype}. "
                 "Skipping validation for this message."
             )
@@ -346,7 +348,7 @@ def validate_1905_message(tlv_data_from_config, profiletype, message, payload, c
         optional = message_cfg.get("optional_tlvs", []) or []
     
     if not mandatory:
-        zi_logger.log(f"No mandatory TLVs defined for {message_type_string} in the profile. Skipping mandatory TLV presence verification.")
+        report_logger.print_info(f"No mandatory TLVs defined for {message_type_string} in the profile. Skipping mandatory TLV presence verification.")
     else:
         for index, tlv in enumerate(mandatory, start=1):
             tlv_type_string = get_tlv_type_name(tlv)
@@ -355,15 +357,17 @@ def validate_1905_message(tlv_data_from_config, profiletype, message, payload, c
                 verify_tlv_presence_with_type(message, tlv, payload)
             except ValueError as e:
                 report_logger.print_error(str(e))
+                error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
                 return
     report_logger.print_info(f"check for any unexpected TLVs that are not defined as mandatory or optional in the profile")
     try:
         verify_no_additional_tlvs(message, mandatory, optional, payload)
     except ValueError as e:
         report_logger.print_error(str(e))
+        error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
         return
 
-def packet_analyzer(pcap_local_dir, al_mac1=None, al_mac2=None):
+def packet_analyzer(pcap_local_dir, initialize, al_mac1=None, al_mac2=None):
     """
     Syntax : packet_analyzer(pcap_local_dir, al_mac1=None, al_mac2=None)
     Description : Reassembles IEEE 1905 packets from a capture file, filters them by AL MAC addresses, and validates known CMDU messages.
@@ -373,6 +377,13 @@ def packet_analyzer(pcap_local_dir, al_mac1=None, al_mac2=None):
         al_mac2 - Optional second AL MAC address used to filter packets.
     Return Value: None. Message counts and validation results are written to the report logger.
     """
+    report_logger.print_info("Entering packet_analyzer")
+    profile_dict = initialize.read_from_database("profile_type")
+    for key, value in profile_dict.items():
+        if "update" in key:
+            report_logger.print_error("kindly update the device al mac and profile type in the database.")
+            error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
+            return
     reassembled_packets = reassemble_packets(pcap_local_dir)
     message_type_count = {}
     for pkt in reassembled_packets:
@@ -416,22 +427,60 @@ def packet_analyzer(pcap_local_dir, al_mac1=None, al_mac2=None):
     if not filtered_packets:
         #instead of pytest fail wright alternatives
         report_logger.print_error(f"No messages between {al_mac1} and {al_mac2} found in the capture file.")
+        error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
         return
-    # try:
-    #     profiletype = extract_profile_type(filtered_packets)
-    # except ValueError as e:
-    #     report_logger.print_error(str(e))
-    #     return
-    profiletype = 0x03
     tlv_data_from_config = get_tlv_from_config()
     #iterate through the captured packets and validate the messages
     frame_number = 0
     for pkt in filtered_packets:
+        profiletype = None
         frame_number += 1
         controller_or_agent = None
         eth = pkt[Ether]
         if eth.type != ETHERTYPE_1905:
             continue
+        #read all the almacs available under profile_type in the platform.yaml
+        src_al_mac = eth.src.lower()
+        dst_al_mac = eth.dst.lower()
+        profile_dict = initialize.read_from_database("profile_type")
+        if "device_present" in profile_dict:
+            del profile_dict["device_present"]
+        mac_list = list(profile_dict.keys())
+        mac_list.append("01:80:c2:00:00:13")
+        mac_list = [mac.lower() for mac in mac_list]
+        if src_al_mac not in mac_list:
+            report_logger.print_info(f"Source AL MAC {src_al_mac} not found in profile type configuration.")
+            continue
+        if dst_al_mac not in mac_list:
+            report_logger.print_info(f"Destination AL MAC {dst_al_mac} not found in profile type configuration.")
+            continue
+        src_profiletype = None
+        dst_profiletype = None
+        try:
+            src_profiletype = initialize.read_from_database("profile_type", src_al_mac)
+        except Exception as e:
+            if "Could not fetch data from database dictionary for the values" in str(e):
+                src_profiletype = initialize.read_from_database("profile_type", src_al_mac.upper())
+            else:
+                report_logger.print_error(f"failed to retrieve profile type for source AL MAC {src_al_mac} : {str(e)}")
+                error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
+                continue
+        if dst_al_mac == "01:80:c2:00:00:13":
+            profiletype = src_profiletype
+        else:
+            try:
+                dst_profiletype = initialize.read_from_database("profile_type", dst_al_mac)
+            except Exception as e:
+                if "Could not fetch data from database dictionary for the values" in str(e):
+                    dst_profiletype = initialize.read_from_database("profile_type", dst_al_mac.upper())
+                else:
+                    report_logger.print_error(f"failed to retrieve profile type for destination AL MAC {dst_al_mac} : {str(e)}")
+                    error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
+                    continue
+        if profiletype is None:
+            #choose profile type which is lower src_profiletype or dst_profiletype
+            profiletype = min(src_profiletype, dst_profiletype)
+        report_logger.print_info(f"Profile Type using for 1905 message validation between {src_al_mac} and {dst_al_mac} = {profiletype:#04x}")
         payload = bytes(eth.payload)
         # Extract fields from CMDU header
         message_type = (payload[2] << 8) | payload[3]
@@ -449,3 +498,5 @@ def packet_analyzer(pcap_local_dir, al_mac1=None, al_mac2=None):
         if not message_type_name.startswith("Unknown message type"):
             report_logger.print_title(f"Analyzing the {message_type_name}")
             validate_1905_message(tlv_data_from_config, profiletype, message_type, payload, controller_or_agent)
+        else:
+            report_logger.print_info(f"Skipping {get_message_type_name(message_type)} encountered between {src_al_mac} and {dst_al_mac}")

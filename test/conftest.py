@@ -64,7 +64,7 @@ def initialize():
 	zaero_obj.configure_platform(platform)
 	for device_name, device_data in Database._Database__database.items():
 		device_data.setdefault(
-			"device_present", device_name not in {"protocol", "test_parameters"}
+			"device_present", device_name not in {"protocol", "test_parameters", "profile_type"}
 		)
 	pcap_log_dir = zaero_obj.read_from_database("controller", "pcap_remote_dir")
 	pcap_local_dir = zaero_obj.read_from_database("controller", "pcap_local_dir")
@@ -328,7 +328,7 @@ def protocol_validation(request, initialize):
 		report_logger.print_title("========== Start Common Protocol Validation ==========")
 		error_list.clear()
 		try:
-			analysis_output = common_protocol_validation(capture_path)
+			analysis_output = common_protocol_validation(capture_path, initialize)
 			_protocol_validation_results.append(
 				{
 					"test_name": request.node.name,
