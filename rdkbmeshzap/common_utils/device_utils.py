@@ -15,10 +15,96 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
 import re
+import time
 import pytest
 from rdkbmeshzap.common_utils import report_logger
+
+def get_device_cpu_utilization(initialize, device: str) -> dict:
+    """
+    Syntax : get_device_cpu_utilization(initialize, device)
+    Description : Fetches and parses CPU utilization for a device.
+    Parameters :
+        initialize - Testbed initialization object exposing feature APIs.
+        device - Name of the target device.
+    Return Value: A dictionary containing idle, utilization, and high-CPU process data.
+    """
+    output = initialize.get_cpu_utilization(device)
+    if output is None or not str(output).strip():
+        raise RuntimeError(f"top returned no output on {device}")
+    lines = [line.strip() for line in str(output).splitlines() if line.strip()]
+    idle_match = re.search(
+        r"(?:%?Cpu\([^)]*\).*?(?P<cpu>[\d.]+)\s*id|"
+        r"\b(?P<idle>[\d.]+)%?\s*idle\b)",
+        " ".join(lines),
+        re.IGNORECASE,)
+    if not idle_match:
+        raise ValueError("Could not find CPU idle percentage in top output")
+    idle_percent = float(idle_match.group("cpu") or idle_match.group("idle"))
+    if not 0 <= idle_percent <= 100:
+        raise ValueError(f"CPU idle percentage is outside 0-100: {idle_percent}")
+    cpu_header = []
+    for line in lines:
+        fields = line.upper().split()
+        if "%CPU" in fields:
+            cpu_header = fields
+            break
+    high_cpu_processes = {}
+    if cpu_header:
+        cpu_column = cpu_header.index("%CPU")
+        for line in lines:
+            fields = line.split()
+            if len(fields) <= cpu_column or not fields[0].isdigit():
+                continue
+            cpu_token = fields[cpu_column]
+            if not re.fullmatch(r"\d+(?:\.\d+)?%?", cpu_token):
+                continue
+            cpu_value = float(cpu_token.rstrip("%"))
+            if cpu_value <= 50:
+                continue
+            process_name = " ".join(fields[cpu_column + 1:]) or "unknown"
+            high_cpu_processes[f"PID {fields[0]} ({process_name})"] = cpu_value
+    return {
+        "device": device,
+        "idle_percent": idle_percent,
+        "utilization_percent": 100.0 - idle_percent,
+        "high_cpu_processes": high_cpu_processes,
+    }
+
+def get_device_memory_utilization(initialize, device: str) -> dict:
+    """
+    Syntax : get_device_memory_utilization(initialize, device)
+    Description : Fetches and parses memory utilization for a device.
+    Parameters :
+        initialize - Testbed initialization object exposing feature APIs.
+        device - Name of the target device.
+    Return Value: A dictionary containing total, used, available, and percentage values.
+    """
+    output = initialize.get_memory_utilization(device)
+    if output is None or not str(output).strip():
+        raise RuntimeError(f"free returned no output on {device}")
+    lines = [line.strip() for line in str(output).splitlines() if line.strip()]
+    rows = [line.split() for line in lines]
+    header = next((row for row in rows if row[0].lower() == "total"), None)
+    values = next((row[1:] for row in rows if row[0].lower() == "mem:"), None)
+    if not header or not values or len(values) < len(header):
+        raise ValueError("Could not find a complete Mem row in free output")
+    columns = {
+        name.lower().rstrip(":"): float(value)
+        for name, value in zip(header, values)}
+    total = columns.get("total")
+    used = columns.get("used")
+    if total is None or used is None or total <= 0:
+        raise ValueError("free output does not contain valid total and used values")
+    available = columns.get("available", sum(columns.get(name, 0.0)for name in ("free", "buffers", "buff/cache", "cached")),)
+    return {
+        "device": device,
+        "total_mb": total,
+        "used_mb": used,
+        "available_mb": available,
+        "used_percent": used / total * 100.0,
+        "available_percent": available / total * 100.0,
+    }
 
 def get_enabled_clients(initialize):
     """
@@ -255,3 +341,18 @@ def get_extender_parent_device(initialize, extender, devices):
         if re.search(rf"\baddr\s+{re.escape(bssid)}\b", str(output), re.IGNORECASE):
             return device, bssid
     return None, bssid
+
+def get_fronthaul_interface(initialize, device: str) -> str:
+    """
+    Syntax : get_fronthaul_interface(initialize, device)
+    Description : Builds the configured MLD fronthaul interface name.
+    Parameters :
+        initialize - Testbed initialization and database interface.
+        device - Name of the target mesh device.
+    Return Value: The configured fronthaul interface name.
+    """
+    mld_ifname = initialize.read_from_database(device, "mld_ifname")
+    mld_iface_index = initialize.read_from_database(device, "mld_iface_index")
+    if not mld_ifname or mld_iface_index is None:
+        raise ValueError(f"Missing MLD interface configuration for {device}")
+    return f"{mld_ifname}{mld_iface_index}"
