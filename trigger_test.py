@@ -22,16 +22,6 @@ import yaml
 import questionary
 from filelock import FileLock, Timeout
 
-# Terminal-only labels for the interactive suite selector.
-SUITE_ICONS = {
-    "Client_Association": "[CLIENT ASSOCIATION]",
-    "Controller_Recovery": "[CONTROLLER RECOVERY]",
-    "Device_Stability": "[DEVICE STABILITY]",
-    "Metrics_Collection": "[METRICS COLLECTION]",
-    "Multi_Agent_Onboarding": "[MULTI AGENT ONBOARDING]",
-    "ref_test": "[REFERENCE]",
-}
-
 def get_test_files(base_dir):
     """
     Return all discoverable test files under the test directory.
@@ -89,7 +79,7 @@ def select_test_suite(base_dir, test_files):
             f"TESTBED TEST CONSOLE | Select a test suite ({len(selected_files)} selected)",
             choices=[
                 questionary.Choice(
-                    f"{SUITE_ICONS.get(name, '[SUITE]')} {name} ({len(remaining_cases[name])} test cases)",
+                    f"{name.replace('_', ' ')} ({len(remaining_cases[name])} test cases)",
                     value=name,
                 )
                 for name in suite_names
