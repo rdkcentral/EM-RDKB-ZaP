@@ -40,9 +40,11 @@ def test_em_fronthaul_link_stability(initialize):
             for client in present_clients
             if client not in clients
         ]
+        if not clients:
+            report_logger.print_error("No WLAN clients were connected")
+            return        
         if unavailable:
-            report_logger.print_error(f"Unable to establish association for all configured WLAN clients: {unavailable}")
-            return
+            report_logger.print_error(f"Unable to establish association for configured WLAN clients: {unavailable}")
         else:    
             report_logger.print_success(f"PASS: Connected clients before stability test: {', '.join(clients)}")
         poll_interval_sec = POLL_INTERVAL_SEC

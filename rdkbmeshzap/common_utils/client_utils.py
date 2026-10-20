@@ -148,6 +148,8 @@ def connect_client_to_target_device(initialize, client_devices, extender, allowe
         ssh.execute_command(
             f"printf '%s\\n' {shlex.quote(password)} | "
             f"sudo -S -p '' nmcli device disconnect {shlex.quote(interface)}")
+        ssh.execute_command(f"printf '%s\\n' {shlex.quote(password)} | "
+            f"sudo -S -p '' nmcli connection delete {shlex.quote(ssid)}")
         time.sleep(2)
         initialize.check_ap_ssid_visibility(client, ssid)
         visible_bssids = get_client_bssids(client, ssid, ssh)
