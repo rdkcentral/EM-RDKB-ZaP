@@ -132,6 +132,7 @@ extender3:
 protocol:
     common_protocol_validation: True                        # Enable/Disable common protocol validation for verifying protocol-level behavior and message exchanges                      
 test_parameters:
+    execution_mode: <browser / terminal>                    # Test selection interface: terminal or browser
     controller_recovery_kpi_seconds: 300                    # Controller Recovery KPI threshold in seconds
     device_stability:
         Endurance_test_duration_in_seconds: 86400               # Stability test duration in seconds
