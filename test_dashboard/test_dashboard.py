@@ -21,7 +21,6 @@ import threading
 import time
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-
 import streamlit as st
 import yaml
 from filelock import FileLock, Timeout
@@ -375,6 +374,7 @@ if last_execution_report:
         f'<div class="report-link">{last_execution_report["location"]}</div></div>',
         unsafe_allow_html=True,
     )
+
 if st.button("Close Test Session", use_container_width=True):
     st.session_state["test_session_closed"] = True
     st.rerun()
