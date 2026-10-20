@@ -250,7 +250,6 @@ def verify_tlv_presence_with_type(requested_message_type, tlv_to_verify, payload
     frame_number = message_frame_map.get((message_type, message_id))
     tlv_presence_flag = False
     tlv_length_valid_flag = False
-    tlv_presence_link_metric_response = False
     expected_tlv_length = ""
     found_tlvs, tlv_length, tlv_values, _, error = parse_tlvs(payload)
     if error or not found_tlvs:
@@ -367,6 +366,37 @@ def validate_1905_message(tlv_data_from_config, profiletype, message, payload, c
         error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
         return
 
+def parse_config(tlv_data_from_config, profiletype, message):
+    """
+    syntax : parse_config(tlv_data_from_config, profiletype, message)
+    Description : Parses the TLV configuration for a given profile and message type, returning the list of mandatory TLVs if defined.
+    Parameters :
+        tlv_data_from_config - The TLV configuration data.
+        profiletype - The profile type to look up in the configuration.
+        message - The message type to look up in the configuration.
+    Return Value :
+        A tuple containing two lists:
+        - The first list contains the mandatory TLVs for the specified message in the profile.
+        - The second list contains the optional TLVs for the specified message in the profile.
+
+    """
+    message_type_string = get_message_type_name(message)
+    mandatory_tlv_list = []
+    optional_tlv_list = []
+    profiles_cfg = tlv_data_from_config.get("profiles", {})
+    profile_cfg = profiles_cfg.get(profiletype)
+    if profile_cfg is None:
+        raise ValueError(f"Profile {profiletype} is not defined in the configuration.")
+    message_cfg = profile_cfg.get(message)
+    if message_cfg is None:
+        raise ValueError(f"Message {message_type_string} (0x{message:04X}) is not defined in profile {profiletype}.")
+    mandatory_tlv_list = message_cfg.get("mandatory_tlvs", []) or []
+    optional_tlv_list = message_cfg.get("optional_tlvs", []) or []
+    #check if mandatory_tlv_list lists are empty and raise value error
+    if not mandatory_tlv_list:
+        raise ValueError(f"No mandatory TLVs defined for message {message_type_string} (0x{message:04X}) in profile {profiletype}.")
+    return mandatory_tlv_list, optional_tlv_list
+
 def packet_analyzer(pcap_local_dir, initialize, al_mac1=None, al_mac2=None):
     """
     Syntax : packet_analyzer(pcap_local_dir, al_mac1=None, al_mac2=None)
@@ -431,10 +461,8 @@ def packet_analyzer(pcap_local_dir, initialize, al_mac1=None, al_mac2=None):
         return
     tlv_data_from_config = get_tlv_from_config()
     #iterate through the captured packets and validate the messages
-    frame_number = 0
     for pkt in filtered_packets:
         profiletype = None
-        frame_number += 1
         controller_or_agent = None
         eth = pkt[Ether]
         if eth.type != ETHERTYPE_1905:
@@ -484,17 +512,40 @@ def packet_analyzer(pcap_local_dir, initialize, al_mac1=None, al_mac2=None):
         payload = bytes(eth.payload)
         # Extract fields from CMDU header
         message_type = (payload[2] << 8) | payload[3]
+        message_id   = (payload[4] << 8) | payload[5]
+        message_type_name = get_message_type_name(message_type)
         # check if the message is from controller or agent. This is valid incase of AP Autoconfiguration WSC Messages
         if message_type == MSG_TYPE_AP_AUTOCONFIGURATION_WSC:
-            found_tlvs, tlv_length, tlv_values, _, error = parse_tlvs(payload)
-            for tlv_type, tlv_length, tlv_value in zip(found_tlvs, tlv_length, tlv_values):
+            found_tlvs, _tlv_length, tlv_values, _, error = parse_tlvs(payload)
+            for tlv_type, tlv_length, tlv_value in zip(found_tlvs, _tlv_length, tlv_values):
                 if tlv_type == TLV_TYPE_WSC:
                     wsc_message_type = tlv_value[9]
                     if wsc_message_type == 0x04:
                         controller_or_agent = "agent"
                     if wsc_message_type == 0x05:
                         controller_or_agent = "controller"
-        message_type_name = get_message_type_name(message_type)
+        if message_type == MSG_TYPE_LINK_METRIC_RESPONSE:
+            report_logger.print_title(f"Analyzing the {message_type_name}")
+            frame_number = message_frame_map.get((message_type, message_id))
+            try:
+                link_meteric_response_mandatory_tlvs, link_meteric_response_optional_tlvs = parse_config(tlv_data_from_config, profiletype, message_type)
+            except ValueError as e:
+                continue
+            found_tlvs, _tlv_length, tlv_values, _, error = parse_tlvs(payload)
+            for tlv_type, tlv_length, tlv_value in zip(found_tlvs, _tlv_length, tlv_values):
+                report_logger.print_info(f"Processing {get_tlv_type_name(tlv_type)} with length {tlv_length}")
+                if tlv_type not in link_meteric_response_mandatory_tlvs:
+                    report_logger.print_error(f"framenumber :{frame_number} Found Extra TLVs in {get_message_type_name(message_type)}: {get_tlv_type_name(tlv_type)}")
+                    error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
+                else:
+                     expected_tlv_length, tlv_length_valid_flag = validate_tlv_length(tlv_type, tlv_length)
+                     if tlv_length_valid_flag:
+                        report_logger.print_success(f"{get_tlv_type_name(tlv_type)} is expected and the  tlv length is valid : {tlv_length}")  
+                     else:
+                        report_logger.print_success(f"{get_tlv_type_name(tlv_type)} is expected.")
+                        report_logger.print_error(f"framenumber :{frame_number} {get_tlv_type_name(tlv_type)} length is invalid. expected tlv length is {expected_tlv_length} and actual tlv length is {tlv_length}")
+                        error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
+            continue
         if not message_type_name.startswith("Unknown message type"):
             report_logger.print_title(f"Analyzing the {message_type_name}")
             validate_1905_message(tlv_data_from_config, profiletype, message_type, payload, controller_or_agent)

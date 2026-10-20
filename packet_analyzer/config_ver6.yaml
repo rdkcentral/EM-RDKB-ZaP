@@ -509,6 +509,13 @@ profiles:
         - 0x00 # End Of Message TLV
       optional_tlvs:
 
+    0x0006: # Link Metric Response message
+      mandatory_tlvs:
+        - 0x09 # TX Link Metric TLV
+        - 0x0A # RX Link Metric TLV
+        - 0x00 # End Of Message TLV
+      optional_tlvs:
+
     0x8000: # 1905 ACK message
       mandatory_tlvs:
         - 0x00 # End Of Message TLV
@@ -1074,6 +1081,13 @@ profiles:
     0x0005: # Link Metric Query message
       mandatory_tlvs:
         - 0x08 # Link Metric Query TLV
+        - 0x00 # End Of Message TLV
+      optional_tlvs:
+
+    0x0006: # Link Metric Response message
+      mandatory_tlvs:
+        - 0x09 # TX Link Metric TLV
+        - 0x0A # RX Link Metric TLV
         - 0x00 # End Of Message TLV
       optional_tlvs:
 
@@ -1678,6 +1692,13 @@ profiles:
     0x0005: # Link Metric Query message
       mandatory_tlvs:
         - 0x08 # Link Metric Query TLV
+        - 0x00 # End Of Message TLV
+      optional_tlvs:
+
+    0x0006: # Link Metric Response message
+      mandatory_tlvs:
+        - 0x09 # TX Link Metric TLV
+        - 0x0A # RX Link Metric TLV
         - 0x00 # End Of Message TLV
       optional_tlvs:
 
