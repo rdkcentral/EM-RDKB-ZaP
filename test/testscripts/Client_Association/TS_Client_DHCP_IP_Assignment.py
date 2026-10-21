@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import zaero
 import pytest
 import time
 from rdkbmeshzap.common_utils import device_utils, report_logger

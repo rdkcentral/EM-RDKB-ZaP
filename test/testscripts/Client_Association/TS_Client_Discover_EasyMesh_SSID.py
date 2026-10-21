@@ -16,7 +16,6 @@
 # limitations under the License.
 
 import re
-import zaero
 import pytest
 import time
 from rdkbmeshzap.common_utils import device_utils, report_logger
@@ -37,18 +36,19 @@ def test_client_association_discovery_easymesh_ssid(initialize):
         ssid = initialize.get_ssid("controller", "controller_device_index", 'de')
         report_logger.print_success(f"PASS: Retrieved SSID: {ssid}")
         report_logger.print_step("STEP 3: Wait for some time for SSID propagation")
+        report_logger.print_info("INFO: Waiting for 10 seconds to allow SSID propagation across the mesh network")
         time.sleep(10)
-        report_logger.print_step("STEP 4: Initiate WiFi scan on each wlan client of the devices")
+        report_logger.print_step("STEP 4: Initiate WiFi scan on each wlan client of the devices and count the occurrences of the EasyMesh SSID")
         step_passed = True
         clients = device_utils.get_enabled_clients(initialize)
         for client in clients:
             if initialize.read_from_database(client, "device_present"):
                 output = []
                 try:
+                    report_logger.print_info(f"INFO: Count SSID occurrences for {client}")
                     output = initialize.get_ap_ssid_visibility(client, ssid, 'cli')
                     time.sleep(20)
                     report_logger.print_info(f"INFO: WiFi scan initiated successfully on {client} with SSID: {ssid} and output: {output}")
-                    report_logger.print_step(f"STEP 5: Count SSID occurrences for {client}")
                     ssid_occurrences = re.findall(r'\d+\s*MHz', output)
                     frequency_count = len(ssid_occurrences)
                     if frequency_count >= 2:

@@ -87,11 +87,10 @@ def test_multi_agent_onboarding_no_duplicate_entries(initialize):
         initialize.close_connection("extender1")
         time.sleep(10)
         for i in range(1, 51):
-            report_logger.log(f"FOR loop iteration : {i}")
             try:
                 initialize.connect_with_device("extender1")
             except Exception:
-                report_logger.print_error("FAIL: Connection FAILED with 'Extender1'", log_error=False)
+                report_logger.print_info("FAIL: Connection FAILED with 'Extender1'")
             else:
                 report_logger.print_success("PASS: Connection SUCCESS with 'Extender1'")
                 break

@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import zaero
 import pytest
 import time
 from rdkbmeshzap.common_utils import device_utils, report_logger
@@ -24,7 +23,7 @@ def test_client_association_authentication_correct_credentials(initialize):
     """
     Verify that  Wi-Fi client devices can successfully authenticate and associate to the EasyMesh SSID using correct credentials, whether it associates to the Controller or to any of the 3 Agents.
     """
-    report_logger.print_test(" Entering test_client_association_authentication_correct_credentials")
+    report_logger.print_test("Entering test_client_association_authentication_correct_credentials")
     try:
         report_logger.print_step(f"STEP 1: Retrieving and storing device index into the database for controller and enabled extenders")
         devices = ["controller"] + device_utils.get_enabled_extenders(initialize)
