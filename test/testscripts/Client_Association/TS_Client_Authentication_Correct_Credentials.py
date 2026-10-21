@@ -59,6 +59,7 @@ def test_client_association_authentication_correct_credentials(initialize):
             report_logger.print_error(f"FAIL: Failed to retrieve Fronthaul password from GUI")
             pytest.fail("Failed to retrieve Fronthaul password from GUI")
         report_logger.print_step("STEP 5: Wait for some time for SSID propagation")
+        report_logger.print_info("INFO: Waiting for 10 seconds to allow SSID propagation across the mesh network")
         time.sleep(10)
         report_logger.print_step("STEP 6: Connect client with correct credentials and verify the connection status" )
         step_passed = True

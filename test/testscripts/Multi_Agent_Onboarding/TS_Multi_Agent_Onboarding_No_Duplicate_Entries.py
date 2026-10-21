@@ -90,7 +90,7 @@ def test_multi_agent_onboarding_no_duplicate_entries(initialize):
             try:
                 initialize.connect_with_device("extender1")
             except Exception:
-                report_logger.print_info("FAIL: Connection FAILED with 'Extender1'")
+                report_logger.print_info("INFO: Connection FAILED with 'Extender1'")
             else:
                 report_logger.print_success("PASS: Connection SUCCESS with 'Extender1'")
                 break
