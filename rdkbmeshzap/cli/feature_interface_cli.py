@@ -659,13 +659,12 @@ class FeatureInterfaceCLI(DatabaseModule,
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
         connection_obj.switch_connection(device)
-        wlan_iface = self.db_obj.read_from_database(device, 'data_iface')
-        cmd = f"iw dev {wlan_iface} scan  | grep -B100 {ssid} | grep -E [[:space:]]*freq:"
+        cmd = f"nmcli -f SSID,FREQ dev wifi list --rescan yes | grep -i {shlex.quote(ssid)}"
         output, error = connection_obj.execute_command(cmd, return_stderr=True)
-        if 'freq:' not in output:
+        if ssid not in output:
             raise RuntimeError(f"Command execution failed : {output}")
         
-        return [line.split(':')[1].strip() for line in output.splitlines()]
+        return output
 
     def get_association_status(self, device: str) -> str:
         """
