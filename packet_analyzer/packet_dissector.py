@@ -409,9 +409,15 @@ def packet_analyzer(pcap_local_dir, initialize, al_mac1=None, al_mac2=None):
     """
     report_logger.print_info("Entering packet_analyzer")
     profile_dict = initialize.read_from_database("test_parameters","profile_type")
+    if "device_present" in profile_dict:
+        del profile_dict["device_present"]
     for key, value in profile_dict.items():
         if "aa:bb:cc:dd:ee:ff" in key:
             report_logger.print_error("kindly update the device al mac and profile type in the database.")
+            error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
+            return
+        if type(value) is not int or value not in (0x01, 0x02, 0x03):
+            report_logger.print_error(f"Invalid Multi-AP profile type {value!r} for {key}; expected 0x01, 0x02, or 0x03.")
             error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
             return
     reassembled_packets = reassemble_packets(pcap_local_dir)
@@ -470,17 +476,19 @@ def packet_analyzer(pcap_local_dir, initialize, al_mac1=None, al_mac2=None):
         #read all the almacs available under profile_type in the platform.yaml
         src_al_mac = eth.src.lower()
         dst_al_mac = eth.dst.lower()
-        profile_dict = initialize.read_from_database("test_parameters","profile_type")
-        if "device_present" in profile_dict:
-            del profile_dict["device_present"]
         mac_list = list(profile_dict.keys())
         mac_list.append("01:80:c2:00:00:13")
         mac_list = [mac.lower() for mac in mac_list]
+        payload = bytes(eth.payload)
+        # Extract fields from CMDU header
+        message_type = (payload[2] << 8) | payload[3]
+        message_id   = (payload[4] << 8) | payload[5]
+        frame_number = message_frame_map.get((message_type, message_id))
         if src_al_mac not in mac_list:
-            report_logger.print_info(f"Source AL MAC {src_al_mac} not found in profile type configuration.")
+            report_logger.print_info(f"framenumber :{frame_number} No Multi-AP profile type found in the configuration file for Source AL MAC {src_al_mac}. Skipping the frame.")
             continue
         if dst_al_mac not in mac_list:
-            report_logger.print_info(f"Destination AL MAC {dst_al_mac} not found in profile type configuration.")
+            report_logger.print_info(f"framenumber :{frame_number} No Multi-AP profile type found in the configuration file for Destination AL MAC {dst_al_mac}. Skipping the frame.")
             continue
         src_profiletype = None
         dst_profiletype = None
@@ -509,10 +517,6 @@ def packet_analyzer(pcap_local_dir, initialize, al_mac1=None, al_mac2=None):
             #choose profile type which is lower src_profiletype or dst_profiletype
             profiletype = min(src_profiletype, dst_profiletype)
         report_logger.print_info(f"Profile Type using for 1905 message validation between {src_al_mac} and {dst_al_mac} = {profiletype:#04x}")
-        payload = bytes(eth.payload)
-        # Extract fields from CMDU header
-        message_type = (payload[2] << 8) | payload[3]
-        message_id   = (payload[4] << 8) | payload[5]
         message_type_name = get_message_type_name(message_type)
         # check if the message is from controller or agent. This is valid incase of AP Autoconfiguration WSC Messages
         if message_type == MSG_TYPE_AP_AUTOCONFIGURATION_WSC:
@@ -537,7 +541,6 @@ def packet_analyzer(pcap_local_dir, initialize, al_mac1=None, al_mac2=None):
                         controller_or_agent = "controller"
         if message_type == MSG_TYPE_LINK_METRIC_RESPONSE:
             report_logger.print_title(f"Analyzing the {message_type_name}")
-            frame_number = message_frame_map.get((message_type, message_id))
             try:
                 link_meteric_response_mandatory_tlvs, link_meteric_response_optional_tlvs = parse_config(tlv_data_from_config, profiletype, message_type)
             except ValueError as e:
