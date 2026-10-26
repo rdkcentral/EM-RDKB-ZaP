@@ -32,48 +32,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
 import datetime
-from pathlib import Path
 import os
+import subprocess
+import sys
+from pathlib import Path
 
-if __name__ == "__main__":
-    BASE_DIR = Path(__file__).resolve().parent
+def run_tests(base_dir, test_files, cli_args=None):
+    cli_args = list(cli_args or [])
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_dir = BASE_DIR / "Reports"
-    #Set environment variable
-    os.environ["TEST_RUN_DIR"] = str(run_dir)
-    # Reports path (needed BEFORE pytest starts)
-    reports_path = run_dir / f"TestRun_{timestamp}"
+    reports_path = base_dir / "Reports" / f"TestRun_{timestamp}"
+    os.environ["TEST_RUN_DIR"] = str(base_dir / "Reports")
     reports_path.mkdir(parents=True, exist_ok=True)
-    print(f"\n[INFO] Test Run Dir: {run_dir}\n")    
-    raise SystemExit(pytest.main([
+    pytest_command = [
+        sys.executable,
+        "-m",
+        "pytest",
         "-v",
         "--capture=tee-sys",
-        f"{BASE_DIR}/test/ref_test/test_report_generation.py",
-        f"{BASE_DIR}/test/ref_test/test_plugin_arch.py",
-        f"{BASE_DIR}/test/ref_test/test_ssid_config.py",
-        f"{BASE_DIR}/test/ref_test/test_ssid_config_packet_capture.py",
-        f"{BASE_DIR}/test/ref_test/test_tunneling.py",
-        f"{BASE_DIR}/test/ref_test/test_tunneling_and_reboot.py",
-        f"{BASE_DIR}/test/ref_test/test_ssid_config_packet_analyzer_usage.py",
-        f"{BASE_DIR}/test/ref_test/test_protocol_validation.py",
-        f"{BASE_DIR}/test/testscripts/Metrics_Collection/TS_Metrics_Collection_periodic_reporting.py",
-        f"{BASE_DIR}/test/testscripts/Metrics_Collection/TS_Metrics_Collection_response_disable.py",
-        f"{BASE_DIR}/test/testscripts/Controller_Recovery/TS_Controller_Recovery_extender_reconnection.py",
-        f"{BASE_DIR}/test/testscripts/Controller_Recovery/TS_Controller_Recovery_consecutive_reboots.py",
-        f"{BASE_DIR}/test/testscripts/Multi_Agent_Onboarding/TS_Multi_Agent_Onboarding_Topology_Device_Count.py",
-        f"{BASE_DIR}/test/testscripts/Multi_Agent_Onboarding/TS_Multi_Agent_Onboarding_No_Duplicate_Entries.py",
-        f"{BASE_DIR}/test/testscripts/Client_Association/TS_Client_Discover_EasyMesh_SSID.py",
-        f"{BASE_DIR}/test/testscripts/Client_Association/TS_Client_Authentication_Correct_Credentials.py",
-        f"{BASE_DIR}/test/testscripts/Client_Association/TS_Client_DHCP_IP_Assignment.py",
-        f"{BASE_DIR}/test/testscripts/Client_Association/TS_Client_Gateway_Reachability.py",
-        f"{BASE_DIR}/test/testscripts/Device_Stability/TS_Stability_long_duration_validation.py",
-        f"{BASE_DIR}/test/testscripts/Device_Stability/TS_Stability_channel_change_stress.py",
-        f"{BASE_DIR}/test/testscripts/Device_Stability/TS_Stability_ssid_update_stress.py",
-        f"{BASE_DIR}/test/testscripts/Device_Stability/TS_Stability_fronthaul_toggle_stress.py",
+        "--show-capture=no",
         f"--html={reports_path}/report.html",
         "--self-contained-html",
-        "--log-cli-level=INFO"
-    ]))
+        "--log-cli-level=INFO",
+        *cli_args,
+        *(str(path) for path in test_files),
+    ]
+    result = subprocess.run(pytest_command, cwd=base_dir).returncode
+    return result, reports_path / "report.html"
 

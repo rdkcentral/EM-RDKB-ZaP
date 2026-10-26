@@ -37,6 +37,7 @@ controller:
     ui_home_page_title: 'EasyMesh R6 Pro Controller'        # Title displayed on the Controller web UI
     bridge_iface: 'brlan0'                                  # LAN bridge interface used by the Controller
     bridge_ip: <ip_address>                                  # IP address of the Controller bridge interface
+    backhaul_interface: 'wifi.x'                             # Dynamically discovered managed backhaul interface
     backhaul_capture_iface: 'eth0_virt_peer'                # Interface used for capturing backhaul traffic
     filter_1905: 'ether proto 0x893a'                       # Packet capture filter for IEEE 1905 traffic
     wifi_device: 'radio'                                    # Wi-Fi device identifier used by the framework
@@ -80,6 +81,7 @@ controller:
 extender1:
     bridge_iface: 'brlan0'                                  # LAN bridge interface used by Extender 1
     bridge_ip: <ip_address>                                 # IP address of Extender 1 bridge interface
+    backhaul_interface: 'wifi.x'                            # Dynamically discovered managed backhaul interface
     backhaul_capture_iface: 'eth1_virt_peer'                # Interface used for capturing backhaul traffic
     filter_1905: 'ether proto 0x893a'                       # Packet capture filter for IEEE 1905 traffic
     pcap_remote_dir: '/home/root/pcap_logs'                # Directory where packet captures are stored
@@ -96,6 +98,7 @@ extender1:
 extender2:    
     bridge_iface: 'brlan0'                                  # LAN bridge interface used by Extender 2
     bridge_ip: <ip_address>                                 # IP address of Extender 2 bridge interface
+    backhaul_interface: 'wifi.x'                            # Dynamically discovered managed backhaul interface
     wifi_ifname: 'wifi'                                     # Base Wi-Fi interface name on Extender 2
     backhaul_capture_iface: 'eth1_virt_peer'                # Interface used for capturing backhaul traffic
     filter_1905: 'ether proto 0x893a'                       # Packet capture filter for IEEE 1905 traffic
@@ -112,6 +115,7 @@ extender2:
 extender3:    
     bridge_iface: 'brlan0'                                  # LAN bridge interface used by Extender 3
     bridge_ip: <ip_address>                                  # IP address of Extender 3 bridge interface
+    backhaul_interface: 'wifi.x'                             # Dynamically discovered managed backhaul interface
     backhaul_capture_iface: 'eth1_virt_peer'                # Interface used for capturing backhaul traffic
     filter_1905: 'ether proto 0x893a'                       # Packet capture filter for IEEE 1905 traffic
     pcap_remote_dir: '/home/root/pcap_logs'                # Directory where packet captures are stored
@@ -128,14 +132,27 @@ extender3:
 protocol:
     common_protocol_validation: True                        # Enable/Disable common protocol validation for verifying protocol-level behavior and message exchanges                      
 test_parameters:
+    execution_mode: <browser / terminal>                    # Test selection interface: terminal or browser
     controller_recovery_kpi_seconds: 300                    # Controller Recovery KPI threshold in seconds
     device_stability:
         Endurance_test_duration_in_seconds: 86400               # Stability test duration in seconds
         ssid_update_max_count: 100                              # Stability test Maximum number of SSID updates during the test
         channel_update_max_count: 100                           # Stability test Maximum number of channel updates during the test
         fronthaul_toggle_max_count: 100                         # Stability test Maximum number of fronthaul toggles during the test
-
-profile_type:
-    <update_controller_al_mac> : <update_profile_type>          # Controller AL MAC and its  profile type
-    <update_collocated_agent_al_mac> : <update_profile_type>    # Collocated Agent AL MAC and profile type
-    # <update_extender_al_mac> : <update_profile_type>          # Extender AL MAC and profile type
+    scalesetup:
+      small:
+        enabled: true                                        # Enable the small scale setup
+        expected_agent_count: 2                              # Number of expected agents in the small scale setup
+        expected_client_count: 5                             # Number of expected clients in the small scale setup
+      medium:
+        enabled: false                                       # Enable the medium scale setup
+        expected_agent_count: 5                              # Number of expected agents in the medium scale setup
+        expected_client_count: 25                            # Number of expected clients in the medium scale setup
+      large:
+        enabled: false
+        expected_agent_count: 10                             # Number of expected agents in the large scale setup   
+        expected_client_count: 50                            # Number of expected clients in the large scale setup
+    profile_type:
+        <update_controller_al_mac> : <update_profile_type>          # Controller AL MAC and its  profile type
+        <update_collocated_agent_al_mac> : <update_profile_type>    # Collocated Agent AL MAC and profile type
+        # <update_extender_al_mac> : <update_profile_type>          # Extender AL MAC and profile type

@@ -38,7 +38,7 @@ python3 -m pip install rdkbmeshzap-<version>-py3-none-any.whl
 ```
 
 ---
-### 4. Fetch infra.yaml from zaero to rdkbmeshzap 
+### 4. Fetch infra.yaml from zaero to rdkbmeshzap
 
 ```
 cd ../test/config
@@ -106,12 +106,37 @@ Once this is done, root login will be enabled for any future SSH connections int
 
 ## Usage
 
-### Run Test Cases
+### Select an Execution Mode
+
+Test selection is controlled by `test/config/platform.yaml`:
+
+```yaml
+test_parameters:
+   execution_mode: terminal
+```
+
+The supported values are:
+
+* `terminal` - Opens an interactive console selector using Questionary. Select suites and test cases from the terminal, then choose **Run Validation**.
+* `browser` - Starts the Streamlit dashboard in a browser. Select suites and individual test cases through the UI, then click **Run Validation**.
+
+### Launch the Test Selector
+
+Run the launcher from the project root:
 
 ```
-cd rdkbmesh-zap/
-python3 main.py
+python3 trigger_test.py
 ```
+
+The launcher reads `execution_mode` and starts the corresponding selector. Both modes execute the selected test files through pytest and generate an HTML report under `Reports/TestRun_<timestamp>/report.html`.
+
+For browser mode, Streamlit must be installed with the project dependencies. The dashboard is located at `test_dashboard/test_dashboard.py` and can also be started directly:
+
+```
+python3 -m streamlit run test_dashboard/test_dashboard.py
+```
+
+`main.py` contains the reusable test execution function used by the launcher and dashboard; use `trigger_test.py` as the normal entry point.
 
 ---
 

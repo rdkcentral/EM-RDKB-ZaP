@@ -93,7 +93,7 @@ def update_runtime_database(initialize, validate_setup_accessibility):
 	global _setup_failure
 	captured_output = io.StringIO()
 	with redirect_stdout(captured_output):
-		database_update_result = test_environment_checks.retrieve_and_store_radio_macs(initialize)
+		database_update_result = test_environment_checks.retrieve_and_store_runtime_data(initialize)
 	_setup_sections["database_update"] = captured_output.getvalue()
 	print(_setup_sections["database_update"], end="")
 	if database_update_result is False:
@@ -310,7 +310,7 @@ def pytest_html_results_summary(prefix, summary, postfix):
 @pytest.fixture(scope="function", autouse=True)
 def protocol_validation(request, initialize):
 	capture_name = f"{request.node.name}.pcap"
-	report_logger.print_step("========== Start Frame Capture ==========")
+	report_logger.print_title("========== Start Frame Capture ==========")
 	backhaul_iface = initialize.read_from_database("controller", "backhaul_capture_iface")
 	frame_filter = initialize.read_from_database("controller", "filter_1905")
 	pcap_local_directory = initialize.read_from_database("controller","pcap_local_dir")
@@ -318,9 +318,9 @@ def protocol_validation(request, initialize):
 		"controller", backhaul_iface, frame_filter, capture_name
 	)
 	yield True
-	report_logger.print_step("========== Stop Frame Capture ==========")
+	report_logger.print_title("========== Stop Frame Capture ==========")
 	initialize.stop_frame_capture("controller")
-	report_logger.print_step(f"Frame Capture saved as {capture_name}")
+	report_logger.print_info(f"INFO: Frame Capture saved as {capture_name}")
 	initialize.download_captured_pcap("controller", capture_name)
 	initialize.delete_captured_pcap("controller", capture_name)
 	capture_path = os.path.join(pcap_local_directory, capture_name)
@@ -340,3 +340,8 @@ def protocol_validation(request, initialize):
 			report_logger.print_error(f"Protocol Validation Failed: {error}")
 			pytest.fail(f"Protocol Validation Failed: {error}")
 		report_logger.print_title("========== Stop Common Protocol Validation ==========")
+	if hasattr(request.node, 'protocol_specific_function'):
+		try:
+			request.node.protocol_specific_function(capture_name)
+		except Exception as ERR:
+			raise RuntimeError(f"{ERR}")
