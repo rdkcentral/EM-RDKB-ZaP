@@ -28,7 +28,7 @@ def test_stability_long_duration_validation(initialize, common_setup):
     """
     report_logger.print_test(f"[{get_timestamp()}] Entering test_stability_long_duration_validation")
     devices = common_setup
-    report_logger.print_step(f"Step 1: retrieving time duration and local log directory details from configuration file")
+    report_logger.print_step(f"STEP 1: retrieving time duration and local log directory details from configuration file")
     timeout = initialize.read_from_database("test_parameters", "device_stability", "Endurance_test_duration_in_seconds")
     if timeout <= 0:
         pytest.fail("long duration test timeout must be greater than 0. please update the configuration \"Endurance_test_duration_in_seconds\".")
@@ -45,17 +45,17 @@ def test_stability_long_duration_validation(initialize, common_setup):
     else:
         report_logger.print_info(f"Local log directory {ctrl_local_dir} exists.")
     report_logger.print_success("PASS: Successfully retrieved local log directory and test duration")
-    report_logger.print_step("Step 2: Start monitoring script in controller")
+    report_logger.print_step("STEP 2: Start monitoring script in controller")
     initialize.execute_command("controller", "python3 /nvram/monitoring_tool.py &")
     time.sleep(5)
     report_logger.print_success("PASS: Monitoring script started in controller")
     start_time = time.time()
-    report_logger.print_step("Step 3: Starting long duration stability check loop for verifying core dump and backhaul status")
+    report_logger.print_step("STEP 3: Starting long duration stability check loop for verifying core dump and backhaul status")
     step_count = 3
     sub_step_count = 1
     while (time.time() - start_time) < timeout:
         report_logger.print_info(f"Test duration: {timeout / 60:.2f} minutes. Elapsed time: {(time.time() - start_time) / 60:.2f} minutes")
-        report_logger.print_step(f"Step {step_count}.{sub_step_count}: Checking for core dump files in controller")
+        report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Checking for core dump files in controller")
         if initialize.get_file_presence_status("controller", "/tmp/*dmp"):
             report_logger.print_error(f"[{get_timestamp()}] controller: Core dump detected.")
             break
@@ -64,7 +64,7 @@ def test_stability_long_duration_validation(initialize, common_setup):
         sub_step_count += 1
         for device in devices[:]:
             if device != "controller":
-                report_logger.print_step(f"Step {step_count}.{sub_step_count}: Checking wireless backhaul status for {device}")
+                report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Checking wireless backhaul status for {device}")
                 sub_step_count += 1
                 try:
                     if not initialize.get_wireless_backhaul_connection_status(device):
@@ -77,7 +77,7 @@ def test_stability_long_duration_validation(initialize, common_setup):
                     devices.remove(device)
         time.sleep(30)
     step_count += 1
-    report_logger.print_step(f"Step {step_count}: Stopping monitoring script in controller")
+    report_logger.print_step(f"STEP {step_count}: Stopping monitoring script in controller")
     initialize.execute_command("controller", "pkill -f monitoring_tool.py")
     report_logger.print_success("PASS: Monitoring script stopped in controller")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -87,15 +87,15 @@ def test_stability_long_duration_validation(initialize, common_setup):
     step_count += 1
     sub_step_count = 0
     available_log_files = []
-    report_logger.print_step(f"Step {step_count}: Checking for presence of log files on controller")
+    report_logger.print_step(f"STEP {step_count}: Checking for presence of log files on controller")
     for log_file in LOG_PATHS:
         sub_step_count += 1
         process_name = os.path.basename(log_file).replace("_monitor.csv", "")
-        report_logger.print_step(f"Step {step_count}.{sub_step_count}: checking the presence of resource usage log files for {process_name} on controller")
+        report_logger.print_step(f"STEP {step_count}.{sub_step_count}: checking the presence of resource usage log files for {process_name} on controller")
         if initialize.get_file_presence_status("controller", log_file):
             available_log_files.append(os.path.basename(log_file))
             report_logger.print_success(f"PASS: Log file found on controller.")
-            report_logger.print_step(f"Step {step_count}.{sub_step_count}: Downloading log file locally and deleting remote file instance.")
+            report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Downloading log file locally and deleting remote file instance.")
             initialize.get_file("controller", log_file, ctrl_local_dir)
             initialize.execute_command("controller", f"rm -f {log_file}")
             report_logger.print_success(f"PASS: Log file downloaded and deleted the file from controller")

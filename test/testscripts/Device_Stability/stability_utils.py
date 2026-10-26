@@ -143,9 +143,9 @@ def log_analyzer(log_path, step_count, sub_step_count=1):
     Return Value: None. It logs pass/fail messages for each analyzed log file.
     """
     process_name = os.path.basename(log_path).replace("_monitor.csv", "")
-    report_logger.print_step(f"Step {step_count}: Analyzing resource usage for process: {process_name}")
+    report_logger.print_step(f"STEP {step_count}: Analyzing resource usage for process: {process_name}")
     mem_usage,avg_cpu, max_cpu,pid_status = analyse_device_log(log_path)
-    report_logger.print_step(f"Step {step_count}.{sub_step_count}: Analyzing memory usage ")
+    report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Analyzing memory usage ")
     sub_step_count += 1
     if mem_usage is None:
         report_logger.print_error(f"{process_name}: Memory usage unavailable")
@@ -153,7 +153,7 @@ def log_analyzer(log_path, step_count, sub_step_count=1):
         report_logger.print_error(f"{process_name}: High Memory Usage :{mem_usage}% variation detected.")
     else:
         report_logger.print_success(f"PASS: Memory usage is normal : {mem_usage}% variation detected.")
-    report_logger.print_step(f"Step {step_count}.{sub_step_count}: Analyzing Average CPU usage ")
+    report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Analyzing Average CPU usage ")
     sub_step_count += 1
     if avg_cpu is None:
         report_logger.print_error(f"{process_name}: Average CPU usage unavailable.")
@@ -161,7 +161,7 @@ def log_analyzer(log_path, step_count, sub_step_count=1):
         report_logger.print_error(f"{process_name}: High Average CPU Detected : {avg_cpu}% .")
     else:
         report_logger.print_success(f"PASS: Average CPU usage is normal : {avg_cpu}%.")
-    report_logger.print_step(f"Step {step_count}.{sub_step_count}: Analyzing Max CPU usage ")
+    report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Analyzing Max CPU usage ")
     sub_step_count += 1
     if max_cpu is None:
         report_logger.print_error(f"{process_name}: Max CPU usage unavailable.")
@@ -169,7 +169,7 @@ def log_analyzer(log_path, step_count, sub_step_count=1):
         report_logger.print_error(f"{process_name}: High Max CPU Detected : {max_cpu}% .")
     else:
         report_logger.print_success(f"PASS: Max CPU usage is normal : {max_cpu}%.")
-    report_logger.print_step(f"Step {step_count}.{sub_step_count}: Analyzing PID stability ")
+    report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Analyzing PID stability ")
     sub_step_count += 1
     if pid_status is None:
         report_logger.print_error(f"{process_name}: PID status unavailable.")

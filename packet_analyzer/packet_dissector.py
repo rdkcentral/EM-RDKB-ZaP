@@ -260,9 +260,9 @@ def verify_tlv_presence_with_type(requested_message_type, tlv_to_verify, payload
             expected_tlv_length, tlv_length_valid_flag = validate_tlv_length(tlv_to_verify, tlv_length)
             break
     if tlv_presence_flag and tlv_length_valid_flag:
-        report_logger.print_success(f"{get_tlv_type_name(tlv_to_verify)} is present and the expected tlv length is {expected_tlv_length} and actual tlv length is {tlv_length}")  
+        report_logger.print_success(f"PASS: {get_tlv_type_name(tlv_to_verify)} is present and the expected tlv length is {expected_tlv_length} and actual tlv length is {tlv_length}")  
     if tlv_presence_flag and not tlv_length_valid_flag:
-        report_logger.print_success(f"{get_tlv_type_name(tlv_to_verify)} present.")
+        report_logger.print_success(f"PASS:{get_tlv_type_name(tlv_to_verify)} present.")
         report_logger.print_error(f"framenumber :{frame_number} {get_tlv_type_name(tlv_to_verify)} length is invalid. expected tlv length is {expected_tlv_length} and actual tlv length is {tlv_length}")
         error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
     if not tlv_presence_flag:
@@ -558,9 +558,9 @@ def packet_analyzer(pcap_local_dir, initialize, al_mac1=None, al_mac2=None):
                 else:
                      expected_tlv_length, tlv_length_valid_flag = validate_tlv_length(tlv_type, tlv_length)
                      if tlv_length_valid_flag:
-                        report_logger.print_success(f"{get_tlv_type_name(tlv_type)} is expected and the  tlv length is valid : {tlv_length}")  
-                     else:
-                        report_logger.print_success(f"{get_tlv_type_name(tlv_type)} is expected.")
+                        report_logger.print_success(f"PASS: {get_tlv_type_name(tlv_type)} is expected and the  tlv length is valid : {tlv_length}") 
+                     else: 
+                        report_logger.print_success(f"PASS: {get_tlv_type_name(tlv_type)} is expected.")
                         report_logger.print_error(f"framenumber :{frame_number} {get_tlv_type_name(tlv_type)} length is invalid. expected tlv length is {expected_tlv_length} and actual tlv length is {tlv_length}")
                         error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
             continue

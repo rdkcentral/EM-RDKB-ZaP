@@ -29,7 +29,7 @@ def test_stability_ssid_update_stress(initialize, common_setup):
     """
     report_logger.print_test(f"[{get_timestamp()}] Entering test_stability_ssid_update_stress")
     devices = common_setup
-    report_logger.print_step("Step 1: Retrieving test parameters and local log directory")
+    report_logger.print_step("STEP 1: Retrieving test parameters and local log directory")
     ssid_update_max_count = initialize.read_from_database("test_parameters", "device_stability", "ssid_update_max_count")
     if ssid_update_max_count <= 0:
         pytest.fail("ssid_update_max_count must be greater than 0. please update the configuration \"ssid_update_max_count\".")
@@ -45,17 +45,17 @@ def test_stability_ssid_update_stress(initialize, common_setup):
     else:
         report_logger.print_info(f"Local log directory {ctrl_local_dir} exists.")
     report_logger.print_success("PASS: Successfully retrieved local log directory and test parameters")
-    report_logger.print_step("Step 2: Start monitor_service in controller")
+    report_logger.print_step("STEP 2: Start monitor_service in controller")
     initialize.execute_command("controller", "python3 /nvram/monitoring_tool.py &")
     report_logger.print_success("PASS: Monitoring script started in controller")
     ssid_update_current_count = 0
-    report_logger.print_step("Step3: Fetching initial SSID from controller")
+    report_logger.print_step("STEP 3: Fetching initial SSID from controller")
     try:
         initial_ssid = initialize.get_ssid("controller", "2g_ssid_index", 'de')
     except Exception as ERR:
         pytest.fail(f"Failed to get initial SSID from controller: {ERR}")
     report_logger.print_success(f"PASS: Initial SSID retrieved successfully: {initial_ssid}")
-    report_logger.print_step("Step 4: Starting repeated SSID update procedure")
+    report_logger.print_step("STEP 4: Starting repeated SSID update procedure")
     step_count = 4
     sub_step_count = 0
     while ssid_update_current_count < ssid_update_max_count:
@@ -63,7 +63,7 @@ def test_stability_ssid_update_stress(initialize, common_setup):
         ssid_update_current_count += 1
         ssid = initialize.get_random_ssid()
         report_logger.print_info(f"Iteration: {ssid_update_current_count}")
-        report_logger.print_step(f"step {step_count}.{sub_step_count}: Updating SSID to {ssid} using RDKBCLI")
+        report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Updating SSID to {ssid} using RDKBCLI")
         try:
             initialize.set_ssid("controller", "mld_iface_index", ssid, 'gui')
             time.sleep(SSID_UPDATE_WAITING_TIME)
@@ -74,7 +74,7 @@ def test_stability_ssid_update_stress(initialize, common_setup):
         for device in devices[:]:
             try:
                 sub_step_count += 1
-                report_logger.print_step(f"Step {step_count}.{sub_step_count}: Checking SSID on {device}")
+                report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Checking SSID on {device}")
                 initialize.check_ssid(device, "mld_iface_index", ssid, 'cli')
             except Exception as ERR:
                 report_logger.print_error(f"{device}: Iteration: {ssid_update_current_count} check_ssid failed in {device}: {ERR}")
@@ -84,7 +84,7 @@ def test_stability_ssid_update_stress(initialize, common_setup):
         if not devices:
             break
     step_count += 1
-    report_logger.print_step(f"Step {step_count}: Stopping monitoring script in controller")
+    report_logger.print_step(f"STEP {step_count}: Stopping monitoring script in controller")
     initialize.execute_command("controller", "pkill -f monitoring_tool.py")
     report_logger.print_success("PASS: Monitoring script stopped in controller")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -94,16 +94,16 @@ def test_stability_ssid_update_stress(initialize, common_setup):
     step_count += 1
     sub_step_count = 0
     available_log_files = []
-    report_logger.print_step(f"Step {step_count}: Checking  the presence of resource usage log files on controller")
+    report_logger.print_step(f"STEP {step_count}: Checking  the presence of resource usage log files on controller")
     for log_file in LOG_PATHS:
         sub_step_count += 1
         process_name = os.path.basename(log_file).replace("_monitor.csv", "")
-        report_logger.print_step(f"Step {step_count}.{sub_step_count}: checking the presence of resource usage log files for {process_name} on controller")
+        report_logger.print_step(f"STEP {step_count}.{sub_step_count}: checking the presence of resource usage log files for {process_name} on controller")
         if initialize.get_file_presence_status("controller", log_file):
             available_log_files.append(os.path.basename(log_file))
             report_logger.print_success(f"PASS: Log file found on controller.")
             sub_step_count += 1
-            report_logger.print_step(f"Step {step_count}.{sub_step_count}: Downloading log file locally and deleting remote file instance.")
+            report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Downloading log file locally and deleting remote file instance.")
             initialize.get_file("controller", log_file, ctrl_local_dir)
             initialize.execute_command("controller", f"rm -f {log_file}")
             report_logger.print_success(f"PASS: Log file downloaded and deleted the file from controller")
@@ -114,7 +114,7 @@ def test_stability_ssid_update_stress(initialize, common_setup):
         log_file_path = os.path.join(ctrl_local_dir, log_file)
         log_analyzer(log_file_path, step_count)
     step_count += 1
-    report_logger.print_step(f"Step {step_count}: Restoring initial SSID on controller")
+    report_logger.print_step(f"STEP {step_count}: Restoring initial SSID on controller")
     try:
         initialize.set_ssid("controller", "mld_iface_index", initial_ssid, 'gui')
         time.sleep(SSID_UPDATE_WAITING_TIME)
