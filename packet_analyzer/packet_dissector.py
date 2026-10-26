@@ -243,7 +243,7 @@ def verify_tlv_presence_with_type(requested_message_type, tlv_to_verify, payload
         requested_message_type - Numeric CMDU message type used in validation output.
         tlv_to_verify - Numeric TLV type to find and validate.
         payload - CMDU payload bytes to inspect.
-    Return Value: A tuple containing a success boolean and an empty string or a failure reason.
+    Return Value: None. Validation results are written to the report logger and error list.
     """
     message_type = (payload[2] << 8) | payload[3]
     message_id   = (payload[4] << 8) | payload[5]
@@ -408,9 +408,9 @@ def packet_analyzer(pcap_local_dir, initialize, al_mac1=None, al_mac2=None):
     Return Value: None. Message counts and validation results are written to the report logger.
     """
     report_logger.print_info("Entering packet_analyzer")
-    profile_dict = initialize.read_from_database("profile_type")
+    profile_dict = initialize.read_from_database("test_parameters","profile_type")
     for key, value in profile_dict.items():
-        if "update" in key:
+        if "aa:bb:cc:dd:ee:ff" in key:
             report_logger.print_error("kindly update the device al mac and profile type in the database.")
             error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
             return
@@ -470,7 +470,7 @@ def packet_analyzer(pcap_local_dir, initialize, al_mac1=None, al_mac2=None):
         #read all the almacs available under profile_type in the platform.yaml
         src_al_mac = eth.src.lower()
         dst_al_mac = eth.dst.lower()
-        profile_dict = initialize.read_from_database("profile_type")
+        profile_dict = initialize.read_from_database("test_parameters","profile_type")
         if "device_present" in profile_dict:
             del profile_dict["device_present"]
         mac_list = list(profile_dict.keys())
@@ -485,10 +485,10 @@ def packet_analyzer(pcap_local_dir, initialize, al_mac1=None, al_mac2=None):
         src_profiletype = None
         dst_profiletype = None
         try:
-            src_profiletype = initialize.read_from_database("profile_type", src_al_mac)
+            src_profiletype = initialize.read_from_database("test_parameters","profile_type", src_al_mac)
         except Exception as e:
             if "Could not fetch data from database dictionary for the values" in str(e):
-                src_profiletype = initialize.read_from_database("profile_type", src_al_mac.upper())
+                src_profiletype = initialize.read_from_database("test_parameters","profile_type", src_al_mac.upper())
             else:
                 report_logger.print_error(f"failed to retrieve profile type for source AL MAC {src_al_mac} : {str(e)}")
                 error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
@@ -497,10 +497,10 @@ def packet_analyzer(pcap_local_dir, initialize, al_mac1=None, al_mac2=None):
             profiletype = src_profiletype
         else:
             try:
-                dst_profiletype = initialize.read_from_database("profile_type", dst_al_mac)
+                dst_profiletype = initialize.read_from_database("test_parameters","profile_type", dst_al_mac)
             except Exception as e:
                 if "Could not fetch data from database dictionary for the values" in str(e):
-                    dst_profiletype = initialize.read_from_database("profile_type", dst_al_mac.upper())
+                    dst_profiletype = initialize.read_from_database("test_parameters","profile_type", dst_al_mac.upper())
                 else:
                     report_logger.print_error(f"failed to retrieve profile type for destination AL MAC {dst_al_mac} : {str(e)}")
                     error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
@@ -517,6 +517,17 @@ def packet_analyzer(pcap_local_dir, initialize, al_mac1=None, al_mac2=None):
         # check if the message is from controller or agent. This is valid incase of AP Autoconfiguration WSC Messages
         if message_type == MSG_TYPE_AP_AUTOCONFIGURATION_WSC:
             found_tlvs, _tlv_length, tlv_values, _, error = parse_tlvs(payload)
+            if error or not found_tlvs:
+                report_logger.print_error(error or "Failed to parse WSC message TLVs")
+                error_list.append(report_logger.get_error_logs()[-1])
+                continue
+            if any(
+                tlv_type == TLV_TYPE_WSC and len(value) < 10
+                for tlv_type, value in zip(found_tlvs, tlv_values)
+            ):
+                report_logger.print_error("WSC TLV is too short to extract the message type")
+                error_list.append(report_logger.get_error_logs()[-1])
+                continue
             for tlv_type, tlv_length, tlv_value in zip(found_tlvs, _tlv_length, tlv_values):
                 if tlv_type == TLV_TYPE_WSC:
                     wsc_message_type = tlv_value[9]
@@ -532,6 +543,10 @@ def packet_analyzer(pcap_local_dir, initialize, al_mac1=None, al_mac2=None):
             except ValueError as e:
                 continue
             found_tlvs, _tlv_length, tlv_values, _, error = parse_tlvs(payload)
+            if error or not found_tlvs:
+                report_logger.print_error(f"framenumber :{frame_number} {error or 'Failed to parse Link Metric Response TLVs'}")
+                error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
+                continue
             for tlv_type, tlv_length, tlv_value in zip(found_tlvs, _tlv_length, tlv_values):
                 report_logger.print_info(f"Processing {get_tlv_type_name(tlv_type)} with length {tlv_length}")
                 if tlv_type not in link_meteric_response_mandatory_tlvs:

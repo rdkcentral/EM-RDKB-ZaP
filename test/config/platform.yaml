@@ -153,6 +153,8 @@ test_parameters:
         expected_agent_count: 10                             # Number of expected agents in the large scale setup   
         expected_client_count: 50                            # Number of expected clients in the large scale setup
     profile_type:
-        <update_controller_al_mac> : <update_profile_type>          # Controller AL MAC and its  profile type
-        <update_collocated_agent_al_mac> : <update_profile_type>    # Collocated Agent AL MAC and profile type
-        # <update_extender_al_mac> : <update_profile_type>          # Extender AL MAC and profile type
+        aa:bb:cc:dd:ee:ff : 0xff                             # replace with controller al mac and its multi-ap profile type
+        aa:bb:cc:dd:ee:ff : 0xff                             # replace with collocated agent al mac and its multi-ap profile type
+        aa:bb:cc:dd:ee:ff : 0xff                             # replace with extender1 al mac and its multi-ap profile type
+        aa:bb:cc:dd:ee:ff : 0xff                             # replace with extender2 al mac and its multi-ap profile type
+        aa:bb:cc:dd:ee:ff : 0xff                             # replace with extender3 al mac and its multi-ap profile type

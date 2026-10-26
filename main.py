@@ -59,4 +59,3 @@ def run_tests(base_dir, test_files, cli_args=None):
     ]
     result = subprocess.run(pytest_command, cwd=base_dir).returncode
     return result, reports_path / "report.html"
-
