@@ -32,7 +32,7 @@ def test_stability_channel_change_stress(initialize, common_setup):
     channel_update_max_count = initialize.read_from_database("test_parameters", "device_stability", "channel_update_max_count")
     if channel_update_max_count <= 0:
         pytest.fail("channel_update_max_count must be greater than 0. please update the configuration \"channel_update_max_count\".")
-    report_logger.print_info(f"Channel update max count: {channel_update_max_count}")
+    report_logger.print_info(f"INFO: Channel update max count: {channel_update_max_count}")
     report_logger.print_success("PASS: Successfully retrieved test parameter")
     devices = common_setup
     channel_update_current_count = 0
@@ -41,12 +41,12 @@ def test_stability_channel_change_stress(initialize, common_setup):
     sub_step_count = 0
     while channel_update_current_count < channel_update_max_count:
         sub_step_count += 1
-        report_logger.print_info(f"Iteration: {channel_update_current_count + 1}")
+        report_logger.print_info(f"INFO: Iteration: {channel_update_current_count + 1}")
         report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Fetching current operating channel from the controller")
         try:
             operating_channel = initialize.get_operating_channel("controller", "2.4")
         except Exception as e:
-            report_logger.print_error(f"Failed to retrieve current operating channel from the controller: {e}")
+            report_logger.print_error(f"FAIL: Failed to retrieve current operating channel from the controller: {e}")
             pytest.fail(f"Failed to retrieve current operating channel from the controller: {e}")
         report_logger.print_success(f"PASS: Retrieved current operating channel from the controller: {operating_channel}")
         sub_step_count += 1
@@ -57,7 +57,7 @@ def test_stability_channel_change_stress(initialize, common_setup):
         try:
             initialize.set_channel_preference_for_2_4_band("controller", uncheck_channel=operating_channel, check_channel=operating_channel_to_set, priority=14)
         except Exception as e:
-            report_logger.print_error(f"Failed to set operating channel to {operating_channel_to_set}: {e}")
+            report_logger.print_error(f"FAIL: Failed to set operating channel to {operating_channel_to_set}: {e}")
         else:
             report_logger.print_success(f"PASS: Successfully set operating channel to {operating_channel_to_set}")
         channel_update_current_count += 1
@@ -68,12 +68,12 @@ def test_stability_channel_change_stress(initialize, common_setup):
             try:
                 current_operating_channel = initialize.get_operating_channel(device, "2.4")
                 if current_operating_channel != operating_channel_to_set:
-                    report_logger.print_error(f"{device}: Iteration: {channel_update_current_count} Channel update failed in {device}: expected {operating_channel_to_set}, got {current_operating_channel}")
+                    report_logger.print_error(f"FAIL: {device}: Iteration: {channel_update_current_count} Channel update failed in {device}: expected {operating_channel_to_set}, got {current_operating_channel}")
                     devices.remove(device)
                 else:
                     report_logger.print_success(f"PASS: Channel updated successfully in {device} to {current_operating_channel}")
             except Exception as e:
-                report_logger.print_error(f"Failed to retrieve current operating channel from the device {device}: {e}")
+                report_logger.print_error(f"FAIL: Failed to retrieve current operating channel from the device {device}: {e}")
                 devices.remove(device)
         if not devices:
             break
@@ -84,7 +84,7 @@ def test_stability_channel_change_stress(initialize, common_setup):
         report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Fetching current operating channel from the controller")
         operating_channel = initialize.get_operating_channel("controller", "2.4")
     except Exception as e:
-        report_logger.print_error(f"Failed to fetch current operating channel from the controller: {e}")
+        report_logger.print_error(f"FAIL: Failed to fetch current operating channel from the controller: {e}")
     else:
         report_logger.print_success(f"PASS: Fetched current operating channel from the controller: {operating_channel}")
     sub_step_count += 1
@@ -93,7 +93,7 @@ def test_stability_channel_change_stress(initialize, common_setup):
                 report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Reverting operating channel to {initial_channel_number}")
                 initialize.set_channel_preference_for_2_4_band("controller", uncheck_channel=operating_channel, check_channel=initial_channel_number, priority=14)
         except Exception as e:
-            report_logger.print_error(f"Failed to revert operating channel: {e}")
+            report_logger.print_error(f"FAIL: Failed to revert operating channel: {e}")
         else:
             report_logger.print_success(f"PASS: Successfully reverted operating channel to {initial_channel_number}")
     report_logger.print_test(f"[{get_timestamp()}] Exiting test_stability_channel_change_stress")

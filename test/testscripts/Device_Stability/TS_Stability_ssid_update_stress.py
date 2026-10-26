@@ -33,17 +33,17 @@ def test_stability_ssid_update_stress(initialize, common_setup):
     ssid_update_max_count = initialize.read_from_database("test_parameters", "device_stability", "ssid_update_max_count")
     if ssid_update_max_count <= 0:
         pytest.fail("ssid_update_max_count must be greater than 0. please update the configuration \"ssid_update_max_count\".")
-    report_logger.print_info(f"Retrieved ssid_update_max_count: {ssid_update_max_count}")
+    report_logger.print_info(f"INFO: Retrieved ssid_update_max_count: {ssid_update_max_count}")
     ctrl_local_dir = initialize.read_from_database("controller", "local_log_directory")
     if ctrl_local_dir == "</replace/with/local/path>":
         pytest.fail("Local log directory  is not set. Please update the configuration \"local_log_directory\".")
-    report_logger.print_info(f"Retrieved local_log_directory: {ctrl_local_dir}")
+    report_logger.print_info(f"INFO: Retrieved local_log_directory: {ctrl_local_dir}")
     if not os.path.exists(ctrl_local_dir):
-        report_logger.print_info(f"Local log directory {ctrl_local_dir} does not exist. creating it now.")
+        report_logger.print_info(f"INFO: Local log directory {ctrl_local_dir} does not exist. creating it now.")
         os.makedirs(ctrl_local_dir)
-        report_logger.print_info(f"Local log directory {ctrl_local_dir} created successfully.")
+        report_logger.print_info(f"INFO: Local log directory {ctrl_local_dir} created successfully.")
     else:
-        report_logger.print_info(f"Local log directory {ctrl_local_dir} exists.")
+        report_logger.print_info(f"INFO: Local log directory {ctrl_local_dir} exists.")
     report_logger.print_success("PASS: Successfully retrieved local log directory and test parameters")
     report_logger.print_step("STEP 2: Start monitor_service in controller")
     initialize.execute_command("controller", "python3 /nvram/monitoring_tool.py &")
@@ -62,7 +62,7 @@ def test_stability_ssid_update_stress(initialize, common_setup):
         sub_step_count += 1
         ssid_update_current_count += 1
         ssid = initialize.get_random_ssid()
-        report_logger.print_info(f"Iteration: {ssid_update_current_count}")
+        report_logger.print_info(f"INFO:Iteration: {ssid_update_current_count}")
         report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Updating SSID to {ssid} using RDKBCLI")
         try:
             initialize.set_ssid("controller", "mld_iface_index", ssid, 'gui')
@@ -77,7 +77,7 @@ def test_stability_ssid_update_stress(initialize, common_setup):
                 report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Checking SSID on {device}")
                 initialize.check_ssid(device, "mld_iface_index", ssid, 'cli')
             except Exception as ERR:
-                report_logger.print_error(f"{device}: Iteration: {ssid_update_current_count} check_ssid failed in {device}: {ERR}")
+                report_logger.print_error(f"FAIL: {device}: Iteration: {ssid_update_current_count} check_ssid failed in {device}: {ERR}")
                 devices.remove(device)
             else:
                 report_logger.print_success(f"PASS: SSID matched successfully in {device}")
@@ -108,7 +108,7 @@ def test_stability_ssid_update_stress(initialize, common_setup):
             initialize.execute_command("controller", f"rm -f {log_file}")
             report_logger.print_success(f"PASS: Log file downloaded and deleted the file from controller")
         else:
-            report_logger.print_error(f"Controller: Log file not found for {process_name}")
+            report_logger.print_error(f"FAIL: Controller: Log file not found for {process_name}")
     for log_file in available_log_files:
         step_count += 1
         log_file_path = os.path.join(ctrl_local_dir, log_file)

@@ -33,7 +33,7 @@ def test_stability_fronthaul_toggle_stress(initialize, common_setup):
     fronthaul_toggle_max_count = initialize.read_from_database("test_parameters", "device_stability", "fronthaul_toggle_max_count")
     if fronthaul_toggle_max_count <= 0:
         pytest.fail("fronthaul_toggle_max_count must be greater than 0. please update the configuration \"fronthaul_toggle_max_count\".")
-    report_logger.print_info(f"Fronthaul toggle max count: {fronthaul_toggle_max_count}")
+    report_logger.print_info(f"INFO: Fronthaul toggle max count: {fronthaul_toggle_max_count}")
     report_logger.print_success("PASS: Successfully retrieved test parameter")
     fronthaul_toggle_current_count = 0
     report_logger.print_step("STEP 2: Starting fronthaul toggle procedure")
@@ -41,7 +41,7 @@ def test_stability_fronthaul_toggle_stress(initialize, common_setup):
     sub_step_count = 0
     while fronthaul_toggle_current_count < fronthaul_toggle_max_count:
         sub_step_count += 1
-        report_logger.print_info(f"Iteration: {fronthaul_toggle_current_count + 1}")
+        report_logger.print_info(f"INFO: Iteration: {fronthaul_toggle_current_count + 1}")
         report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Fetching current MLD status from the controller")
         current_mld_status = initialize.get_mld_status("controller")
         if initial_mld_status is None:
@@ -62,7 +62,7 @@ def test_stability_fronthaul_toggle_stress(initialize, common_setup):
             report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Fetching current MLD status from the device {device}")
             mld_status = initialize.get_mld_status(device)
             if mld_status != set_mld_status:
-                report_logger.print_error(f"{device}: Iteration: {fronthaul_toggle_current_count} Fronthaul network profile toggle failed in {device}: expected {set_mld_status}, got {mld_status}")
+                report_logger.print_error(f"FAIL: {device}: Iteration: {fronthaul_toggle_current_count} Fronthaul network profile toggle failed in {device}: expected {set_mld_status}, got {mld_status}")
                 devices.remove(device)
             else:
                 report_logger.print_success(f"PASS: Fronthaul network profile toggle succeeded in {device}")

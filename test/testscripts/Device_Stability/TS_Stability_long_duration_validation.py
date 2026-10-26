@@ -32,18 +32,18 @@ def test_stability_long_duration_validation(initialize, common_setup):
     timeout = initialize.read_from_database("test_parameters", "device_stability", "Endurance_test_duration_in_seconds")
     if timeout <= 0:
         pytest.fail("long duration test timeout must be greater than 0. please update the configuration \"Endurance_test_duration_in_seconds\".")
-    report_logger.print_info(f"Retrieved long duration stability test timeout: {timeout} seconds")
+    report_logger.print_info(f"INFO: Retrieved long duration stability test timeout: {timeout} seconds")
     ctrl_local_dir = initialize.read_from_database("controller", "local_log_directory")
     if ctrl_local_dir == "</replace/with/local/path>":
         pytest.fail("Local log directory  is not set. Please update the configuration \"local_log_directory\".")
     else:
-        report_logger.print_info(f"Retrieved local_log_directory: {ctrl_local_dir}")
+        report_logger.print_info(f"INFO: Retrieved local_log_directory: {ctrl_local_dir}")
     if not os.path.exists(ctrl_local_dir):
-        report_logger.print_info(f"Local log directory {ctrl_local_dir} does not exist. creating it now.")
+        report_logger.print_info(f"INFO: Local log directory {ctrl_local_dir} does not exist. creating it now.")
         os.makedirs(ctrl_local_dir)
-        report_logger.print_info(f"Local log directory {ctrl_local_dir} created successfully.")
+        report_logger.print_info(f"INFO: Local log directory {ctrl_local_dir} created successfully.")
     else:
-        report_logger.print_info(f"Local log directory {ctrl_local_dir} exists.")
+        report_logger.print_info(f"INFO: Local log directory {ctrl_local_dir} exists.")
     report_logger.print_success("PASS: Successfully retrieved local log directory and test duration")
     report_logger.print_step("STEP 2: Start monitoring script in controller")
     initialize.execute_command("controller", "python3 /nvram/monitoring_tool.py &")
@@ -54,10 +54,10 @@ def test_stability_long_duration_validation(initialize, common_setup):
     step_count = 3
     sub_step_count = 1
     while (time.time() - start_time) < timeout:
-        report_logger.print_info(f"Test duration: {timeout / 60:.2f} minutes. Elapsed time: {(time.time() - start_time) / 60:.2f} minutes")
+        report_logger.print_info(f"INFO: Test duration: {timeout / 60:.2f} minutes. Elapsed time: {(time.time() - start_time) / 60:.2f} minutes")
         report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Checking for core dump files in controller")
         if initialize.get_file_presence_status("controller", "/tmp/*dmp"):
-            report_logger.print_error(f"[{get_timestamp()}] controller: Core dump detected.")
+            report_logger.print_error(f"FAIL: [{get_timestamp()}] controller: Core dump detected.")
             break
         else:
             report_logger.print_success(f"PASS: No core dump found on controller.")
@@ -68,12 +68,12 @@ def test_stability_long_duration_validation(initialize, common_setup):
                 sub_step_count += 1
                 try:
                     if not initialize.get_wireless_backhaul_connection_status(device):
-                        report_logger.print_error(f"[{get_timestamp()}] {device}: not connected to the backhaul.")
+                        report_logger.print_error(f"FAIL: [{get_timestamp()}] {device}: not connected to the backhaul.")
                         devices.remove(device)
                     else:
                         report_logger.print_success(f"PASS: {device} is connected to the backhaul.")
                 except Exception as e:
-                    report_logger.print_error(f"[{get_timestamp()}] {device}: Error occurred while checking backhaul status: {e}")
+                    report_logger.print_error(f"FAIL: [{get_timestamp()}] {device}: Error occurred while checking backhaul status: {e}")
                     devices.remove(device)
         time.sleep(30)
     step_count += 1
@@ -100,7 +100,7 @@ def test_stability_long_duration_validation(initialize, common_setup):
             initialize.execute_command("controller", f"rm -f {log_file}")
             report_logger.print_success(f"PASS: Log file downloaded and deleted the file from controller")
         else:
-            report_logger.print_error(f"Controller: Log file not found : {log_file}")
+            report_logger.print_error(f"FAIL: Controller: Log file not found : {log_file}")
     for log_file in available_log_files:
         step_count += 1
         log_file_path = os.path.join(ctrl_local_dir, log_file)
