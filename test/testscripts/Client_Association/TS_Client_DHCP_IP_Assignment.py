@@ -159,7 +159,7 @@ def test_client_association_dhcp_ip_assignment(initialize):
                 step_passed = False
         if step_passed:
             report_logger.print_success("PASS: DHCP processes verification successful for all connected clients")
-        report_logger.print_step("STEP 11: Verify IP address assignment on clients")
+        report_logger.print_step("STEP 10: Verify IP address assignment on clients")
         step_passed = True
         for client in clients:
             if not initialize.read_from_database(client,"device_present"):
@@ -176,7 +176,7 @@ def test_client_association_dhcp_ip_assignment(initialize):
                 step_passed = False
         if step_passed:
             report_logger.print_success("PASS: All connected clients have been assigned valid IP addresses")
-        report_logger.print_step("STEP 12: Verify IP Address assignment is within the DHCP pool range")
+        report_logger.print_step("STEP 11: Verify IP Address assignment is within the DHCP pool range")
         step_passed = True
         for client in clients:
             if not initialize.read_from_database(client,"device_present"):

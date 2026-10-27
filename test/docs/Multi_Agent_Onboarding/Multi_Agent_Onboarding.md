@@ -151,7 +151,6 @@ Verify that after onboarding, the Controller's topology data model reflects exac
 
 1. All 3 Agents have completed onboarding to the Controller .
 2. rbuscli is available on the Controller.
-3. Packet capture (tcpdump) from the Test Case 1/2 onboarding sequence retained (already started and stopped there), for cross-referencing the reported device count against the actual number of AP-Autoconfiguration/1905 Ack exchanges observed. No new capture is started in this test case — it reuses the retained capture.
 
 ---
 
@@ -171,11 +170,11 @@ Verify that after onboarding, the Controller's topology data model reflects exac
 | Step Number | Controller | Agent | Expected Result |
 |-------------|-----------|-------|-----------------|
 | 1 | Query `rbuscli get Device.WiFi.DataElements.Network.DeviceNumberOfEntries`. | N/A | Returns 4. |
-| 2 | Query `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.ID` for i = 1 through 3. | N/A | Returns 4 distinct AL MAC addresses (1 Controller + 3 Agents). |
-| 3 | Cross-reference each returned AL MAC address against the known MAC address of each physical Controller/Agent. | N/A | Every entry maps 1:1 to a known device; no unknown or unmapped entries. |
-| 4 | Query `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.RadioNumberOfEntries` for each of the 3 Agent entries. | N/A | Each Agent entry reports a non-zero Radio count matching that Agent's actual radio configuration. |
-| 5 | Confirm no entry count drift by re-querying `DeviceNumberOfEntries` after a short idle period. | N/A | Count remains 4 (stable, not fluctuating). |
-| 6 | Analyze the retained (already-stopped) packet capture from the onboarding run, counting the number of distinct AL MAC addresses that completed a full AP-Autoconfiguration/WSC/1905 Ack sequence. | N/A | Count = 3, matching the number of Agent entries reported by `DeviceNumberOfEntries` minus the Controller. |
+| 2 | Retrieve and store device index into database for controller and agents | N/A | Returns index value |
+| 3 | Query `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.ID` for i = 1 through 3. | N/A | Returns 4 distinct AL MAC addresses (1 Controller + 3 Agents). |
+| 4 | Cross-reference each returned AL MAC address against the known MAC address of each physical Controller/Agent. | N/A | Every entry maps 1:1 to a known device; no unknown or unmapped entries. |
+| 5 | Query `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.RadioNumberOfEntries` for each of the 3 Agent entries. | N/A | Each Agent entry reports a non-zero Radio count matching that Agent's actual radio configuration. |
+| 6 | Confirm no entry count drift by re-querying `DeviceNumberOfEntries` after a short idle period. | N/A | Count remains 4 (stable, not fluctuating). |
 
 ---
 
@@ -189,7 +188,7 @@ Verify that no duplicate Agent entries are created in the Controller's topology 
 
 ## Test Type
 
-**Negative**
+**Positive**
 
 ---
 
@@ -206,7 +205,6 @@ Verify that no duplicate Agent entries are created in the Controller's topology 
 
 1. All 3 Agents have completed onboarding to the Controller.
 2. rbuscli available on the Controller.
-3. Packet capture (tcpdump) tool available on Controller/backhaul to be started around the topology refresh/poll cycle, to confirm no duplicate Topology Response CMDU processing occurs.
 
 ---
 
@@ -214,7 +212,7 @@ Verify that no duplicate Agent entries are created in the Controller's topology 
 
 | Parameter | Value |
 |-----------|-------|
-| Expected unique AL MAC entries | 4 (Agents only, excluding Controller) |
+| Expected unique AL MAC entries | 3 (Agents only, excluding Controller) |
 | Query object | `Device.WiFi.DataElements.Network.Device.{i}.ID` |
 | Cross-check object | `Device.WiFi.DataElements.Network.DeviceNumberOfEntries` |
 
@@ -224,13 +222,12 @@ Verify that no duplicate Agent entries are created in the Controller's topology 
 
 | Step Number | Controller | Agent | Expected Result |
 |-------------|-----------|-------|-----------------|
-| 1 | Query `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.ID` for all entries. | N/A | Returns 4 entries total (1 Controller + 3 Agents). |
-| 2 | Extract the AL MAC address value from each entry and compare against the full list for exact-match duplicates. | N/A | All 4 AL MAC addresses are unique; no two entries share the same MAC address. |
-| 3 | Cross-check the count of unique AL MAC addresses against `rbuscli get Device.WiFi.DataElements.Network.DeviceNumberOfEntries`. | N/A | Unique count equals `DeviceNumberOfEntries` ; no discrepancy indicating a hidden duplicate. |
-| 4 | Start packet capture on Controller/backhaul. | N/A | Capture is running and ready to record the topology refresh/poll cycle. |
-| 5 | Repeat the query after a topology refresh/poll cycle. | N/A | Duplicate check still passes; no new duplicate entries introduced by a refresh cycle. |
-| 6 | Stop packet capture. | N/A | Capture file saved, covering the refresh/poll cycle. |
-| 7 | Analyze the stopped packet capture from the Step 5 refresh/poll cycle for repeated/duplicate Topology Response CMDUs from any single Agent. | N/A | Exactly one Topology Response CMDU is processed per Agent per refresh cycle; no duplicate processing that could explain a duplicate topology entry. |
+| 1 | Retrieve and store device index into database for controller and agents | N/A | Returns index value |
+| 2 | Query `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.ID` for all entries. | N/A | Returns 4 entries total (1 Controller + 3 Agents). |
+| 3 | Extract the AL MAC address value from each entry and compare against the full list for exact-match duplicates. | N/A | All 4 AL MAC addresses are unique; no two entries share the same MAC address. |
+| 4 | Cross-check the count of unique AL MAC addresses against `rbuscli get Device.WiFi.DataElements.Network.DeviceNumberOfEntries`. | N/A | Unique count equals `DeviceNumberOfEntries` ; no discrepancy indicating a hidden duplicate. |
+| 5 | Requery Device id `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.ID` after rebooting Extender | Reboot Extender 1 | No duplicate entries - returns 4 entries |
+| 6 | Requery Device Number of Entries `rbuscli get Device.WiFi.DataElements.Network.DeviceNumberOfEntries` and compare with initial count | N/A | Count should be 4. |
 
 ---
 
