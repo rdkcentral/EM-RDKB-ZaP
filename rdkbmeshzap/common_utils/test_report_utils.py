@@ -30,7 +30,7 @@ _WHITE_REPORT_STYLE = (
     "a { text-decoration: none; color: #464feb; }"
     "tr th { background-color: #f5f5f5; }"
     ".setup_accessibility, .database_update, .test_environment_check { margin-bottom: 10px; }"
-    ".setup_accessibility summary, .database_update summary, .test_environment_check summary { cursor: pointer; font-weight: bold; padding: 4px 0; }"
+    ".setup_accessibility summary, .database_update summary, .test_environment_check summary, .protocol_validation_errors summary, .protocol_validation summary { cursor: pointer; font-weight: bold; padding: 4px 0; }"
     "</style>"
 )
 

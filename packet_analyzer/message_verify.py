@@ -137,6 +137,7 @@ def get_tlv_type_name(tlv_type):
         0x08: "Link Metric Query TLV",
         0x09: "Transmitter Link Metric TLV",
         0x0A: "Receiver Link Metric TLV",
+        0x0C: "Link Metric Result Code TLV",
         0x0D: "Searched Role TLV",
         0x0E: "Autoconfig Frequency Band TLV",
         0x0F: "Supported Role TLV",
@@ -511,7 +512,9 @@ def validate_tlv_length(tlv_type, tlv_length):
     if tlv_type == TLV_TYPE_BSS_ADVANCED_CONFIGURATION:
         return ("greater than 0", tlv_length > 0)
     if tlv_type == TLV_TYPE_SUPPORTED_CIPHER_SUITES:
-        return ("greater than 0", tlv_length > 0)   
+        return ("greater than 0", tlv_length > 0)
+    if tlv_type == TLV_TYPE_LINK_METRIC_RESULT_CODE:
+        return ("1", tlv_length == 1)
     return ("unknown", True)
 
 

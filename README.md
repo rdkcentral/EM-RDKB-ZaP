@@ -19,14 +19,14 @@ Make sure you have the following installed:
 ### 1. Clone the Repository
 
 ```
-git clone https://github.com/zilogic-systems/rdkbmesh-zap.git
+git clone git@github.com:rdkcentral/EM-RDKB-ZaP.git
 ```
 
 ### 2. Generate .whl file
 
 ```
 python3 -m pip install build
-cd rdkbmesh-zap
+cd EM-RDKB-ZaP
 python3 -m build
 ```
 
