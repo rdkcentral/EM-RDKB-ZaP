@@ -17,8 +17,28 @@
 
 import re
 import time
+from functools import wraps
 import pytest
 from rdkbmeshzap.common_utils import report_logger
+from zaero.utils import zi_logger
+
+def suppress_zaero_logs(function):
+    """
+    Syntax : suppress_zaero_logs(function)
+    Description : Disables Zaero logging while the decorated function runs.
+    Parameters :
+        function - Function to run without Zaero log output.
+    Return Value: The wrapped function with Zaero logging suppressed during execution.
+    """
+    @wraps(function)
+    def wrapped(*args, **kwargs):
+        previous_log_state = zi_logger.enable_log
+        zi_logger.set_log_state(False)
+        try:
+            return function(*args, **kwargs)
+        finally:
+            zi_logger.set_log_state(previous_log_state)
+    return wrapped
 
 def get_device_cpu_utilization(initialize, device: str) -> dict:
     """
@@ -301,7 +321,7 @@ def verify_controller_services(initialize, deadline=None):
     return verify_services(
         initialize,
         "controller",
-        ("onewifi", "ieee1905_em_agent", "ieee1905_em_ctrl", "em_ctrl"),
+        ("onewifi", "ieee1905_em_agent", "ieee1905_em_ctrl", "em_ctrl", "em_agent"),
         deadline,
     )
 
