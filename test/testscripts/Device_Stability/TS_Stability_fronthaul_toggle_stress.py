@@ -29,27 +29,27 @@ def test_stability_fronthaul_toggle_stress(initialize, common_setup):
     report_logger.print_test(f"[{get_timestamp()}] Entering test_stability_fronthaul_toggle_stress")
     initial_mld_status = None
     devices = common_setup
-    report_logger.print_step("Step 1: Retrieving test parameter")
+    report_logger.print_step("STEP 1: Retrieving test parameter")
     fronthaul_toggle_max_count = initialize.read_from_database("test_parameters", "device_stability", "fronthaul_toggle_max_count")
     if fronthaul_toggle_max_count <= 0:
         pytest.fail("fronthaul_toggle_max_count must be greater than 0. please update the configuration \"fronthaul_toggle_max_count\".")
-    report_logger.print_info(f"Fronthaul toggle max count: {fronthaul_toggle_max_count}")
-    report_logger.print_success("Successfully retrieved test parameter")
+    report_logger.print_info(f"INFO: Fronthaul toggle max count: {fronthaul_toggle_max_count}")
+    report_logger.print_success("PASS: Successfully retrieved test parameter")
     fronthaul_toggle_current_count = 0
-    report_logger.print_step("Step2: Starting fronthaul toggle procedure")
+    report_logger.print_step("STEP 2: Starting fronthaul toggle procedure")
     step_count = 2
     sub_step_count = 0
     while fronthaul_toggle_current_count < fronthaul_toggle_max_count:
         sub_step_count += 1
-        report_logger.print_info(f"Iteration: {fronthaul_toggle_current_count + 1}")
-        report_logger.print_step(f"Step{step_count}.{sub_step_count}: Fetching current MLD status from the controller")
+        report_logger.print_info(f"INFO: Iteration: {fronthaul_toggle_current_count + 1}")
+        report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Fetching current MLD status from the controller")
         current_mld_status = initialize.get_mld_status("controller")
         if initial_mld_status is None:
             initial_mld_status = current_mld_status
         report_logger.print_success(f"PASS: Retrieved current MLD status from the controller: {current_mld_status}")
         set_mld_status = not current_mld_status
         sub_step_count += 1
-        report_logger.print_step(f"Step{step_count}.{sub_step_count}: Setting MLD status to: {set_mld_status}")
+        report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Setting MLD status to: {set_mld_status}")
         try:
             initialize.set_fronthaul_network_state("controller", "Home Network", enable=set_mld_status)
             report_logger.print_success(f"PASS: Successfully set MLD status to: {set_mld_status}")
@@ -59,17 +59,17 @@ def test_stability_fronthaul_toggle_stress(initialize, common_setup):
         time.sleep(FRONTHAUL_TOGGLE_WAITING_TIME)
         for device in devices[:]:
             sub_step_count += 1
-            report_logger.print_step(f"Step{step_count}.{sub_step_count}: Fetching current MLD status from the device {device}")
+            report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Fetching current MLD status from the device {device}")
             mld_status = initialize.get_mld_status(device)
             if mld_status != set_mld_status:
-                report_logger.print_error(f"{device}: Iteration: {fronthaul_toggle_current_count} Fronthaul network profile toggle failed in {device}: expected {set_mld_status}, got {mld_status}")
+                report_logger.print_error(f"FAIL: {device}: Iteration: {fronthaul_toggle_current_count} Fronthaul network profile toggle failed in {device}: expected {set_mld_status}, got {mld_status}")
                 devices.remove(device)
             else:
                 report_logger.print_success(f"PASS: Fronthaul network profile toggle succeeded in {device}")
         if not devices:
             break
     step_count += 1
-    report_logger.print_step(f"Step{step_count}: Enabling MLD status for clearing any previous toggles")
+    report_logger.print_step(f"STEP {step_count}: Enabling MLD status for clearing any previous toggles")
     try:
         initialize.set_fronthaul_network_state("controller", "Home Network", enable=True)
         report_logger.print_success(f"PASS: Successfully enabled MLD status for clearing any previous toggles")

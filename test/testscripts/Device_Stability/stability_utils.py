@@ -16,11 +16,11 @@
 # limitations under the License.
 
 from datetime import datetime
+import os
 import subprocess
 import pytest
 import time
 import zaero
-from zaero.utils import zi_logger
 from pathlib import Path
 import csv
 from rdkbmeshzap.common_utils import report_logger
@@ -42,20 +42,20 @@ def common_setup(initialize):
             report_logger.print_success(f"Fronthaul is enabled.")
             break
         else:
-            report_logger.print_error(f"Fronthaul is disabled, trying to enable it now.")
+            report_logger.print_error(f"FAIL: Fronthaul is disabled, trying to enable it now.")
             initialize.set_fronthaul_network_state("controller", "Home Network", enable=True)
             fronthaul_enable_retries += 1
             time.sleep(10)
             if fronthaul_enable_retries >= MAX_FRONTHAUL_ENABLE_RETRIES:
                 pytest.fail(f"RDKBCLI: Failed to enable fronthaul after {MAX_FRONTHAUL_ENABLE_RETRIES} attempts.")
             else:
-                report_logger.print_info(f"Retrying to enable fronthaul (Attempt {fronthaul_enable_retries}/{MAX_FRONTHAUL_ENABLE_RETRIES})")
+                report_logger.print_info(f"INFO: Retrying to enable fronthaul (Attempt {fronthaul_enable_retries}/{MAX_FRONTHAUL_ENABLE_RETRIES})")
 
     monitoring_tool_path = Path(__file__).with_name("monitoring_tool.py")
     initialize.put_file("controller", str(monitoring_tool_path), "/nvram/")
     zaero_obj = zaero.zaero()
     devices = [device for device in zaero_obj.get_testbed_devices() if device == "controller" or (device.startswith("extender") and "_" not in device)]
-    report_logger.print_info(f"Common setup completed. Testbed devices: {devices}")
+    report_logger.print_info(f"INFO: Common setup completed. Testbed devices: {devices}")
     yield devices
     # Cleanup code after the test is done
     report_logger.print_step(f"Test Cleanup: Cleaning up after test.")
@@ -90,8 +90,8 @@ def get_core_dump_status(initialize, device, timestamp):
     for item in file_list:
         if 'dmp' in item:
             modified_time = initialize.get_file_modified_time(device, f"/tmp/{item}")
-            zi_logger.log(f"Modified time for {item}: {modified_time}")
-            zi_logger.log(f"Timestamp to compare: {timestamp}")
+            report_logger.print_info(f"INFO: Modified time for {item}: {modified_time}")
+            report_logger.print_info(f"INFO: Timestamp to compare: {timestamp}")
             if modified_time > timestamp:
                 core_dump_files.append(item)
     return core_dump_files
@@ -142,38 +142,39 @@ def log_analyzer(log_path, step_count, sub_step_count=1):
         sub_step_count - The current sub-step count in the test script.
     Return Value: None. It logs pass/fail messages for each analyzed log file.
     """
-    report_logger.print_step(f"Step {step_count}: Analyzing log file: {log_path}")
+    process_name = os.path.basename(log_path).replace("_monitor.csv", "")
+    report_logger.print_step(f"STEP {step_count}: Analyzing resource usage for process: {process_name}")
     mem_usage,avg_cpu, max_cpu,pid_status = analyse_device_log(log_path)
-    report_logger.print_step(f"Step {step_count}.{sub_step_count}: Analyzing memory usage ")
+    report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Analyzing memory usage ")
     sub_step_count += 1
     if mem_usage is None:
-        report_logger.print_error(f"controller: Memory usage unavailable")
+        report_logger.print_error(f"FAIL: {process_name}: Memory usage unavailable")
     elif mem_usage > 20:
-        report_logger.print_error(f"controller: High Memory Usage :{mem_usage}% variation detected.")
+        report_logger.print_error(f"FAIL: {process_name}: High Memory Usage :{mem_usage}% variation detected.")
     else:
-        report_logger.print_success(f"PASS: [controller] Memory usage normal : {mem_usage}% variation detected.")
-    report_logger.print_step(f"Step {step_count}.{sub_step_count}: Analyzing Average CPU usage ")
+        report_logger.print_success(f"PASS: Memory usage is normal : {mem_usage}% variation detected.")
+    report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Analyzing Average CPU usage ")
     sub_step_count += 1
     if avg_cpu is None:
-        report_logger.print_error(f"controller: Average CPU usage unavailable.")
+        report_logger.print_error(f"FAIL: {process_name}: Average CPU usage unavailable.")
     elif avg_cpu > AVG_CPU_BASELINE:
-        report_logger.print_error(f"controller: High Average CPU Detected : {avg_cpu}% .")
+        report_logger.print_error(f"FAIL: {process_name}: High Average CPU Detected : {avg_cpu}% .")
     else:
-        report_logger.print_success(f"PASS: [controller] Average CPU usage normal : {avg_cpu}%.")
-    report_logger.print_step(f"Step {step_count}.{sub_step_count}: Analyzing Max CPU usage ")
+        report_logger.print_success(f"PASS: Average CPU usage is normal : {avg_cpu}%.")
+    report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Analyzing Max CPU usage ")
     sub_step_count += 1
     if max_cpu is None:
-        report_logger.print_error(f"controller: Max CPU usage unavailable.")
+        report_logger.print_error(f"FAIL: {process_name}: Max CPU usage unavailable.")
     elif max_cpu > MAX_CPU_BASELINE:
-        report_logger.print_error(f"controller: High Max CPU Detected : {max_cpu}% .")
+        report_logger.print_error(f"FAIL: {process_name}: High Max CPU Detected : {max_cpu}% .")
     else:
-        report_logger.print_success(f"PASS: [controller] Max CPU usage normal : {max_cpu}%.")
-    report_logger.print_step(f"Step {step_count}.{sub_step_count}: Analyzing PID stability ")
+        report_logger.print_success(f"PASS: Max CPU usage is normal : {max_cpu}%.")
+    report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Analyzing PID stability ")
     sub_step_count += 1
     if pid_status is None:
-        report_logger.print_error("controller: PID status unavailable.")
+        report_logger.print_error(f"FAIL: {process_name}: PID status unavailable.")
     elif pid_status:
-        report_logger.print_error(f"controller: PID Change Detected.")
+        report_logger.print_error(f"FAIL: {process_name}: PID Change Detected.")
     else:
-        report_logger.print_success(f"PASS: [controller] PID is stable.")  
+        report_logger.print_success(f"PASS: PID is stable.")  
 

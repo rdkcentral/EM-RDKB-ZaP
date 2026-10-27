@@ -33,6 +33,7 @@
 # limitations under the License.
 
 import io
+import os
 import pytest
 import time
 from contextlib import redirect_stdout
@@ -43,14 +44,16 @@ import zaero
 from zaero.utils import zi_logger
 from zaero.utils.database import Database
 from packet_analyzer.protocol_validation import common_protocol_validation
+from packet_analyzer.packet_dissector import error_list
 from rdkbmeshzap.common_utils import report_logger, test_environment_checks
 
-_setup_sections = {
+setup_sections = {
 	"setup_accessibility": "",
 	"database_update": "",
 	"test_environment_check": "",
 }
-_setup_failure = ""
+protocol_validation_results = []
+setup_failure = ""
 
 @pytest.fixture(scope="session", autouse=True)
 def initialize():
@@ -61,7 +64,7 @@ def initialize():
 	zaero_obj.configure_platform(platform)
 	for device_name, device_data in Database._Database__database.items():
 		device_data.setdefault(
-			"device_present", device_name not in {"protocol", "test_parameters"}
+			"device_present", device_name not in {"protocol", "test_parameters", "profile_type"}
 		)
 	pcap_log_dir = zaero_obj.read_from_database("controller", "pcap_remote_dir")
 	pcap_local_dir = zaero_obj.read_from_database("controller", "pcap_local_dir")
@@ -74,12 +77,12 @@ def validate_setup_accessibility(initialize):
 	captured_output = io.StringIO()
 	with redirect_stdout(captured_output):
 		accessibility_result = test_environment_checks.validate_device_accessibility(initialize)
-	_setup_sections["setup_accessibility"] = captured_output.getvalue()
-	print(_setup_sections["setup_accessibility"], end="")
+	setup_sections["setup_accessibility"] = captured_output.getvalue()
+	print(setup_sections["setup_accessibility"], end="")
 	if accessibility_result is False:
-		global _setup_failure
-		_setup_failure = "Setup Accessibility validation failed"
-		pytest.exit(_setup_failure, returncode=1)
+		global setup_failure
+		setup_failure = "Setup Accessibility validation failed"
+		pytest.exit(setup_failure, returncode=1)
 	initialize.accessibility_validated = True
 	report_logger.print_success(
 		"PASS: All configured devices passed accessibility validation"
@@ -87,18 +90,18 @@ def validate_setup_accessibility(initialize):
 
 @pytest.fixture(scope="session", autouse=True)
 def update_runtime_database(initialize, validate_setup_accessibility):
-	global _setup_failure
+	global setup_failure
 	captured_output = io.StringIO()
 	with redirect_stdout(captured_output):
 		database_update_result = test_environment_checks.retrieve_and_store_runtime_data(initialize)
-	_setup_sections["database_update"] = captured_output.getvalue()
-	print(_setup_sections["database_update"], end="")
+	setup_sections["database_update"] = captured_output.getvalue()
+	print(setup_sections["database_update"], end="")
 	if database_update_result is False:
-		_setup_failure = "Runtime Database Configuration Update failed"
+		setup_failure = "Runtime Database Configuration Update failed"
 
 @pytest.fixture(scope="session", autouse=True)
 def verify_test_environment(initialize, update_runtime_database):
-	global _setup_failure
+	global setup_failure
 	validation_result = True
 	failed_checks = []
 	captured_output = io.StringIO()
@@ -120,16 +123,16 @@ def verify_test_environment(initialize, update_runtime_database):
 			except Exception as error:
 				validation_result = False
 				failed_checks.append(f"{check.__name__}: {error}")
-	_setup_sections["test_environment_check"] = captured_output.getvalue()
-	print(_setup_sections["test_environment_check"], end="")
-	if validation_result is False or _setup_failure:
+	setup_sections["test_environment_check"] = captured_output.getvalue()
+	print(setup_sections["test_environment_check"], end="")
+	if validation_result is False or setup_failure:
 		failure_messages = failed_checks
 		if validation_result is False:
 			failure_messages.append("Test Environment Check failed")
-		if _setup_failure:
-			failure_messages.append(_setup_failure)
-		_setup_failure = "; ".join(failure_messages)
-		pytest.exit(_setup_failure, returncode=1)
+		if setup_failure:
+			failure_messages.append(setup_failure)
+		setup_failure = "; ".join(failure_messages)
+		pytest.exit(setup_failure, returncode=1)
 	initialize.setup_validated = True
 
 @pytest.fixture(scope="function", autouse=True)
@@ -234,13 +237,15 @@ def pytest_html_results_summary(prefix, summary, postfix):
 		("database_update", "Runtime Database Configuration Update"),
 		("test_environment_check", "Test Environment Prerequisite Check"),
 	):
+		if not setup_sections[section_name]:
+			continue
 		section_html = "<br>".join(
 			report_logger.format_report_line(line)
-			for line in _setup_sections[section_name].splitlines()
+			for line in setup_sections[section_name].splitlines()
 		)
 		section_failure = "<br>".join(
 			report_logger.format_report_line(line)
-			for line in _setup_sections[section_name].splitlines()
+			for line in setup_sections[section_name].splitlines()
 			if "FAIL:" in line
 		)
 		failure_html = (
@@ -259,6 +264,48 @@ def pytest_html_results_summary(prefix, summary, postfix):
 		)
 		if failure_html:
 			prefix.append(failure_html)
+		if section_name == "test_environment_check" and setup_failure:
+			postfix.append(
+				f'<div style="margin:10px 0;">'
+				f'<strong style="color:red;">{escape(setup_failure)}</strong></div>'
+			)
+	if protocol_validation_results:
+		test_sections = []
+		failed_test_names = "<br>".join(
+			f'<strong style="color:red;">FAIL: {escape(result["test_name"])}</strong>'
+			for result in protocol_validation_results
+			if result["errors"]
+		)
+		for result in protocol_validation_results:
+			analysis_html = "<br>".join(
+				report_logger.format_report_line(line)
+				for line in result["analysis"].splitlines()
+			)
+			error_html = "<br>".join(
+				report_logger.format_report_line(line)
+				for line in result["errors"]
+			)
+			errors_section = (
+				f'<div style="margin-top:8px;"><strong style="color:red;">'
+				f"Protocol Validation Errors</strong><br>{error_html}</div>"
+				if error_html
+				else ""
+			)
+			test_sections.append(
+				f'<details class="protocol_validation_test" style="margin:6px 0;">'
+				f'<summary><strong style="color:#003366;">{escape(result["test_name"])}</strong></summary>'
+				f"<div>{analysis_html}{errors_section}</div>"
+				"</details>"
+			)
+		prefix.append(
+			'<details class="protocol_validation" style="margin-bottom:10px;">'
+			'<summary>'
+			'<strong style="color:#003366;">Common Protocol Validation</strong> <br>'
+			f'{failed_test_names}'
+			'</summary>'
+			f'<div style="margin-top:8px;">{"".join(test_sections)}</div>'
+			'</details>'
+		)
 
 @pytest.fixture(scope="function", autouse=True)
 def protocol_validation(request, initialize):
@@ -266,6 +313,7 @@ def protocol_validation(request, initialize):
 	report_logger.print_title("========== Start Frame Capture ==========")
 	backhaul_iface = initialize.read_from_database("controller", "backhaul_capture_iface")
 	frame_filter = initialize.read_from_database("controller", "filter_1905")
+	pcap_local_directory = initialize.read_from_database("controller","pcap_local_dir")
 	initialize.start_frame_capture(
 		"controller", backhaul_iface, frame_filter, capture_name
 	)
@@ -275,10 +323,19 @@ def protocol_validation(request, initialize):
 	report_logger.print_info(f"INFO: Frame Capture saved as {capture_name}")
 	initialize.download_captured_pcap("controller", capture_name)
 	initialize.delete_captured_pcap("controller", capture_name)
+	capture_path = os.path.join(pcap_local_directory, capture_name)
 	if initialize.read_from_database("protocol", "common_protocol_validation"):
 		report_logger.print_title("========== Start Common Protocol Validation ==========")
+		error_list.clear()
 		try:
-			common_protocol_validation(capture_name)
+			analysis_output = common_protocol_validation(capture_path, initialize)
+			protocol_validation_results.append(
+				{
+					"test_name": request.node.name,
+					"analysis": analysis_output,
+					"errors": list(error_list),
+				}
+			)
 		except Exception as error:
 			report_logger.print_error(f"Protocol Validation Failed: {error}")
 			pytest.fail(f"Protocol Validation Failed: {error}")
