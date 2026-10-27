@@ -43,17 +43,10 @@ Verify that a Wi-Fi client device can discover and see the EasyMesh SSID broadca
 
 | Step Number | Controller | Client | Expected Result |
 |-------------|-----------|--------|-----------------|
-| 1 | Query SSID via rbuscli: `rbuscli getv Device.WiFi.DataElements.Network.SSID.{i}.SSID` | N/A | Returns: `SSID = EasyMesh-MESH` |
-| 2 | Verify SSID enabled on Controller BSS: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{k}.SSID` | N/A | Returns: `SSID = EasyMesh-MESH` |
-| 3 | Verify SSID enabled on all 3 Agents: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{k}.SSID` | N/A | Each of Device.2-Device.5 (Agent 1-3) returns: `SSID = EasyMesh-MESH` |
-| 4 | N/A | Wait 5 seconds for SSID propagation | Mesh nodes synchronized; beacons transmitted by Controller and all 3 Agents |
-| 5 | N/A | Initiate WiFi scan: `iw dev <wlan_iface> scan` | Scan command executes successfully |
-| 6 | N/A | Parse scan results: `iw dev <wlan_iface> scan` | grep `"SSID: EasyMesh-MESH"`  Output contains: `SSID: EasyMesh-MESH` |
-| 7 | N/A | Verify SSID on all discovered bands: `iw dev <wlan_iface> scan` | grep -B10 `"EasyMesh-MESH"` grep `"freq"` Returns frequencies for each band: 2.4 GHz: 2400-2500 MHz, 5 GHz: 5000-6000 MHz, 6 GHz: 5900-7125 MHz (if supported) |
-| 8 | N/A | Count SSID occurrences across bands and BSSIDs: `iw dev <wlan_iface> scan` | grep -c `"SSID: EasyMesh-MESH"`  Count >= 1 per band; up to 5 BSSIDs total possible (Controller + 3 Agents) if all within range |
-| 9 | N/A | Query client WiFi interface info: `nmcli device wifi list` | grep `EasyMesh-MESH`  Lists available networks including `EasyMesh-MESH` |
-| 10 | Confirm no errors in Controller or any of the 3 Agents' DataElements | Confirm client scan completed without errors | Controller, all 3 Agents, and Client operations successful |
-
+| 1 | Retrieve and store device index into database for controller and agents | N/A | Returns index value |
+| 2 | Query SSID via rbuscli: `rbuscli getv Device.WiFi.DataElements.Network.SSID.{i}.SSID` | N/A | Returns: `SSID = EasyMesh-MESH` |
+| 3 | N/A | Wait 10 seconds for SSID propagation | Mesh nodes synchronized; beacons transmitted by Controller and all 3 Agents |
+| 4 | N/A | Initiate WiFi scan: `nmcli -f SSID,FREQ dev wifi list --rescan yes | grep -i {ssid}`  and Count SSID occurrences across bands | Scan command executes successfully and Count >= 1 per band |
 ---
 
 # Test Case 2: EM_ClientAssociation_DiscoverSSIDon2.4GHz
@@ -244,7 +237,7 @@ Verify that a Wi-Fi client device can specifically discover and see the EasyMesh
 # Test Case 5: EM_ClientAssociation_AuthenticationCorrectCredentials
 
 ## Objective
-Verify that a Wi-Fi client device can successfully authenticate and associate to the EasyMesh SSID using correct WPA2/WPA3-Personal credentials, whether it associates to the Controller or to any of the 3 Agents.
+Verify that  Wi-Fi client devices can successfully authenticate and associate to the EasyMesh SSID using correct WPA2/WPA3-Personal credentials, whether it associates to the Controller or to any of the 3 Agents.
 
 ## Test Type
 **Positive**
@@ -269,7 +262,7 @@ Verify that a Wi-Fi client device can successfully authenticate and associate to
 3. Correct passphrase configured on Controller and propagated to all 3 Agents.
 4. Client device powered on and Wi-Fi scanning operational.
 5. rbuscli accessible on Controller for DataElements queries.
-6. Note: `Device.N` below refers to whichever Controller/Agent (Device.1-Device.5) radio the client actually associates to; identify it from the client's `iw dev <wlan_iface> link` BSSID.
+
 
 ---
 
@@ -280,7 +273,6 @@ Verify that a Wi-Fi client device can successfully authenticate and associate to
 | Security Type | WPA2-Personal (`psk`) or WPA3-Personal (`sae`) |
 | Passphrase | correctpassphrase123 |
 | Authentication Method | 4-Way Handshake (WPA2) or Simultaneous Authentication of Equals (WPA3) |
-| Cipher Suite | CCMP (AES) |
 
 ---
 
@@ -288,18 +280,15 @@ Verify that a Wi-Fi client device can successfully authenticate and associate to
 
 | Step | Controller | Client | Expected Result |
 |------|-----------|--------|------------------|
-| 1 | Query SSID AKM configuration: `rbuscli getv Device.WiFi.DataElements.Network.SSID.{i}.AKMsAllowed` | N/A | Returns `AKMsAllowed = psk` (WPA2-Personal) or `sae` (WPA3-Personal) |
-| 1b | Query PMF configuration: `rbuscli getv Device.WiFi.DataElements.Network.SSID.{i}.MFPConfig` | N/A | Returns `MFPConfig = Disabled/Optional/Required` — consistent with the security type (WPA3/SAE typically requires PMF; WPA2/psk may be Disabled or Optional) |
-| 2 | Query Security Key passphrase (if exposed): `rbuscli getv Device.WiFi.DataElements.Network.SSID.{i}.KeyPassphrase` | N/A | Returns: `KeyPassphrase = correctpassphrase123` *(verify this parameter is actually exposed via rbus before running — mark N/A if not present)* |
-| 3 | N/A | Wait 2 seconds for network stability | SSID beacon stable on client side |
-| 4 | N/A | Initiate association to EasyMesh-MESH with correct passphrase: `nmcli device wifi connect EasyMesh-MESH password correctpassphrase123` | Association request sent to nearest/strongest AP (Controller or one of the 3 Agents) |
-| 5 | N/A | Verify association status on client: `iw dev <wlan_iface> link` | Output shows: `Connected to [MAC] (on wlan0)` `SSID: EasyMesh-MESH` `freq: [frequency]` |
-| 6 | N/A | Verify connection info: `nmcli device show <wlan_iface>` | grep -E `"SSID\|STATE\|CONNECTION"` `Output contains: `CONNECTION: EasyMesh-MESH` `STATE: connected` |
-| 7 | Query the associated Controller/Agent for associated client count (Device.N per BSSID above): `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{k}.STANumberOfEntries` | N/A | Returns count includes this client (count >= 1) on the Controller or Agent the client is attached to |
-| 8 | N/A | Query client MAC address from device: `ip link show <wlan_iface>` | grep `"link/ether"` | Returns client MAC (e.g., `aa:bb:cc:dd:ee:ff`) |
-| 8 | Query same Device.N for connected client MAC: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{k}.STA.{l}.MACAddress` | N/A | Returns the MAC address of an associated STA. The returned MAC should match the client MAC obtained in Step 8 |
-| 10 | N/A | Verify negotiated security on client: `wpa_cli -i <wlan_iface> status` | Output shows `key_mgmt = WPA2-PSK` (WPA2) or `SAE` (WPA3), `pairwise_cipher = CCMP`, `wpa_state = COMPLETED`, and `pmf` field consistent with the AP's `MFPConfig` |
-| 11 | N/A | Test connectivity (optional): `ping -c 3 8.8.8.8` | Ping successful (if gateway configured) or DHCP IP obtained |
+| 1 | Retrieve and store device index into database for controller and agents | N/A | Returns index value |
+| 2 | Query SSID AKM configuration: `rbuscli getv Device.WiFi.DataElements.Network.SSID.{i}.AKMsAllowed` | N/A | Returns `AKMsAllowed = psk` (WPA2-Personal) or `sae` (WPA3-Personal) |
+| 3 | Query PMF configuration: `rbuscli getv Device.WiFi.DataElements.Network.SSID.{i}.MFPConfig` | N/A | Returns `MFPConfig = Disabled/Optional/Required` — consistent with the security type (WPA3/SAE typically requires PMF; WPA2/psk may be Disabled or Optional) |
+| 4 | Query Security Key passphrase from GUI | N/A | Returns: Passphrase |
+| 5 | N/A | Wait 10 seconds for SSID propogation | SSID beacon stable on client side |
+| 6 | N/A | Initiate association to EasyMesh-MESH with correct passphrase: `nmcli device wifi connect EasyMesh-MESH password correctpassphrase123 bssid {bssid}` | Association request sent to the specific AP (Controller or one of the 3 Agents) |
+| 7 | N/A | Verify association status on client: `iw dev <wlan_iface> link` | Output shows: `Connected to [MAC] (on wlan iface)` `SSID: EasyMesh-MESH` `freq: [frequency]` |
+| 8 |  N/A | Verify negotiated security on client: `wpa_cli -i <wlan_iface> status | grep 'key_mgmt' ` and compare with device security | Output shows security matches in client and device |
+| 9 | N/A | Test connectivity (optional): `ping -c 3 8.8.8.8` | Ping successful (if gateway configured) or DHCP IP obtained |
 
 ---
 # Test Case 6: EM_ClientAssociation_AuthenticationFailIncorrectCredentials
@@ -437,7 +426,7 @@ Verify that a Wi-Fi client device successfully completes the 4-Way Handshake wit
 # Test Case 8: EM_ClientAssociation_DHCPIPAssignment
 
 ## Objective
-Verify that a Wi-Fi client device receives a valid IP address via DHCP after successful authentication and association to the EasyMesh SSID, regardless of whether it associates to the Controller or one of the 3 Agents.
+Verify that  Wi-Fi client devices receives a valid IP address via DHCP after successful authentication and association to the EasyMesh SSID, regardless of whether it associates to the Controller or one of the 3 Agents.
 
 ## Test Type
 **Positive**
@@ -483,33 +472,24 @@ Verify that a Wi-Fi client device receives a valid IP address via DHCP after suc
 
 | Step Number | Controller | Client | Expected Result |
 |-------------|-----------|--------|-----------------|
-| 1 | Verify DHCP server is enabled: `rbuscli getv Device.DHCPv4.Server.Enable` | N/A | Returns: `Enable = true` |
-| 2 | Query DHCP server pool configuration: `rbuscli getv Device.DHCPv4.Server.Pool.{i}.MinAddress` | N/A | Returns: `MinAddress = <DHCP_MIN_Addr>` |
-| 3 | Query DHCP pool end: `rbuscli getv Device.DHCPv4.Server.Pool.{i}.MaxAddress` | N/A | Returns: `MaxAddress = <DHCP_MIN_Addr>` |
-| 4 | N/A | Perform WiFi scan: `iw dev <wlan_iface> scan` | grep `"SSID: EasyMesh-MESH"`  SSID visible in scan results (from Controller and/or any of the 3 Agents) |
-| 5 | N/A | Associate to EasyMesh-MESH with correct passphrase: `nmcli device wifi connect EasyMesh-MESH password correctpassphrase123` | Association successful, to Controller or one of the 3 Agents |
-| 6 | N/A | Wait 2 seconds for association completion | Client authenticated and associated to AP |
-| 7 | N/A | Verify association status: `iw dev <wlan_iface> link` | Output shows: `Connected to [MAC] (on <wlan_iface>)` `SSID: EasyMesh-MESH` |
-| 8 | N/A | Trigger DHCP request (if not automatic): `dhclient -v <wlan_iface>` | DHCP discovery, offer, request, acknowledge sequence initiated (through the associated Agent's backhaul to the Controller's DHCP server, if applicable) |
-| 9 | N/A | Verify IP address assigned: `ip addr show <wlan_iface>` | grep `"inet "` Output shows: `inet <IP-Addr> brd <DHCP_MAX_Addr> scope global <wlan_iface>` (IP in DHCP pool range) |
-| 10 | N/A | Verify IP is within DHCP pool range | Output shows IP between <DHCP_MIN_Addr> and <DHCP_MAX_Addr> (valid pool allocation) |
-| 11 | N/A | Query default route: `ip route show` | grep `"default"` Output shows: `default via <Gateway-IP> dev <wlan_iface>` (gateway configured) |
-| 12 | N/A | Verify DNS servers configured: `cat /etc/resolv.conf` | grep `nameserver`  Output shows: `nameserver 8.8.8.8` (or Controller IP) |
-| 13 | N/A | Query DHCP lease info: `dhclient -d <wlan_iface>` or `nmcli device show <wlan_iface>` | grep `"DHCP"`  Output shows lease obtained and active |
-| 14 | Query Controller for connected client with IP (served centrally regardless of which Agent the client attached to): `rbuscli getv Device.DHCPv4.Server.Pool.{i}.Client.{j}.IPv4Address.{k}.IPAddress` | N/A | Returns: `IPAddress = <IP_Addr>` (matches client IP) |
-| 15 | Query connected client MAC on Controller: `rbuscli getv Device.DHCPv4.Server.Pool.1.Client.1.Chaddr` | N/A | Returns client MAC address (matches client device MAC) |
-| 16 | N/A | Test network connectivity: `ping -c 3 <Gateway-IP>` | Ping successful (gateway responds) |
-| 17 | N/A | Test external connectivity: `ping -c 3 8.8.8.8` | Ping successful (internet access available) |
-| 18 | N/A | Query IP lease time remaining: `dhclient -d <wlan_iface> 2>&1` | grep -i "renew"`  Lease renewal time shown (typically half of lease time) |
-| 19 | Confirm DHCP lease is active in pool: `rbuscli getv Device.DHCPv4.Server.Pool.{i}.ClientNumberOfEntries` | N/A | Count includes this client (count >= 1) |
-| 20 | Confirm client received valid IP and can communicate | Confirm IP in valid range, gateway reachable, DNS configured | Controller/Agents and Client operations successful |
+| 1 | Retrieve and store device index into database for controller and agents | N/A | Returns index value |
+| 2 | Verify DHCP server is enabled: `rbuscli getv Device.DHCPv4.Server.Enable` | N/A | Returns: `Enable = true` |
+| 3 | Query DHCP server pool configuration: `rbuscli getv Device.DHCPv4.Server.Pool.{i}.MinAddress` | N/A | Returns: `MinAddress = <DHCP_MIN_Addr>` |
+| 4 | Query DHCP pool end: `rbuscli getv Device.DHCPv4.Server.Pool.{i}.MaxAddress` | N/A | Returns: `MaxAddress = <DHCP_MIN_Addr>` |
+| 5 | Retrieve SSID from Data Elements `rbuscli getv Device.WiFi.DataElements.SSID.{i}.SSID` | N/A | Returns SSID | 
+| 6 |  N/A | Associate to EasyMesh-MESH with correct passphrase: `nmcli device wifi connect EasyMesh-MESH password correctpassphrase123 bssid {bssid}` | Association successful, to Controller or one of the 3 Agents |
+| 7 |  N/A | Wait 10 seconds for association completion | Client authenticated and associated to AP |
+| 8 | N/A | Verify association status: `iw dev <wlan_iface> link` | Output shows: `Connected to [MAC] (on <wlan_iface>)` `SSID: EasyMesh-MESH` |
+| 9 | N/A | Trigger DHCP request (if not automatic): `dhclient -v <wlan_iface>` | DHCP discovery, offer, request, acknowledge sequence initiated (through the associated Agent's backhaul to the Controller's DHCP server, if applicable) |
+| 10 | N/A | Verify IP address assigned: `/sbin/ifconfig {interface}` | grep `"inet "` Output shows: `inet <IP-Addr> brd <DHCP_MAX_Addr> scope global <wlan_iface>` (IP in DHCP pool range) |
+| 11 | N/A | Verify IP is within DHCP pool range | Output shows IP between <DHCP_MIN_Addr> and <DHCP_MAX_Addr> (valid pool allocation) |
 
 ---
 
 # Test Case 9: EM_ClientAssociation_GatewayReachability
 
 ## Objective
-Verify that a Wi-Fi client device can successfully ping and reach the gateway after receiving a valid IP address via DHCP and associating to the EasyMesh SSID, whether attached to the Controller or one of the 3 Agents.
+Verify that  Wi-Fi client devices can successfully ping and reach the gateway after receiving a valid IP address via DHCP and associating to the EasyMesh SSID, whether attached to the Controller or one of the 3 Agents.
 
 ## Test Type
 **Positive**
@@ -548,7 +528,7 @@ Verify that a Wi-Fi client device can successfully ping and reach the gateway af
 | Gateway IP | `<Gateway-IP>` |
 | Ping Packet Count | 5 |
 | Ping Timeout | 5 seconds per packet |
-| Packet Size | 56 bytes (default ICMP payload) |
+
 
 ---
 
@@ -556,21 +536,13 @@ Verify that a Wi-Fi client device can successfully ping and reach the gateway af
 
 | Step Number | Controller | Client | Expected Result |
 |-------------|-----------|--------|-----------------|
-| 1 | Verify gateway interface is up: `rbuscli getv Device.IP.Interface.{i}.Enable` | N/A | Returns: `Enable = true` |
-| 2 | Query gateway IP address: `rbuscli getv Device.IP.Interface.{i}.IPv4Address.{j}.IPAddress` | N/A | Returns: `IPAddress = <Gateway-IP>` (or configured gateway IP) |
-| 3 | Verify routing is enabled: `rbuscli getv Device.Router.{i}.Enable` | N/A | Returns: `Enable = true` |
-| 4 | N/A | Verify client IP address assigned: `ip addr show <wlan_iface>` | grep `"inet "` Output shows: `inet <IP-Addr> brd <DHCP_MAX_Addr> scope global <wlan_iface>` |
+| 1 | Retrieve and store device index into database for controller and agents | N/A | Returns index value |
+| 2 | Verify gateway interface is up: `rbuscli getv Device.IP.Interface.{i}.Enable` | N/A | Returns: `Enable = true` |
+| 3 | Query gateway IP address: `rbuscli getv Device.IP.Interface.{i}.IPv4Address.{j}.IPAddress` and compare with controller gateway IP address | N/A | Returns: `IPAddress = <Gateway-IP>` (or configured gateway IP) |
+| 4 | N/A | Verify client IP address assigned: `/sbin/ifconfig {interface}` | grep `"inet "` Output shows: `inet <IP-Addr> ` |
 | 5 | N/A | Verify default route configured: `ip route show` | grep `"default"` Output shows: `default via <Gateway-IP> dev <wlan_iface>` |
-| 6 | N/A | Verify gateway is reachable (ARP check): `arp -n <Gateway-IP` | Output shows gateway MAC address (ARP resolved) |
-| 7 | N/A | Ping gateway (5 packets): `ping -c 5 <Gateway-IP>` | All 5 packets transmitted and received successfully (regardless of whether traffic backhauls through an Agent) |
-| 8 | N/A | Verify ping response time: `ping -c 5 <Gateway-IP>` | grep "time="` | Output shows response times (typically < 10 ms if attached to Controller; slightly higher if routed via an Agent's backhaul) |
-| 9 | N/A | Verify no packet loss: `ping -c 5 <Gateway-IP>` | grep "0% packet loss"` | Output contains: `0% packet loss` (or 0 lost out of 5) |
-| 10 | N/A | Verify ICMP Echo Reply received: `ping -c 1 -v <Gateway-IP>` 2>&1 | grep -i `"reply unreachable"` Output shows: `Reply from <Gateway-IP>` (or similar) |
-| 11 | Query gateway for connected clients: `rbuscli getv Device.DHCPv4.Server.Pool.1.ClientNumberOfEntries` | N/A | Count >= 1 (client counted in active pool regardless of which Agent it is attached to) |
-| 12 | Query client connection info from Controller: `rbuscli getv Device.DHCPv4.Server.Pool.{i}.Client.{j}.IPv4Address.{k}.IPAddress` | N/A | Returns client IP (matching client's assigned IP) |
-| 13 | Query client MAC from Controller: `rbuscli getv Device.DHCPv4.Server.Pool.{i}.Client.{j}.Chaddr` | N/A | Returns client MAC address (matching client device MAC) |
-| 14 | N/A | Verify interface statistics (optional): `ip -s link show <wlan_iface>` | Output shows RX/TX packets with no errors |
-| 15 | N/A | Extended ping test (10 packets): `ping -c 10 <Gateway-IP>` | All 10 packets transmitted and received successfully with consistent RTT |
+| 6 | N/A | Ping gateway (3 packets): `ping -c 3 <Gateway-IP>` and verify connectivity | All 3 packets transmitted and received successfully (regardless of whether traffic backhauls through an Agent) |
+| 7 | Query gateway for connected clients: `rbuscli getv Device.DHCPv4.Server.Pool.1.ClientNumberOfEntries` | N/A | Count >= 1 (client counted in active pool regardless of which Agent it is attached to) |
 
 ---
 

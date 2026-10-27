@@ -130,7 +130,7 @@ def test_client_association_authentication_correct_credentials(initialize):
                 step_passed = False
         if step_passed:
             report_logger.print_success("PASS: Association status verified successfully for all connected clients")
-        report_logger.print_step("STEP 9: Verify negotiated security on clients")
+        report_logger.print_step("STEP 8: Verify negotiated security on clients")
         step_passed = True
         for client in clients:
             if initialize.read_from_database(client,"device_present"):
@@ -148,7 +148,7 @@ def test_client_association_authentication_correct_credentials(initialize):
                     step_passed = False
         if step_passed:
             report_logger.print_success("PASS: Clients negotiated security matches the controller AKM configuration")
-        report_logger.print_step("STEP 10: Test connectivity by pinging 8.8.8.8")
+        report_logger.print_step("STEP 9: Test connectivity by pinging 8.8.8.8")
         step_passed = True
         for client in clients:
             if initialize.read_from_database(client,"device_present"):
