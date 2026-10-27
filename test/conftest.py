@@ -47,13 +47,13 @@ from packet_analyzer.protocol_validation import common_protocol_validation
 from packet_analyzer.packet_dissector import error_list
 from rdkbmeshzap.common_utils import report_logger, test_environment_checks
 
-_setup_sections = {
+setup_sections = {
 	"setup_accessibility": "",
 	"database_update": "",
 	"test_environment_check": "",
 }
-_protocol_validation_results = []
-_setup_failure = ""
+protocol_validation_results = []
+setup_failure = ""
 
 @pytest.fixture(scope="session", autouse=True)
 def initialize():
@@ -77,12 +77,12 @@ def validate_setup_accessibility(initialize):
 	captured_output = io.StringIO()
 	with redirect_stdout(captured_output):
 		accessibility_result = test_environment_checks.validate_device_accessibility(initialize)
-	_setup_sections["setup_accessibility"] = captured_output.getvalue()
-	print(_setup_sections["setup_accessibility"], end="")
+	setup_sections["setup_accessibility"] = captured_output.getvalue()
+	print(setup_sections["setup_accessibility"], end="")
 	if accessibility_result is False:
-		global _setup_failure
-		_setup_failure = "Setup Accessibility validation failed"
-		pytest.exit(_setup_failure, returncode=1)
+		global setup_failure
+		setup_failure = "Setup Accessibility validation failed"
+		pytest.exit(setup_failure, returncode=1)
 	initialize.accessibility_validated = True
 	report_logger.print_success(
 		"PASS: All configured devices passed accessibility validation"
@@ -90,18 +90,18 @@ def validate_setup_accessibility(initialize):
 
 @pytest.fixture(scope="session", autouse=True)
 def update_runtime_database(initialize, validate_setup_accessibility):
-	global _setup_failure
+	global setup_failure
 	captured_output = io.StringIO()
 	with redirect_stdout(captured_output):
 		database_update_result = test_environment_checks.retrieve_and_store_runtime_data(initialize)
-	_setup_sections["database_update"] = captured_output.getvalue()
-	print(_setup_sections["database_update"], end="")
+	setup_sections["database_update"] = captured_output.getvalue()
+	print(setup_sections["database_update"], end="")
 	if database_update_result is False:
-		_setup_failure = "Runtime Database Configuration Update failed"
+		setup_failure = "Runtime Database Configuration Update failed"
 
 @pytest.fixture(scope="session", autouse=True)
 def verify_test_environment(initialize, update_runtime_database):
-	global _setup_failure
+	global setup_failure
 	validation_result = True
 	failed_checks = []
 	captured_output = io.StringIO()
@@ -123,16 +123,16 @@ def verify_test_environment(initialize, update_runtime_database):
 			except Exception as error:
 				validation_result = False
 				failed_checks.append(f"{check.__name__}: {error}")
-	_setup_sections["test_environment_check"] = captured_output.getvalue()
-	print(_setup_sections["test_environment_check"], end="")
-	if validation_result is False or _setup_failure:
+	setup_sections["test_environment_check"] = captured_output.getvalue()
+	print(setup_sections["test_environment_check"], end="")
+	if validation_result is False or setup_failure:
 		failure_messages = failed_checks
 		if validation_result is False:
 			failure_messages.append("Test Environment Check failed")
-		if _setup_failure:
-			failure_messages.append(_setup_failure)
-		_setup_failure = "; ".join(failure_messages)
-		pytest.exit(_setup_failure, returncode=1)
+		if setup_failure:
+			failure_messages.append(setup_failure)
+		setup_failure = "; ".join(failure_messages)
+		pytest.exit(setup_failure, returncode=1)
 	initialize.setup_validated = True
 
 @pytest.fixture(scope="function", autouse=True)
@@ -237,15 +237,15 @@ def pytest_html_results_summary(prefix, summary, postfix):
 		("database_update", "Runtime Database Configuration Update"),
 		("test_environment_check", "Test Environment Prerequisite Check"),
 	):
-		if not _setup_sections[section_name]:
+		if not setup_sections[section_name]:
 			continue
 		section_html = "<br>".join(
 			report_logger.format_report_line(line)
-			for line in _setup_sections[section_name].splitlines()
+			for line in setup_sections[section_name].splitlines()
 		)
 		section_failure = "<br>".join(
 			report_logger.format_report_line(line)
-			for line in _setup_sections[section_name].splitlines()
+			for line in setup_sections[section_name].splitlines()
 			if "FAIL:" in line
 		)
 		failure_html = (
@@ -264,19 +264,19 @@ def pytest_html_results_summary(prefix, summary, postfix):
 		)
 		if failure_html:
 			prefix.append(failure_html)
-		if section_name == "test_environment_check" and _setup_failure:
+		if section_name == "test_environment_check" and setup_failure:
 			postfix.append(
 				f'<div style="margin:10px 0;">'
-				f'<strong style="color:red;">{escape(_setup_failure)}</strong></div>'
+				f'<strong style="color:red;">{escape(setup_failure)}</strong></div>'
 			)
-	if _protocol_validation_results:
+	if protocol_validation_results:
 		test_sections = []
 		failed_test_names = "<br>".join(
 			f'<strong style="color:red;">FAIL: {escape(result["test_name"])}</strong>'
-			for result in _protocol_validation_results
+			for result in protocol_validation_results
 			if result["errors"]
 		)
-		for result in _protocol_validation_results:
+		for result in protocol_validation_results:
 			analysis_html = "<br>".join(
 				report_logger.format_report_line(line)
 				for line in result["analysis"].splitlines()
@@ -329,7 +329,7 @@ def protocol_validation(request, initialize):
 		error_list.clear()
 		try:
 			analysis_output = common_protocol_validation(capture_path, initialize)
-			_protocol_validation_results.append(
+			protocol_validation_results.append(
 				{
 					"test_name": request.node.name,
 					"analysis": analysis_output,
