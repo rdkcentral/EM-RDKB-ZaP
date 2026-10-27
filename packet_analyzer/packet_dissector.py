@@ -19,7 +19,6 @@ from scapy.all import rdpcap
 from scapy.all import Ether
 from scapy.plist import PacketList
 from .message_verify import *
-import pytest_check as check
 from zaero.utils import zi_logger
 from rdkbmeshzap.common_utils import report_logger
 

@@ -513,6 +513,7 @@ profiles:
       mandatory_tlvs:
         - 0x09 # TX Link Metric TLV
         - 0x0A # RX Link Metric TLV
+        - 0x0C # Link Metric Result Code TLV
         - 0x00 # End Of Message TLV
       optional_tlvs:
 
@@ -1088,6 +1089,7 @@ profiles:
       mandatory_tlvs:
         - 0x09 # TX Link Metric TLV
         - 0x0A # RX Link Metric TLV
+        - 0x0C # Link Metric Result Code TLV
         - 0x00 # End Of Message TLV
       optional_tlvs:
 
@@ -1699,6 +1701,7 @@ profiles:
       mandatory_tlvs:
         - 0x09 # TX Link Metric TLV
         - 0x0A # RX Link Metric TLV
+        - 0x0C # Link Metric Result Code TLV
         - 0x00 # End Of Message TLV
       optional_tlvs:
 
