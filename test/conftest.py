@@ -217,10 +217,6 @@ def pytest_runtest_makereport(item, call):
 		]
 	html_path = item.config.getoption("htmlpath", default=None)
 	if report.failed:
-		if playwright_exception is not None:
-			if not errors and html_path:
-				report.longrepr = ""
-			return
 		if not errors and html_path:
 			report.longrepr = ""
 		try:
@@ -253,8 +249,10 @@ def pytest_runtest_makereport(item, call):
 				)
 				report.longrepr = report.longrepr or "Test failed"
 		except Exception as error:
+			diagnostics_error = f"{type(error).__name__}: {error}"
+			report.user_properties.append(("failure_diagnostics_error", diagnostics_error))
 			try:
-				report.sections.append(("Failure diagnostics collection error", str(error)))
+				report.sections.append(("Failure diagnostics collection error", diagnostics_error))
 			except Exception:
 				pass
 
@@ -272,16 +270,19 @@ def pytest_html_results_table_html(report, data):
 		properties = getattr(report, "user_properties", [])
 		property_values = {
 			key: "\n".join(value for name, value in properties if name == key)
-			for key in ("failure_details", "playwright_failure", "error_logs")
+			for key in ("failure_details", "playwright_failure", "error_logs", "failure_diagnostics_error")
 		}
 		failure_details = property_values["failure_details"]
 		playwright_error = property_values["playwright_failure"]
 		error_logs = property_values["error_logs"]
+		diagnostics_error = property_values["failure_diagnostics_error"]
 		error_details = [failure_details] if failure_details else []
 		if playwright_error and playwright_error not in failure_details:
 			error_details.append(playwright_error)
 		if error_logs:
 			error_details.append(error_logs)
+		if diagnostics_error:
+			error_details.append(f"Failure diagnostics collection error: {diagnostics_error}")
 		failure_text = (
 			"<strong>Error logs:</strong><br>"
 			+ "<br><br>".join(escape(details) for details in error_details)

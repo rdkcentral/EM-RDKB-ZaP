@@ -18,11 +18,25 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 import shlex
+from threading import Lock
 import time
 from rdkbmeshzap.common_utils import device_utils, report_logger
 
+# Limit SSH channel setup and stream inactivity.
 LOG_TRANSFER_SOCKET_TIMEOUT = 30
+# Limit the total duration of a log transfer.
 LOG_TRANSFER_DEADLINE_SECONDS = 600
+# Each entry pairs a remote log path with whether to compress it.
+CONTROLLER_LOG_PATHS_WITH_COMPRESSION = (
+    ("/tmp/em_ctrl.log", True),
+    ("/tmp/em_agent.log", True),
+    ("/tmp/em_cli.log", False),
+)
+EXTENDER_LOG_PATHS_WITH_COMPRESSION = (("/tmp/em_agent.log", True),)
+# Service names checked for each device.
+CONTROLLER_SERVICES = ("em_ctrl", "ieee1905_em_ctrl", "ieee1905_em_agent", "em_agent", "onewifi")
+EXTENDER_SERVICES = ("em_agent", "ieee1905_em_agent", "onewifi")
+DEVICE_CONNECTION_LOCK = Lock()
 
 def stream_log(connection_obj, device, remote_path, local_path, compress=False):
     """
@@ -74,7 +88,6 @@ def stream_log(connection_obj, device, remote_path, local_path, compress=False):
                     last_activity = time.monotonic()
                 else:
                     time.sleep(0.05)
-
             exit_status = channel.recv_exit_status()
         if exit_status != 0:
             error_message = error_output.decode("utf-8", errors="replace").strip()
@@ -86,19 +99,6 @@ def stream_log(connection_obj, device, remote_path, local_path, compress=False):
         raise
     finally:
         channel.close()
-
-def stream_compressed_log(connection_obj, device, remote_path, local_path):
-    """
-    Syntax : stream_compressed_log(connection_obj, device, remote_path, local_path)
-    Description : Streams a complete remote log through gzip to a local file.
-    Parameters :
-        connection_obj - Selected Zaero connection object for the device.
-        device - Name of the device containing the log.
-        remote_path - Absolute path to the remote log file.
-        local_path - Destination Path for the compressed log.
-    Return Value: None. Raises an exception when the transfer fails or times out.
-    """
-    return stream_log(connection_obj, device, remote_path, local_path, compress=True)
 
 def record_command_output(debug_sections, name, collect):
     """
@@ -131,35 +131,38 @@ def collect_device_failure_diagnostics(initialize, scenario_dir, device):
     debug_info_path = device_dir / "device_debug_info.log"
     debug_sections = [f"Device: {device}\n"]
     diagnostic_paths = []
-    connection_obj = None
     try:
-        device_dir.mkdir(parents=True, exist_ok=True)
+        if not initialize.is_device_alive(device):
+            return diagnostic_paths
+    except Exception:
+        return diagnostic_paths
+    try:
         connection = initialize.read_from_database(device, "connection")
         connection_obj = initialize.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
     except Exception as error:
         debug_sections.append(f"Connection failed: {error}\n")
         report_logger.print_error(f"FAIL: {device}: failure diagnostics connection failed: {error}")
         try:
+            device_dir.mkdir(parents=True, exist_ok=True)
             debug_info_path.write_text("".join(debug_sections), encoding="utf-8")
             diagnostic_paths.append(debug_info_path)
         except Exception:
             pass
         return diagnostic_paths
+    device_dir.mkdir(parents=True, exist_ok=True)
     # Snapshot the live logs before running other diagnostic commands.
-    log_paths = (
-        (("/tmp/em_ctrl.log", True), ("/tmp/em_agent.log", True), ("/tmp/em_cli.log", False))
+    log_paths_with_compression = (
+        CONTROLLER_LOG_PATHS_WITH_COMPRESSION
         if device == "controller"
-        else (("/tmp/em_agent.log", True),)
+        else EXTENDER_LOG_PATHS_WITH_COMPRESSION
     )
     # Transfer this device's full logs concurrently to reduce collection time.
-    with ThreadPoolExecutor(max_workers=len(log_paths)) as executor:
+    with ThreadPoolExecutor(max_workers=len(log_paths_with_compression)) as executor:
         transfers = {}
-        for remote_path, compress in log_paths:
+        for remote_path, compress in log_paths_with_compression:
             suffix = ".gz" if compress else ""
             local_path = device_dir / f"{Path(remote_path).name}{suffix}"
-            transfer = stream_compressed_log if compress else stream_log
-            transfers[executor.submit(transfer, connection_obj, device, remote_path, local_path)] = (remote_path, local_path)
+            transfers[executor.submit(stream_log, connection_obj, device, remote_path, local_path, compress=compress)] = (remote_path, local_path)
         for future in as_completed(transfers):
             remote_path, local_path = transfers[future]
             try:
@@ -171,17 +174,15 @@ def collect_device_failure_diagnostics(initialize, scenario_dir, device):
                 report_logger.print_error(message)
                 debug_sections.append(f"{message}\n")
     # Capture service and interface state after the log snapshot.
-    services = (
-        ("em_ctrl", "ieee1905_em_ctrl", "ieee1905_em_agent", "em_agent", "onewifi")
-        if device == "controller"
-        else ("em_agent", "ieee1905_em_agent", "onewifi")
-    )
-    debug_sections.append("\n--- Services checked ---\n" + "\n".join(services) + "\n")
-    service_command = " ".join(services)
-    record_command_output(debug_sections, "systemctl status", lambda: connection_obj.execute_command(f"systemctl status {service_command} --no-pager 2>&1", return_stderr=True))
-    record_command_output(debug_sections, "iw dev", lambda: initialize.get_iw_dev_info(device, method="cli"))
-    record_command_output(debug_sections, "ifconfig", lambda: connection_obj.execute_command("ifconfig 2>&1", return_stderr=True))
-    record_command_output(debug_sections, "version.txt", lambda: connection_obj.execute_command("cat /version.txt 2>&1", return_stderr=True))
+    with DEVICE_CONNECTION_LOCK:
+        connection_obj.switch_connection(device)
+        services = CONTROLLER_SERVICES if device == "controller" else EXTENDER_SERVICES
+        debug_sections.append("\n--- Services checked ---\n" + "\n".join(services) + "\n")
+        service_command = " ".join(services)
+        record_command_output(debug_sections, "systemctl status", lambda: connection_obj.execute_command(f"systemctl status {service_command} --no-pager 2>&1", return_stderr=True))
+        record_command_output(debug_sections, "iw dev", lambda: initialize.get_iw_dev_info(device, method="cli"))
+        record_command_output(debug_sections, "ifconfig", lambda: connection_obj.execute_command("ifconfig 2>&1", return_stderr=True))
+        record_command_output(debug_sections, "version.txt", lambda: connection_obj.execute_command("cat /version.txt 2>&1", return_stderr=True))
     try:
         debug_info_path.write_text("".join(debug_sections), encoding="utf-8")
         diagnostic_paths.append(debug_info_path)
@@ -206,18 +207,25 @@ def collect_failure_diagnostics(initialize, run_dir, test_case_name):
     except Exception as error:
         report_logger.print_error(f"FAIL: failure diagnostics directory creation failed: {error}")
         return None
-    # Snapshot controller logs before extender discovery can add delay.
-    diagnostic_paths = collect_device_failure_diagnostics(initialize, scenario_dir, "controller")
-    try:
-        extenders = device_utils.get_enabled_extenders(initialize)
-    except Exception as error:
-        report_logger.print_error(f"FAIL: failure diagnostics extender discovery failed: {error}")
-        extenders = []
-    # Collect each enabled extender after the controller snapshot.
-    for extender in extenders:
+    diagnostic_paths = []
+    with ThreadPoolExecutor() as executor:
+        futures = {executor.submit(collect_device_failure_diagnostics, initialize, scenario_dir, "controller"): "controller"}
         try:
-            diagnostic_paths.extend(collect_device_failure_diagnostics(initialize, scenario_dir, extender))
+            extenders = device_utils.get_enabled_extenders(initialize)
         except Exception as error:
-            report_logger.print_error(f"FAIL: {extender}: failure diagnostics collection failed: {error}")
-            continue
+            report_logger.print_error(f"FAIL: failure diagnostics extender discovery failed: {error}")
+            extenders = []
+        # Start each extender's log snapshot without waiting for earlier devices.
+        futures.update(
+            {
+                executor.submit(collect_device_failure_diagnostics, initialize, scenario_dir, extender): extender
+                for extender in extenders
+            }
+        )
+        for future in as_completed(futures):
+            device = futures[future]
+            try:
+                diagnostic_paths.extend(future.result())
+            except Exception as error:
+                report_logger.print_error(f"FAIL: {device}: failure diagnostics collection failed: {error}")
     return scenario_dir, diagnostic_paths
