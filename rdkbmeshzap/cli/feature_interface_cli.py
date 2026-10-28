@@ -61,13 +61,12 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
         if device == 'controller':
             interface = "eth0_virt_peer"
         else:
             interface = "eth1_virt_peer"
         command = f"cat /sys/class/net/{interface}/address"
-        output, error = connection_obj.execute_command(command,
+        output, error = connection_obj.execute_command(device, command,
                                                    return_stderr=True)
         if error != '':
             raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
@@ -80,9 +79,8 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
         command = "iw dev"
-        output, error = connection_obj.execute_command(command, return_stderr=True)
+        output, error = connection_obj.execute_command(device, command, return_stderr=True)
         if error != '':
             raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
         return str(output).strip()
@@ -112,9 +110,8 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
         command = f"iw dev {shlex.quote(iface)} info"
-        output, error = connection_obj.execute_command(command, return_stderr=True)
+        output, error = connection_obj.execute_command(device, command, return_stderr=True)
         if error != '':
             raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
         return str(output).strip()
@@ -126,9 +123,8 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
         command = f"iw dev {iface} station dump"
-        output, error = connection_obj.execute_command(command, return_stderr=True)
+        output, error = connection_obj.execute_command(device, command, return_stderr=True)
         if error != '':
             raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
         return str(output).strip()
@@ -140,9 +136,8 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
         command = f"iw dev {iface} link"
-        output, error = connection_obj.execute_command(command, return_stderr=True)
+        output, error = connection_obj.execute_command(device, command, return_stderr=True)
         if error != '':
             raise RuntimeError(
                 f"Command execution failed: {command}. stderr: {error.strip()}"
@@ -277,9 +272,8 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
         command = "top -b -n 1"
-        output, error = connection_obj.execute_command(command, return_stderr=True)
+        output, error = connection_obj.execute_command(device, command, return_stderr=True)
         if error != '':
             raise RuntimeError(
                 f"Command execution failed: {command}. stderr: {error.strip()}"
@@ -293,9 +287,8 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
         command = "free -m"
-        output, error = connection_obj.execute_command(command, return_stderr=True)
+        output, error = connection_obj.execute_command(device, command, return_stderr=True)
         if error != '':
             raise RuntimeError(
                 f"Command execution failed: {command}. stderr: {error.strip()}"
@@ -312,7 +305,6 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
         try:
             index = self.db_obj.read_from_database(device, index)
             #interface = self.db_obj.read_from_database(device, "wifi_iface").format(index)
@@ -322,7 +314,7 @@ class FeatureInterfaceCLI(DatabaseModule,
 
         command = f"dmcli eRT setv Device.WiFi.SSID.{index}.SSID string {ssid}"
         zi_logger.log(f"COMMAND : {command}")
-        _, error = connection_obj.execute_command(command,
+        _, error = connection_obj.execute_command(device, command,
                                               return_stderr=True)
         if error != '':
             raise RuntimeError(f"Command execution failed : {command}")
@@ -336,7 +328,6 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
         try:
             index = self.db_obj.read_from_database(device, index)
             #interface = self.db_obj.read_from_database(device, "wifi_iface").format(index)
@@ -345,7 +336,7 @@ class FeatureInterfaceCLI(DatabaseModule,
             raise RuntimeError(f"Could not find out the Radio of the device : {device}")
         cutVal = '{print $3}'
         command = f"dmcli eRT getv Device.WiFi.SSID.{index}.SSID | grep 'value:' | awk -F': ' '{cutVal}'"
-        output, error = connection_obj.execute_command(command,
+        output, error = connection_obj.execute_command(device, command,
                                                    return_stderr=True)
         if error != '':
             raise RuntimeError(f"Command execution failed : {command}")
@@ -362,7 +353,6 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
         try:
             index_val = self.db_obj.read_from_database(device, index)
             if 'mld' in index:
@@ -374,7 +364,7 @@ class FeatureInterfaceCLI(DatabaseModule,
             raise RuntimeError(f"Could not find out the Radio of the device : {device}")
         cutVal = '{print $2}'
         command = f"iw dev {ifname} info | grep ssid | awk '{cutVal}'"
-        output, error = connection_obj.execute_command(command,
+        output, error = connection_obj.execute_command(device, command,
                                                        return_stderr=True)
         output = str(output).strip()
         zi_logger.log(f"output : {output}, ssid : {ssid}")
@@ -388,10 +378,9 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
         command = "reboot >/dev/null 2>&1 &"
         zi_logger.log(f"COMMAND : {command}")
-        connection_obj.execute_command(command,
+        connection_obj.execute_command(device, command,
                                        blocking_call = False)
 
     def get_fronthaul_credentials(self, device: str) -> tuple:
@@ -401,14 +390,13 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
         query = (
             "SELECT SSID, PassPhrase FROM NetworkSSIDList "
             "WHERE ID LIKE '%Fronthaul%OneWifiMesh%' LIMIT 1;"
         )
         command = f"mysql -N -B -D OneWifiMesh -e {shlex.quote(query)}"
         output, error = connection_obj.execute_command(
-            command, return_stderr=True
+            device, command, return_stderr=True
         )
         if error:
             raise RuntimeError(f"Command execution failed: {error.strip()}")
@@ -438,10 +426,9 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
         command = f"systemctl is-active {service_name}"
         output, error = connection_obj.execute_command(
-            command, return_stderr=True
+            device, command, return_stderr=True
         )
         if error:
             raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
@@ -460,9 +447,8 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
         command = f"python3 -c \"import glob, sys; print(bool(glob.glob(sys.argv[1])))\" {shlex.quote(file_path)}"
-        output, error = connection_obj.execute_command(command,
+        output, error = connection_obj.execute_command(device, command,
                                                    return_stderr=True)
         if error != '':
             raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
@@ -476,10 +462,9 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
         # command = "date +%s"
         command = "python3 -c \"from datetime import datetime; print(datetime.now().timestamp())\""
-        output, error = connection_obj.execute_command(command,
+        output, error = connection_obj.execute_command(device, command,
                                                     return_stderr=True)
         if error != '':
             raise RuntimeError(f"Command execution failed : {command}. stderr: {error.strip()}")
@@ -494,9 +479,8 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
         command = f"ls {shlex.quote(directory_path)}"
-        output, error = connection_obj.execute_command(command,
+        output, error = connection_obj.execute_command(device, command,
                                                    return_stderr=True)
         if error != '':
             raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
@@ -530,7 +514,6 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
         band_filters = {
             "2.4": "$4 >= 2400 && $4 <= 2483.5",
             "5": "$4 >= 5000 && $4 <= 5900",
@@ -543,7 +526,7 @@ class FeatureInterfaceCLI(DatabaseModule,
             f"awk -F'[ ()]+' '/channel/ && {band_filters[band]} {{print $3}}'"
         )
         output, error = connection_obj.execute_command(
-            command,
+            device, command,
             return_stderr=True
         )
         if error:
@@ -570,9 +553,8 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
         command = f"scp {shlex.quote(local_file_path)} {shlex.quote('{}@{}:{}'.format(user, remote_device_ip, remote_file_path))}"
-        _, error = connection_obj.execute_command(command,
+        _, error = connection_obj.execute_command(device, command,
                                               return_stderr=True)
         if error != '':
             raise RuntimeError(f"Command execution failed : {command}. stderr: {error.strip()}")
@@ -588,7 +570,6 @@ class FeatureInterfaceCLI(DatabaseModule,
 
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
 
         commands = [
             "systemctl daemon-reload",
@@ -598,7 +579,7 @@ class FeatureInterfaceCLI(DatabaseModule,
 
         for command in commands:
             _, error = connection_obj.execute_command(
-                command,
+                device, command,
                 return_stderr=True
             )
             if error:
@@ -608,7 +589,7 @@ class FeatureInterfaceCLI(DatabaseModule,
 
         command = f"systemctl status {shlex.quote(service_name)}"
         _, error = connection_obj.execute_command(
-            command,
+            device, command,
             return_stderr=True
         )
         if error:
@@ -628,12 +609,11 @@ class FeatureInterfaceCLI(DatabaseModule,
 
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
 
         command = f"systemctl stop {shlex.quote(service_name)}"
 
         _, error = connection_obj.execute_command(
-            command,
+            device, command,
             return_stderr=True
         )
         if error:
@@ -642,7 +622,7 @@ class FeatureInterfaceCLI(DatabaseModule,
             )
         command = f"systemctl status {shlex.quote(service_name)}"
         _, error = connection_obj.execute_command(
-            command,
+            device, command,
             return_stderr=True
         )
         if error:
@@ -658,9 +638,8 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
         cmd = f"nmcli -f SSID,FREQ dev wifi list --rescan yes | grep -i {shlex.quote(ssid)}"
-        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
         if ssid not in output:
             raise RuntimeError(f"Command execution failed : {output}")
         
@@ -688,10 +667,9 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
         wlan_iface = self.db_obj.read_from_database(device, 'data_iface')
         cmd = f"dhclient -v {wlan_iface}"
-        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
 
         # dhclient -v writes its verbose transaction log to stderr, not stdout
         combined_output = f"{output}\n{error}"
@@ -715,9 +693,8 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        connection_obj.switch_connection(device)
         cmd = "ip route show | grep -m 1 default"
-        output, error = connection_obj.execute_command(cmd, return_stderr=True)
+        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
         if 'default via' not in output:
             raise RuntimeError(f"Command execution failed : {output}")
         
