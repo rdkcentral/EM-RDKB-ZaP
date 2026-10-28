@@ -33,10 +33,10 @@ def get_client_bssids(client, ssid, ssh):
     Return Value:
         list: Matching BSSID(s) in lowercase format.
     """
-    ssh.switch_connection(client)
     report_logger.print_info(
         f"INFO: Scanning for SSID '{ssid}' on {client}")
     result = ssh.execute_command(
+        client,
         "nmcli -t --escape no -f BSSID,SSID device wifi list")
     bssids = []
     for row in (result or "").splitlines():
@@ -95,8 +95,7 @@ def connect_client_to_bssid(initialize, client, ssid, passphrase, bssid, ssh, al
         f"sudo -S -p '' nmcli device wifi connect {shlex.quote(ssid)} "
         f"password {shlex.quote(passphrase)} bssid {shlex.quote(bssid.upper())} "
         f"ifname {shlex.quote(wifi_interface)}")
-    ssh.switch_connection(client)
-    output = ssh.execute_command(command)
+    output = ssh.execute_command(client, command)
     try:
         connected_bssid = (
             initialize.get_association_status(client, "cli").lower())
@@ -144,11 +143,11 @@ def connect_client_to_target_device(initialize, client_devices, extender, allowe
     for client in client_devices:
         password = initialize.read_from_database(client, "password")
         interface = initialize.read_from_database(client, "data_iface")
-        ssh.switch_connection(client)
         ssh.execute_command(
+            client,
             f"printf '%s\\n' {shlex.quote(password)} | "
             f"sudo -S -p '' nmcli device disconnect {shlex.quote(interface)}")
-        ssh.execute_command(f"printf '%s\\n' {shlex.quote(password)} | "
+        ssh.execute_command(client, f"printf '%s\\n' {shlex.quote(password)} | "
             f"sudo -S -p '' nmcli connection delete {shlex.quote(ssid)}")
         time.sleep(2)
         initialize.check_ap_ssid_visibility(client, ssid)
