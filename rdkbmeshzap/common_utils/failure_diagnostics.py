@@ -1,5 +1,5 @@
 # If not stated otherwise in this file or this component LICENSE file the
-# following copyright and licenses apply.
+# following copyright and licenses apply:
 #
 # Copyright 2026 RDK Management
 #
@@ -38,7 +38,7 @@ CONTROLLER_SERVICES = ("em_ctrl", "ieee1905_em_ctrl", "ieee1905_em_agent", "em_a
 EXTENDER_SERVICES = ("em_agent", "ieee1905_em_agent", "onewifi")
 DEVICE_CONNECTION_LOCK = Lock()
 
-def stream_log(connection_obj, device, remote_path, local_path, compress=False):
+def stream_log(connection_obj, device, remote_path, local_path, compress=False, remote_command=None):
     """
     Syntax : stream_log(connection_obj, device, remote_path, local_path, compress=False)
     Description : Streams a complete remote log to a local file, optionally compressed.
@@ -48,6 +48,7 @@ def stream_log(connection_obj, device, remote_path, local_path, compress=False):
         remote_path - Absolute path to the remote log file.
         local_path - Destination path for the log.
         compress - Compress the log on the remote device before transferring it.
+        remote_command - Optional command that writes the log data to stdout.
     Return Value: None. Raises an exception when the transfer fails or times out.
     """
     # Use the device-specific client so parallel transfers avoid shared alias switching.
@@ -63,8 +64,10 @@ def stream_log(connection_obj, device, remote_path, local_path, compress=False):
     error_output = bytearray()
     channel = transport.open_session(timeout=LOG_TRANSFER_SOCKET_TIMEOUT)
     try:
-        command = "gzip -c" if compress else "cat"
-        channel.exec_command(f"{command} -- {shlex.quote(remote_path)}")
+        if remote_command is None:
+            command = "gzip -c" if compress else "cat"
+            remote_command = f"{command} -- {shlex.quote(remote_path)}"
+        channel.exec_command(remote_command)
         with partial_path.open("wb") as output:
             # Drain both streams while enforcing inactivity and total-time limits.
             while not channel.exit_status_ready() or channel.recv_ready() or channel.recv_stderr_ready():
@@ -157,12 +160,26 @@ def collect_device_failure_diagnostics(initialize, scenario_dir, device):
         else EXTENDER_LOG_PATHS_WITH_COMPRESSION
     )
     # Transfer this device's full logs concurrently to reduce collection time.
-    with ThreadPoolExecutor(max_workers=len(log_paths_with_compression)) as executor:
+    with ThreadPoolExecutor(max_workers=len(log_paths_with_compression) + 1) as executor:
         transfers = {}
         for remote_path, compress in log_paths_with_compression:
             suffix = ".gz" if compress else ""
             local_path = device_dir / f"{Path(remote_path).name}{suffix}"
             transfers[executor.submit(stream_log, connection_obj, device, remote_path, local_path, compress=compress)] = (remote_path, local_path)
+        onewifi_local_path = device_dir / "onewifi_logs.tar.gz"
+        transfers[
+            executor.submit(
+                stream_log,
+                connection_obj,
+                device,
+                "/rdklogs/logs",
+                onewifi_local_path,
+                remote_command=(
+                    "cd /rdklogs/logs && "
+                    "find . -type f -iname 'wifi*' -print | tar -czf - -T -"
+                ),
+            )
+        ] = ("OneWifi logs in /rdklogs/logs", onewifi_local_path)
         for future in as_completed(transfers):
             remote_path, local_path = transfers[future]
             try:
@@ -174,15 +191,20 @@ def collect_device_failure_diagnostics(initialize, scenario_dir, device):
                 report_logger.print_error(message)
                 debug_sections.append(f"{message}\n")
     # Capture service and interface state after the log snapshot.
-    with DEVICE_CONNECTION_LOCK:
-        connection_obj.switch_connection(device)
-        services = CONTROLLER_SERVICES if device == "controller" else EXTENDER_SERVICES
-        debug_sections.append("\n--- Services checked ---\n" + "\n".join(services) + "\n")
-        service_command = " ".join(services)
-        record_command_output(debug_sections, "systemctl status", lambda: connection_obj.execute_command(f"systemctl status {service_command} --no-pager 2>&1", return_stderr=True))
-        record_command_output(debug_sections, "iw dev", lambda: initialize.get_iw_dev_info(device, method="cli"))
-        record_command_output(debug_sections, "ifconfig", lambda: connection_obj.execute_command("ifconfig 2>&1", return_stderr=True))
-        record_command_output(debug_sections, "version.txt", lambda: connection_obj.execute_command("cat /version.txt 2>&1", return_stderr=True))
+    try:
+        with DEVICE_CONNECTION_LOCK:
+            connection_obj.switch_connection(device)
+            services = CONTROLLER_SERVICES if device == "controller" else EXTENDER_SERVICES
+            debug_sections.append("\n--- Services checked ---\n" + "\n".join(services) + "\n")
+            service_command = " ".join(services)
+            record_command_output(debug_sections, "systemctl status", lambda: connection_obj.execute_command(f"systemctl status {service_command} --no-pager 2>&1", return_stderr=True))
+            record_command_output(debug_sections, "iw dev", lambda: initialize.get_iw_dev_info(device, method="cli"))
+            record_command_output(debug_sections, "ifconfig", lambda: connection_obj.execute_command("ifconfig 2>&1", return_stderr=True))
+            record_command_output(debug_sections, "version.txt", lambda: connection_obj.execute_command("cat /version.txt 2>&1", return_stderr=True))
+    except Exception as error:
+        message = f"FAIL: {device}: command diagnostics failed: {error!r}"
+        report_logger.print_error(message)
+        debug_sections.append(f"{message}\n")
     try:
         debug_info_path.write_text("".join(debug_sections), encoding="utf-8")
         diagnostic_paths.append(debug_info_path)

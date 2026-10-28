@@ -235,15 +235,13 @@ def pytest_runtest_makereport(item, call):
 			if diagnostic_result:
 				scenario_dir, diagnostic_paths = diagnostic_result
 				report_dir = Path(html_path).resolve().parent
-				for device_dir in sorted(path for path in scenario_dir.iterdir() if path.is_dir()):
-					device_label = f"{device_dir.name.capitalize()} logs"
-					relative_diagnostics = device_dir.relative_to(report_dir).as_posix() + "/"
-					report.user_properties.append(
-						(
-							f"failure_diagnostics_link:{device_label}",
-							quote(relative_diagnostics, safe="/"),
-						)
+				relative_diagnostics = scenario_dir.relative_to(report_dir).as_posix() + "/"
+				report.user_properties.append(
+					(
+						"failure_diagnostics_link:Device logs",
+						quote(relative_diagnostics, safe="/"),
 					)
+				)
 				report.sections.append(
 					("Failure diagnostics", "\n".join(str(path) for path in diagnostic_paths))
 				)
@@ -301,7 +299,7 @@ def pytest_html_results_table_html(report, data):
 			)
 			with redirect_stdout(io.StringIO()):
 				diagnostics_title = report_logger.print_title("Failure diagnostics:")
-			failure_text += f"<br><br>{diagnostics_title}<br>{links_html}"
+			failure_text += f"<br><br>{diagnostics_title} {links_html}"
 		new_data.append(
 			'<div><span style="color:red; font-weight:bold; '
 			f'white-space:pre-wrap;">{failure_text}</span></div>'
