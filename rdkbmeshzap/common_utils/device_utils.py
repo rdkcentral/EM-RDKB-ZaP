@@ -368,3 +368,89 @@ def retrieve_and_store_device_index(initialize, device, device_mac):
     index = initialize.get_device_index("controller", device_mac, "de")
     initialize.db_obj.write_into_database("controller", f"{device}_device_index",index)
     return index
+
+def retrieve_and_store_radio_index(initialize, device, band, radio_mac):
+    """
+    Retrieve the radio index using its MAC address and store it
+    in the corresponding database field.
+    """
+    index = initialize.get_radio_index("controller", radio_mac, "de")
+
+    initialize.db_obj.write_into_database(
+        "controller", f"{device}_{band}_radio_index", index
+    )
+    return index
+
+def retrieve_and_store_bss_index(initialize, device, band, bss_mac):
+    """
+    Retrieve the BSS index using its MAC address and store it
+    in the corresponding database field.
+    """
+    index = initialize.get_bss_index("controller", bss_mac, "de")
+
+    initialize.db_obj.write_into_database(
+        "controller", f"{device}_{band}_radio_bss_index", index
+    )
+    return index
+
+def retrieve_and_store_all_indexes(initialize):
+    """
+    Retrieve and store device, radio, and BSS indexes
+    for the controller and all enabled extenders.
+    """
+    all_passed = True
+    devices = ["controller"] + get_enabled_extenders(initialize)
+    # Retrieve and store device indexes
+    for device in devices:
+        try:
+            device_mac = initialize.read_from_database(device, "2g_radio_mac")
+            if not device_mac:
+                report_logger.print_error(f"FAIL: 2.4 GHz radio MAC not found for {device}")
+                all_passed = False
+                continue
+            device_index = retrieve_and_store_device_index(initialize, device, device_mac)
+            if device_index is None:
+                report_logger.print_error(f"FAIL: Device index not found for {device}")
+                all_passed = False
+            else:
+                report_logger.print_info(f"INFO: Device index for {device}: {device_index}")
+        except Exception as e:
+            report_logger.print_error(f"FAIL: Failed to retrieve device index for {device}: {e}")
+            all_passed = False
+    # Retrieve and store radio indexes
+    for device in devices:
+        for band in ("2g", "5g", "6g"):
+            try:
+                radio_mac = initialize.read_from_database(device, f"{band}_radio_mac")
+                if not radio_mac:
+                    report_logger.print_info(f"Skipping {band} radio for {device}: Radio MAC not found")
+                    continue
+                radio_index = retrieve_and_store_radio_index(initialize, device, band, radio_mac)
+                if radio_index is None:
+                    report_logger.print_error(f"FAIL: Radio index not found for {device} ({band})")
+                    all_passed = False
+                else:
+                    report_logger.print_info(f"INFO: Radio index for {device} {band}: {radio_index}")
+            except Exception as e:
+                report_logger.print_error(f"FAIL: Failed to retrieve {band} radio index for {device}: {e}")
+                all_passed = False
+
+    # Retrieve and store BSS indexes
+    for device in devices:
+        for band in ("2g", "5g", "6g"):
+            try:
+                radio_mac = initialize.read_from_database(device, f"{band}_radio_mac")
+                if not radio_mac:
+                    report_logger.print_info(f"Skipping {band} radio for {device}: radio MAC not found")
+                    continue
+                bss_index = retrieve_and_store_bss_index(initialize, device, band, radio_mac)
+                if bss_index is None:
+                    report_logger.print_error(f"FAIL: BSS index not found for {device} ({band})")
+                    all_passed = False
+                else:
+                    report_logger.print_info(f"INFO: BSS index for {device} {band}: {bss_index}")
+            except Exception as e:
+                report_logger.print_error(f"FAIL: Failed to retrieve {band} BSS index for {device}: {e}")
+                all_passed = False
+
+    return all_passed

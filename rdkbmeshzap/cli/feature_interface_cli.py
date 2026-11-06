@@ -699,3 +699,172 @@ class FeatureInterfaceCLI(DatabaseModule,
             raise RuntimeError(f"Command execution failed : {output}")
         
         return output.split()[2]
+
+    def set_wpa_log_level(self, device: str, level: str = "DEBUG") -> None:
+        """
+        Set wpa_supplicant log level using `wpa_cli -i <interface> log_level <level>`.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        interface = self.db_obj.read_from_database(device, 'data_iface')
+        command = f"wpa_cli -i {shlex.quote(interface)} log_level {shlex.quote(level)}"
+        output, error = connection_obj.execute_command(device, command, return_stderr=True)
+        if error != '' or str(output).strip() != 'OK':
+            raise RuntimeError(f"Command execution failed: {command}. output: {str(output).strip()} stderr: {error.strip()}")
+
+    def get_wpa_cli_status(self, device: str) -> str:
+        """
+        Get wpa_supplicant status using `wpa_cli -i <interface> status`.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        interface = self.db_obj.read_from_database(device, 'data_iface')
+        command = f"wpa_cli -i {shlex.quote(interface)} status | grep 'wpa_state=COMPLETED'"
+        output, error = connection_obj.execute_command(device, command, return_stderr=True)
+        if error != '':
+            raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
+        return str(output).strip()
+
+    def verify_four_way_handshake_messages(self, device: str) -> str:
+        """
+        To verify the WPA 4-Way Handshake messages of the Wi-Fi client.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        cmd = ("journalctl -u wpa_supplicant --no-pager "
+            "| grep -E 'RX message 1 of 4-Way Handshake|"
+            "Sending EAPOL-Key 2/4|"
+            "RX message 3 of 4-Way Handshake|"
+            "Sending EAPOL-Key 4/4'")
+        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
+        combined_output = f"{output}\n{error}"
+        handshake_messages = [
+            'RX message 1 of 4-Way Handshake',
+            'Sending EAPOL-Key 2/4',
+            'RX message 3 of 4-Way Handshake',
+            'Sending EAPOL-Key 4/4'
+        ]
+        missing_messages = [
+            message for message in handshake_messages
+            if message not in combined_output
+        ]
+        if missing_messages:
+            raise RuntimeError(
+                "WPA 4-Way Handshake verification failed. "
+                f"Missing messages: {missing_messages}\n"
+                f"Captured logs:\n{combined_output}"
+            )
+        return combined_output
+    
+    def get_wpa_cli_capability(self, device: str, capability: str) -> list:
+        """
+        Get `wpa_cli -i <interface> get_capability <pairwise|group|key_mgmt|...>` as a list.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        interface = self.db_obj.read_from_database(device, 'data_iface')
+        command = f"wpa_cli -i {shlex.quote(interface)} get_capability {shlex.quote(capability)}"
+        output, error = connection_obj.execute_command(device, command, return_stderr=True)
+        if error != '' or 'FAIL' in str(output):
+            raise RuntimeError(f"Command execution failed: {command}. output: {str(output).strip()} stderr: {error.strip()}")
+        return str(output).split()
+
+    def get_wlan_ip_address(self, device: str) -> str:
+        """
+        To get the IP address of the device for a specific interface.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        interface = self.db_obj.read_from_database(device, 'data_iface')
+        cmd = f"ip -4 addr show {shlex.quote(interface)} | grep 'inet ' | awk '{{print $2}}' | cut -d'/' -f1"
+        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
+        if not output.strip():
+            raise RuntimeError(f"Command execution failed : {output}")
+        
+        return output.strip()
+    
+    def get_wifi_generation(self, device: str) -> str:
+        """
+        Identify the highest Wi-Fi generation supported by the device.
+        """
+        zi_logger.print_context()
+
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        command = "iw list"
+        output, error = connection_obj.execute_command(device, command,
+                                                        return_stdout=True,
+                                                        return_stderr=True)
+        if error:
+            raise ValueError("Error: Device is not active.")
+        if not output:
+            zi_logger.print_error("Unable to retrieve Wi-Fi capabilities")
+            return "Unable to determine"
+        output = output.upper()
+        if "EHT MAC CAPABILITIES" in output or "EHT IFTYPES" in output:
+            return "Wi-Fi 7"
+        elif "HE MAC CAPABILITIES" in output or "HE IFTYPES" in output:
+            return "Wi-Fi 6"
+        elif "VHT CAPABILITIES" in output:
+            return "Wi-Fi 5"
+        elif "HT20/HT40" in output or "HT TX/RX MCS" in output or "HT CAPABILITIES" in output:
+            return "Wi-Fi 4"
+        return "Unable to determine"
+
+    def get_operating_radio_details(self, device: str, band: str) -> dict:
+        """
+        Get operating channel, operating class, and operating bandwidth
+        for the specified radio band.    
+        """
+        zi_logger.print_context()    
+        # Get operating channel using the existing function
+        channel = self.get_operating_channel(device, band)    
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)    
+        command = "iw dev mld0 info | grep 'channel'"    
+        output, error = connection_obj.execute_command( device, command, return_stderr=True)    
+        if error:
+            raise RuntimeError( f"Command execution failed: {command}. stderr: {error.strip()}")    
+        # Find the bandwidth corresponding to the requested channel
+        bandwidth = None    
+        for line in output.splitlines():
+            if f"channel {channel} " in line:
+                match = re.search(r"width:\s*(\d+)\s*MHz", line)
+                if match:
+                    bandwidth = int(match.group(1))
+                    break                
+        if bandwidth is None:
+            raise RuntimeError(
+                f"Operating bandwidth not found for channel {channel}")    
+        # Operating class mapping
+        operating_classes = {
+            "2.4": {
+                20: 81,
+                40: 83
+            },
+            "5": {
+                20: 115,
+                40: 116,
+                80: 128,
+                160: 129
+            },
+            "6": {
+                20: 131,
+                40: 132,
+                80: 133,
+                160: 134,
+                320: 137
+            }
+        }    
+        operating_class = operating_classes.get(band, {}).get(bandwidth)    
+        if operating_class is None:
+            raise RuntimeError(f"Operating class not found for band {band}, channel {channel}, bandwidth {bandwidth} MHz")    
+        return {
+            "operating_channel": channel,
+            "operating_class": operating_class,
+            "operating_bandwidth": bandwidth }

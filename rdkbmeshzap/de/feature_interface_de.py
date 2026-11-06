@@ -341,3 +341,64 @@ class FeatureInterfaceDE(DatabaseModule,
         device_index = int(output.strip())
 
         return device_index
+
+    def get_radio_index(self, device: str, device_mac: str) -> int:
+        """
+        Get the radio index using the MAC address from DataElements.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        # cutval = "'{print $6}'"
+        cmd = f"rbuscli get Device.WiFi.DataElements. | grep -i -B 2 {device_mac} | sed -n '1p' | cut -d. -f8"
+        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
+        if error or not output.strip():
+            raise RuntimeError(f"Failed to get device index for {device}: {output.strip()}")
+        device_index = int(output.strip())
+
+        return device_index
+
+    def get_bss_index(self, device: str, device_mac: str) -> int:
+        """
+        Get the BSS index using the MAC address from DataElements.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        # cutval = "'{print $6}'"
+        cmd = f"rbuscli get Device.WiFi.DataElements. | grep -i -B 2 {device_mac} | sed -n '1p' | cut -d. -f10"
+        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
+        if error or not output.strip():
+            raise RuntimeError(f"Failed to get BSS index for {device}: {output.strip()}")
+        bss_index = int(output.strip())
+
+        return bss_index
+
+    def get_radio_enabled_status(self, device: str, device_index: str, radio_index: str) -> str:
+        """
+        Get the radio enabled status for the specific interface.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        # index = self.db_obj.read_from_database(device, index)
+        cmd = f"rbuscli getv Device.WiFi.DataElements.Network.Device.{device_index}.Radio.{radio_index}.Enabled"
+        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
+
+        if 'Value :' not in output:
+            raise RuntimeError(f"Command execution failed : {output.strip()}")
+        return output.partition('Value')[2].lstrip(' :').split()[0]
+
+    def get_ssid_for_each_radio(self, device: str, device_index: str, radio_index: str, bss_index: str) -> str:
+        """
+        Get the SSID for each radio using the device index and radio index.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        cmd = f"rbuscli get Device.WiFi.DataElements.Network.Device.{device_index}.Radio.{radio_index}.BSS.{bss_index}.SSID"
+        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
+
+        if 'Value :' not in output:
+            raise RuntimeError(f"Command execution failed : {output.strip()}")
+        return output.partition('Value')[2].lstrip(' :').split()[0]
