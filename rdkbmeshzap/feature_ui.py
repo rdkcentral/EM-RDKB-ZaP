@@ -147,17 +147,16 @@ class FeatureUi(DatabaseModule):
 
     def ui_navigate_to_home_page(self, device):
         zi_logger.print_context()
-        try:
-            ip = self.db_obj.read_from_database(device, 'login_ip')
-            port = self.db_obj.read_from_database(device, 'ui_port')
-            title = self.db_obj.read_from_database(device, 'ui_home_page_title')
-            self._page.goto(f"http://{ip}:{port}/", wait_until="domcontentloaded")
-            expect(self._page).to_have_title(title)
-        except PlaywrightTimeoutError as e:
-            raise Exception(f"Timeout while navigating to home page: {e}")
-        except Exception as ERR:
-            zi_logger.log(f"Could not open page {ip}:{port}")
-            raise Exception(f"ERROR : {ERR}")
+        ip = self.db_obj.read_from_database(device, 'login_ip')
+        port = self.db_obj.read_from_database(device, 'ui_port')
+        title = self.db_obj.read_from_database(device, 'ui_home_page_title')
+        url = f"http://{ip}:{port}/"
+        self._page.goto(
+            url,
+            wait_until="domcontentloaded",
+            timeout=10000,
+        )
+        expect(self._page).to_have_title(title)
 
     def ui_navigate_to_required_page(self, page):
         zi_logger.print_context()

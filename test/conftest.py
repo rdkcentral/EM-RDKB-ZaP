@@ -39,14 +39,16 @@ import time
 from contextlib import redirect_stdout
 from html import escape
 from pathlib import Path
+from urllib.parse import quote
 from datetime import datetime
 
 import zaero
+from playwright.sync_api import Error as PlaywrightError
 from zaero.utils import zi_logger
 from zaero.utils.database import Database
 from packet_analyzer.protocol_validation import common_protocol_validation
 from packet_analyzer.packet_dissector import error_list
-from rdkbmeshzap.common_utils import report_logger, test_environment_checks
+from rdkbmeshzap.common_utils import failure_diagnostics, report_logger, test_environment_checks
 
 setup_sections = {
 	"setup_accessibility": "",
@@ -85,9 +87,7 @@ def validate_setup_accessibility(initialize):
 		setup_failure = "Setup Accessibility validation failed"
 		pytest.exit(setup_failure, returncode=1)
 	initialize.accessibility_validated = True
-	report_logger.print_success(
-		"PASS: All configured devices passed accessibility validation"
-	)
+	report_logger.print_success("PASS: All configured devices passed accessibility validation")
 
 @pytest.fixture(scope="session", autouse=True)
 def update_runtime_database(initialize, validate_setup_accessibility):
@@ -202,14 +202,74 @@ def pytest_runtest_setup(item):
 def pytest_runtest_makereport(item, call):
 	outcome = yield
 	report = outcome.get_result()
-	if report.when == "setup":
-		return
 	if report.when != "call":
 		return
+	excinfo = getattr(call, "excinfo", None)
+	playwright_exception = getattr(excinfo, "value", None)
+	if not isinstance(playwright_exception, PlaywrightError):
+		playwright_exception = None
+	if report.longrepr:
+		# Preserve traceback details for the custom HTML cell before Console output is shortened.
+		report.user_properties.append(("failure_details", str(report.longrepr)))
 	errors = report_logger.get_error_logs() + zi_logger.get_error_logs()
 	if errors:
 		report.outcome = "failed"
 		report.longrepr = "Error logs found:\n" + "\n".join(errors)
+		report.user_properties.append(("error_logs", "\n".join(errors)))
+	if playwright_exception is not None:
+		report.user_properties.append(("playwright_failure", f"ERROR: {type(playwright_exception).__name__}: {playwright_exception}"))
+	captured_output = "\n".join(
+		content
+		for section_name, content in report.sections
+		if section_name in ("Captured stdout call", "Captured log call")
+	)
+	if captured_output:
+		report.user_properties.append(("captured_test_output", captured_output))
+		report.sections = [
+			(section_name, content)
+			for section_name, content in report.sections
+			if section_name not in ("Captured stdout call", "Captured log call")
+		]
+	html_path = item.config.getoption("htmlpath", default=None)
+	if report.failed:
+		if not errors and html_path:
+			# Keep the Console concise; the original traceback remains available in failure_details.
+			report.longrepr = ""
+		try:
+			initialize = item.funcargs.get("initialize")
+			if initialize is None:
+				return
+			diagnostic_result = (
+				failure_diagnostics.collect_failure_diagnostics(
+					initialize,
+					Path(html_path).resolve().parent,
+					item.name,
+				)
+				if html_path
+				else None
+			)
+			if diagnostic_result:
+				scenario_dir, diagnostic_paths = diagnostic_result
+				report_dir = Path(html_path).resolve().parent
+				# Link to the device-log folder relative to the generated HTML report.
+				relative_diagnostics = scenario_dir.relative_to(report_dir).as_posix() + "/"
+				report.user_properties.append(
+					(
+						"failure_diagnostics_link:Device logs",
+						quote(relative_diagnostics, safe="/"),
+					)
+				)
+				report.sections.append(
+					("Failure diagnostics", "\n".join(str(path) for path in diagnostic_paths))
+				)
+				report.longrepr = report.longrepr or "Test failed"
+		except Exception as error:
+			diagnostics_error = f"{type(error).__name__}: {error}"
+			report.user_properties.append(("failure_diagnostics_error", diagnostics_error))
+			try:
+				report.sections.append(("Failure diagnostics collection error", diagnostics_error))
+			except Exception:
+				pass
 
 def pytest_html_results_table_html(report, data):
 	if report.when != "call":
@@ -217,14 +277,50 @@ def pytest_html_results_table_html(report, data):
 		return
 	new_data = []
 	call_output = "\n".join(
-		content
-		for section_name, content in getattr(report, "sections", [])
-		if section_name in ("Captured stdout call", "Captured log call")
+		value
+		for name, value in getattr(report, "user_properties", [])
+		if name == "captured_test_output"
 	)
 	if report.failed and hasattr(report, "longrepr"):
+		properties = getattr(report, "user_properties", [])
+		property_values = {
+			key: "\n".join(value for name, value in properties if name == key)
+			for key in ("failure_details", "playwright_failure", "error_logs", "failure_diagnostics_error")
+		}
+		failure_details = property_values["failure_details"]
+		playwright_error = property_values["playwright_failure"]
+		error_logs = property_values["error_logs"]
+		diagnostics_error = property_values["failure_diagnostics_error"]
+		error_details = [failure_details] if failure_details else []
+		if playwright_error and playwright_error not in failure_details:
+			error_details.append(playwright_error)
+		if error_logs:
+			error_details.append(error_logs)
+		if diagnostics_error:
+			error_details.append(f"Failure diagnostics collection error: {diagnostics_error}")
+		failure_text = (
+			"<strong>Error logs:</strong><br>"
+			+ "<br><br>".join(escape(details) for details in error_details)
+			if error_details
+			else escape("Test failed")
+		)
+		diagnostics_links = [
+			(name.partition(":")[2], value)
+			for name, value in properties
+			if name.startswith("failure_diagnostics_link:")
+		]
+		if diagnostics_links:
+			# Escape both link text and URL because these values are inserted into HTML.
+			links_html = "<br>".join(
+				f'<a href="{escape(url, quote=True)}">{escape(label)}</a>'
+				for label, url in diagnostics_links
+			)
+			with redirect_stdout(io.StringIO()):
+				diagnostics_title = report_logger.print_title("Failure diagnostics:")
+			failure_text += f"<br><br>{diagnostics_title} {links_html}"
 		new_data.append(
 			'<div><span style="color:red; font-weight:bold; '
-			f'white-space:pre-wrap;">{escape(str(report.longrepr))}</span></div>'
+			f'white-space:pre-wrap;">{failure_text}</span></div>'
 		)
 	if call_output:
 		html = "<br>".join(
