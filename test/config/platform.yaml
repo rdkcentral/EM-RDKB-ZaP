@@ -56,10 +56,18 @@ controller:
     extender2_device_index: 3                               # Extender 2 Device index
     extender3_device_index: 4                               # Extender 3 Device index
     2g_ssid_index: 1                                        # 2.4 GHz ssid index
-    2g_radio_index: 1                                       # 2.4 GHz Radio index
-    5g_radio_index: 2                                       # 5 GHz Radio index
-    6g_radio_index: 3                                       # 6 GHz Radio index
-    2g_radio_bss_index: 1                                   # Dynamically discovered 2.4 GHz BSS index
+    controller_2g_radio_index: 1                            # Dynamically discovered 2.4 GHz Radio index
+    controller_5g_radio_index: 2                            # Dynamically discovered 5 GHz Radio index
+    controller_6g_radio_index: 3                            # Dynamically discovered 6 GHz Radio index
+    extender1_2g_radio_bss_index: 4                         # Dynamically discovered 2.4 GHz Radio index for Extender 1
+    extender1_5g_radio_bss_index: 5                         # Dynamically discovered 5 GHz Radio index for Extender 1
+    extender1_6g_radio_bss_index: 6                         # Dynamically discovered 6 GHz Radio index for Extender 1
+    extender2_2g_radio_bss_index: 7                         # Dynamically discovered 2.4 GHz Radio index for Extender 2
+    extender2_5g_radio_bss_index: 8                         # Dynamically discovered 5 GHz Radio index for Extender 2
+    extender2_6g_radio_bss_index: 9                         # Dynamically discovered 6 GHz Radio index for Extender 2
+    extender3_2g_radio_bss_index: 10                        # Dynamically discovered 2.4 GHz Radio index for Extender 3
+    extender3_5g_radio_bss_index:   11                      # Dynamically discovered 5 GHz Radio index for Extender 3
+    extender3_6g_radio_bss_index: 12                        # Dynamically discovered 6 GHz Radio index for Extender 3
     2g_radio_vap1_bss_index: 2                              # Dynamically discovered BSS index for 2g_radio_vap1_mac
     2g_radio_vap2_bss_index: 3                              # Dynamically discovered BSS index for 2g_radio_vap2_mac
     5g_radio_bss_index: 4                                   # Dynamically discovered 5 GHz BSS index
