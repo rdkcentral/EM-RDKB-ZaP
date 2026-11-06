@@ -548,3 +548,91 @@ class FeatureInterface(FeatureInterfaceModules):
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.get_device_index(device, device_mac)
+
+    def set_wpa_log_level(self, device: str, level: str, method='gui') -> bool:
+        """
+        Set the WPA supplicant log level on the device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.set_wpa_log_level(device, level)
+
+    def get_wpa_cli_status(self, device: str, method='gui') -> str:
+        """
+        Get the WPA supplicant status using wpa_cli on the device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_wpa_cli_status(device)
+
+    def verify_four_way_handshake_messages(self, device: str,method='gui') -> str:
+        """
+        Verify the WPA 4-Way Handshake messages of the Wi-Fi client.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.verify_four_way_handshake_messages(device)
+
+    def get_wpa_cli_capability(self, device: str, capability: str, method='gui') -> str:
+        """
+        Get the WPA supplicant capabilities using wpa_cli on the device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_wpa_cli_capability(device, capability)
+
+    def get_radio_index(self, device: str, device_mac: str, method='de') -> int:
+        """
+        Get the radio index using the MAC address from DataElements.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_radio_index(device, device_mac)
+
+    def get_bss_index(self, device:str, device_mac: str, method='de') -> int:
+        """
+        Get the BSS index using the MAC address from DataElements.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_bss_index(device, device_mac)
+
+    def get_radio_enabled_status(self, device: str, device_index: str, radio_index: str, method='de') -> str:
+        """
+        Get the radio enabled status for the specific interface.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_radio_enabled_status(device, device_index, radio_index)
+
+    def get_ssid_for_each_radio(self, device: str, device_index: str, radio_index: str, bss_index: str, method='gui') -> str:
+        """
+        Get the SSID for each radio using the device index and radio index.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_ssid_for_each_radio(device, device_index, radio_index, bss_index)
+
+    def get_wlan_ip_address(self, device: str, method='gui') -> str:
+            """
+            To get the IP address of the device for a specific interface.
+            """
+            zi_logger.print_context()
+            iface_obj = self.get_feature_interface_module_object(method)
+            return iface_obj.get_wlan_ip_address(device)
+
+    def get_wifi_generation(self, device: str, method='gui') -> str:
+        """
+        Identify the highest Wi-Fi generation supported by the device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_wifi_generation(device)
+
+    def get_operating_radio_details(self, device: str, band: str, method='gui') -> dict:
+        """
+        Get the operating radio details of the device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_operating_radio_details(device, band)

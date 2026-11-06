@@ -85,8 +85,6 @@ Verify that a Wi-Fi client device can specifically discover and see the EasyMesh
 |-----------|-------|
 | SSID Name | EasyMesh-MESH |
 | Band | 2.4 GHz |
-| Channel Range | 1-13 (depends on regulatory domain) |
-| Operating Class | 81 (2.4 GHz, 20 MHz) |
 | Security Type | WPA2-Personal / WPA3-Personal |
 
 ---
@@ -94,19 +92,15 @@ Verify that a Wi-Fi client device can specifically discover and see the EasyMesh
 ## Test Procedure and Expected Results
 
 | Step Number | Controller | Client | Expected Result |
-|-------------|-----------|--------|-----------------|
-| 1 | Verify 2.4 GHz Radio enabled on Controller: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.Enabled` | N/A | Returns: `Enabled = true` |
-| 2 | Verify 2.4 GHz Radio enabled on all 3 Agents: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.Enabled` | N/A | Each of Device.2-Device.5 returns: `Enabled = true` |
-| 3 | Query SSID on 2.4 GHz Radio/BSS (Controller + 3 Agents): `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{k}.SSID` | N/A | Returns: `SSID = EasyMesh-MESH` on all 4 devices |
-| 4 | Verify Operating Class for 2.4 GHz on Controller + 3 Agents: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.CurrentOperatingClassProfile.1.OpClass` | N/A | Returns: `OpClass = 81` (2.4 GHz 20 MHz) on all 4 devices |
-| 5 | Verify current channel on 2.4 GHz radio for Controller + 3 Agents: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.CurrentOperatingClassProfile.{k}.Channel` | N/A | Returns valid 2.4 GHz channel (1-13 based on region) for each device |
+|-------------|-----------|--------|----------------- |
+| 1 | N/A | Verfiy Client Generation | Wifi-4 or wifi-5 or wifi-6 |
+| 2 | Retrieve and store device index ,radio indexes and BSS indexs into database for controller and agents | N/A | Returns index value |
+| 3 | Verify 2.4 GHz Radio enabled on Controller and 3Agents: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.Enabled` | N/A | Returns: `Enabled = true` |
+| 4 | Querry operating channel, operating class and operating bandwidth 'iw dev mld0 info`| N/A | Returns channel,bandwidth and class |
+| 5 | Query SSID on 2.4 GHz Radio/BSS (Controller + 3 Agents): `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{k}.SSID` | N/A | Returns: `SSID = EasyMesh-MESH` on all 4 devices |
 | 6 | N/A | Wait 5 seconds for SSID propagation | Mesh nodes synchronized; beacons transmitted on 2.4 GHz by Controller and all 3 Agents |
-| 7 | N/A | Initiate WiFi scan limited to 2.4 GHz: `iw dev <wlan_iface> scan freq 2412 2417 2422 2427 2432 2437 2442 2447 2452 2457 2462 2467 2472` | Scan command executes successfully on 2.4 GHz frequencies |
-| 8 | N/A | Parse scan results for SSID on 2.4 GHz: `iw dev <wlan_iface> scan` | grep -B20 `"SSID: EasyMesh-MESH"`  grep `"freq 24"`  Output contains SSID with 2.4 GHz frequency: Example: `freq: 2437 (channel 6)` |
-| 9 | N/A | Verify SSID appears only on 2.4 GHz: `iw dev <wlan_iface> scan` | grep -B20 `"EasyMesh-MESH"`  grep `"freq"`  SSID discovered on frequencies in range 2412-2472 MHz only (no 5 GHz) |
-| 10 | N/A | Count SSID occurrences on 2.4 GHz: `iw dev <wlan_iface> scan freq 2412-2472` | grep -c `"SSID: EasyMesh-MESH"`  Count >= 1 (up to 5 APs visible: Controller + 3 Agents, if all in range) |
-| 11 | N/A | Query SSID signal strength on 2.4 GHz for each visible BSSID: `iw dev <wlan_iface> scan` | grep -A3 `"SSID: EasyMesh-MESH"`  grep -B2 `"signal"`  Signal level present and valid for each visible AP (typically -30 to -90 dBm) |
-| 12 | Confirm Radio.1 (2.4 GHz) SSID configuration still active on Controller and all 3 Agents | Confirm client scan completed without errors | Controller, all 3 Agents, and Client operations successful |
+| 7 | N/A | Initiate WiFi scan limited to 2.4 GHz Count SSID occurrences on 2.4 GHz : `nmcli -f SSID,FREQ dev wifi list --rescan yes  grep -i {ssid}` | Scan command executes successfully  and Count >= 1 (up to 4 APs visible: Controller + 3 Agents, if all in range)  |
+
 
 ---
 
@@ -146,8 +140,6 @@ Verify that a Wi-Fi client device can specifically discover and see the EasyMesh
 |-----------|-------|
 | SSID Name | EasyMesh-MESH |
 | Band | 5 GHz |
-| Channel Range | 36-165 (depends on regulatory domain) |
-| Operating Class | 115, 118, 119, 120, 121, 125, 128, 129, 130 (5 GHz variants) |
 | Security Type | WPA2-Personal / WPA3-Personal |
 
 ---
@@ -155,19 +147,14 @@ Verify that a Wi-Fi client device can specifically discover and see the EasyMesh
 ## Test Procedure and Expected Results
 
 | Step Number | Controller | Client | Expected Result |
-|-------------|-----------|--------|-----------------|
-| 1 | Verify 5 GHz Radio enabled on Controller: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.Enabled` | N/A | Returns: `Enabled = true` |
-| 2 | Verify 5 GHz Radio enabled on all 3 Agents: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.Enabled` | N/A | Each of Device.2-Device.5 returns: `Enabled = true` |
-| 3 | Query SSID on 5 GHz Radio/BSS (Controller + 3 Agents): `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{j}.SSID` | N/A | Returns: `SSID = EasyMesh-MESH` on all 5 devices |
-| 4 | Verify Operating Class for 5 GHz on Controller + 3 Agents: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.CurrentOperatingClassProfile.{k}.OpClass` | N/A | Returns valid 5 GHz OpClass (e.g., 115, 118, 119, 120, 121, 125) for each device |
-| 5 | Verify current channel on 5 GHz radio for Controller + 3 Agents: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.CurrentOperatingClassProfile.{k}.Channel` | N/A | Returns valid 5 GHz channel (36-165 based on region) for each device |
+|-------------|-----------|--------|----------------- |
+| 1 | N/A | Verfiy Client Generation | Wifi-4 or wifi-5 or wifi-6 |
+| 2 | Retrieve and store device index ,radio indexes and BSS indexs into database for controller and agents | N/A | Returns index value |
+| 3 | Verify 5 GHz Radio enabled on Controller and 3Agents: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.Enabled` | N/A | Returns: `Enabled = true` |
+| 4 | Querry operating channel, operating class and operating bandwidth 'iw dev mld0 info`| N/A | Returns channel,bandwidth and class |
+| 5 | Query SSID on 5 GHz Radio/BSS (Controller + 3 Agents): `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{k}.SSID` | N/A | Returns: `SSID = EasyMesh-MESH` on all 4 devices |
 | 6 | N/A | Wait 5 seconds for SSID propagation | Mesh nodes synchronized; beacons transmitted on 5 GHz by Controller and all 3 Agents |
-| 7 | N/A | Initiate WiFi scan limited to 5 GHz: `iw dev <wlan_iface> scan freq 5180 5200 5220 5240 5260 5280 5300 5320 5500 5520 5540 5560 5580 5600 5620 5640 5660 5680 5700 5720 5740 5760 5780 5800 5820 5840 5860` | Scan command executes successfully on 5 GHz frequencies |
-| 8 | N/A | Parse scan results for SSID on 5 GHz: `iw dev <wlan_iface> scan` | grep -B5 `"SSID: EasyMesh-MESH"`  grep `"freq 5"`  Output contains SSID with 5 GHz frequency: Example: `freq: 5180 (channel 36)` or `freq: 5500 (channel 100)` |
-| 9 | N/A | Verify SSID appears only on 5 GHz: `iw dev <wlan_iface> scan` | grep -B10 `"EasyMesh-MESH"`  grep `"freq"`  SSID discovered on frequencies in range 5000-6000 MHz only (no 2.4 GHz) |
-| 10 | N/A | Count SSID occurrences on 5 GHz: `iw dev <wlan_iface> scan freq 5000-6000` | grep -c `"SSID: EasyMesh-MESH"`  Count >= 1 (up to 5 APs visible: Controller + 3 Agents, if all in range) |
-| 11 | N/A | Query SSID signal strength on 5 GHz for each visible BSSID: `iw dev <wlan_iface> scan` | grep -A3 `"SSID: EasyMesh-MESH"  grep -B2 `"signal"`  Signal level present and valid for each visible AP (typically -30 to -90 dBm) |
-| 12 | Confirm Radio.2 (5 GHz) SSID configuration still active on Controller and all 3 Agents | Confirm client scan completed without errors | Controller, all 3 Agents, and Client operations successful |
+| 7 | N/A | Initiate WiFi scan limited to 5 GHz Count SSID occurrences on 5 GHz : `nmcli -f SSID,FREQ dev wifi list --rescan yes | grep -i {ssid}` | Scan command executes successfully  and Count >= 1 (up to 4 APs visible: Controller + 3 Agents, if all in range)  |
 
 ---
 
@@ -208,8 +195,6 @@ Verify that a Wi-Fi client device can specifically discover and see the EasyMesh
 |-----------|-------|
 | SSID Name | EasyMesh-MESH |
 | Band | 6 GHz |
-| Channel Range | 1-233 (depends on regulatory domain) |
-| Operating Class | 131, 132, 133, 134, 135, 136, 137 (6 GHz variants) |
 | Security Type | WPA2-Personal / WPA3-Personal |
 
 ---
@@ -217,19 +202,14 @@ Verify that a Wi-Fi client device can specifically discover and see the EasyMesh
 ## Test Procedure and Expected Results
 
 | Step Number | Controller | Client | Expected Result |
-|-------------|-----------|--------|-----------------|
-| 1 | Verify 6 GHz Radio enabled on Controller: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.Enabled` | N/A | Returns: `Enabled = true` |
-| 2 | Verify 6 GHz Radio enabled on all 3 Agents: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.Enabled` | N/A | Each of Device.2-Device.4 returns: `Enabled = true` |
-| 3 | Query SSID on 6 GHz Radio/BSS (Controller + 3 Agents): `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{k}.SSID` | N/A | Returns: `SSID = EasyMesh-MESH` on all 5 devices |
-| 4 | Verify Operating Class for 6 GHz on Controller + 3 Agents: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.CurrentOperatingClassProfile.{k}.OpClass` | N/A | Returns valid 6 GHz OpClass (e.g., 131, 132, 133, 134, 135, 136, 137) for each device |
-| 5 | Verify current channel on 6 GHz radio for Controller + 3 Agents: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.CurrentOperatingClassProfile.{k}.Channel` | N/A | Returns valid 6 GHz channel (1-233 based on region) for each device |
+|-------------|-----------|--------|----------------- |
+| 1 | N/A | Verfiy Client Generation | Wifi-4 or wifi-5 or wifi-6 |
+| 2 | Retrieve and store device index ,radio indexes and BSS indexs into database for controller and agents | N/A | Returns index value |
+| 3 | Verify 6 GHz Radio enabled on Controller and 3Agents: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.Enabled` | N/A | Returns: `Enabled = true` |
+| 4 | Querry operating channel, operating class and operating bandwidth 'iw dev mld0 info`| N/A | Returns channel,bandwidth and class |
+| 5 | Query SSID on 6 GHz Radio/BSS (Controller + 3 Agents): `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{k}.SSID` | N/A | Returns: `SSID = EasyMesh-MESH` on all 4 devices |
 | 6 | N/A | Wait 5 seconds for SSID propagation | Mesh nodes synchronized; beacons transmitted on 6 GHz by Controller and all 3 Agents |
-| 7 | N/A | Initiate WiFi scan limited to 6 GHz: `iw dev <wlan_iface> scan freq 5900 5920 5940 5960 5980 6000 6020 6040 6060 6080 6100 6120 6140 6160 6180 6200 6220 6240 6260 6280 6300 6320 6340 6360 6380 6400 6420 6440 6460 6480 6500 6520 6540 6560 6580 6600 6620 6640 6660 6680 6700 6720 6740 6760 6780 6800 6820 6840 6860 6880 6900 6920 6940 6960 6980 7000 7020 7040 7060 7080 7100 7120` | Scan command executes successfully on 6 GHz frequencies |
-| 8 | N/A | Parse scan results for SSID on 6 GHz: `iw dev <wlan_iface> scan` | grep -B5 `"SSID: EasyMesh-MESH" | grep `"freq 6"`  `Output contains SSID with 6 GHz frequency: Example: `freq: 5900 (channel 1)` or `freq: 6425 (channel 149)` |
-| 9 | N/A | Verify SSID appears only on 6 GHz: `iw dev <wlan_iface> scan` | grep -B10 `"EasyMesh-MESH" | grep `"freq"`  SSID discovered on frequencies in range 5900-7125 MHz only (no 2.4 GHz or 5 GHz) |
-| 10 | N/A | Count SSID occurrences on 6 GHz: `iw dev <wlan_iface> scan freq 5900-7125` | grep -c `"SSID: EasyMesh-MESH"` | Count >= 1 (up to 5 APs visible: Controller + 3 Agents, if all in range) |
-| 11 | N/A | Query SSID signal strength on 6 GHz for each visible BSSID: `iw dev <wlan_iface> scan` | grep -A3 `"SSID: EasyMesh-MESH"`  grep -B2 `"signal"` | Signal level present and valid for each visible AP (typically -30 to -90 dBm) |
-| 12 | Confirm Radio.3 (6 GHz) SSID configuration still active on Controller and all 3 Agents | Confirm client scan completed without errors | Controller, all 3 Agents, and Client operations successful |
+| 7 | N/A | Initiate WiFi scan limited to 6 GHz Count SSID occurrences on 6 GHz : `nmcli -f SSID,FREQ dev wifi list --rescan yes | grep -i {ssid}` | Scan command executes successfully  and Count >= 1 (up to 4 APs visible: Controller + 3 Agents, if all in range)  |
 
 ---
 
@@ -344,7 +324,7 @@ Verify that a Wi-Fi client device fails to authenticate and associate to the Eas
 | 3 | N/A | Initiate association to EasyMesh-MESH with incorrect passphrase: `nmcli device wifi connect EasyMesh-MESH password wrongpassphrase999` | Association request sent to nearest/strongest AP (Controller or one of the 3 Agents) |
 | 4 | N/A | Verify association fails on client: `iw dev <wlan_iface> link` | Output shows: `Not connected` or connection error message |
 | 5 | N/A | Verify connection info shows failure: `nmcli device show <wlan_iface>` | grep -E `"SSID|STATE|CONNECTION"`  Output contains: `STATE: disconnected` or `Connection refused` |
-| 6 | N/A | Check system logs for authentication failure: `journalctl -u wpa_supplicant -n 5` | grep -i `"authentication|handshake|failed"`  Logs show authentication failure message (e.g., `WPA: 4-Way Handshake failed`) |
+| 6 | N/A | Check system logs for authentication failure: `journalctl -u wpa_supplicant -n 5` | grep -i `"authentication|handshake|failed"`  Logs show authentication failure message (e.g., `WPA: 4-Way Handshake failed`)` |
 | 7 | Query associated client count before attempt for Controller and each of the 3 Agents: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{k}.STANumberOfEntries` | N/A | Records initial counts for all 4 devices |
 | 8 | Query associated client count after failed attempt for Controller and each of the 3 Agents: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{k}.STANumberOfEntries` | N/A | Counts remain unchanged on all 4 devices (client not added anywhere) |
 | 9 | N/A | Query client MAC address: `ip link show <wlan_iface>` | grep `"link/ether"` | Returns client MAC (e.g., `aa:bb:cc:dd:ee:ff`) |
@@ -546,10 +526,10 @@ Verify that  Wi-Fi client devices can successfully ping and reach the gateway af
 
 ---
 
-# Test Case 10: EM_ClientAssociation_TrafficFlow
+# Test Case 10: EM_ClientAssociation_TrafficFlow_TCP_Upstream
 
 ## Objective
-Verify that a Wi-Fi client device can successfully transmit and receive data traffic (upstream and downstream) over the EasyMesh network after authentication, association, and IP address assignment, whether attached to the Controller or one of the 3 Agents.
+Verify that selected Wi-Fi client devices can successfully transmit data traffic (upstream) over the EasyMesh network after authentication, association, and IP address assignment, whether attached to the Controller or one of the 3 Agents.
 
 ## Test Type
 **Positive**
@@ -571,12 +551,9 @@ Verify that a Wi-Fi client device can successfully transmit and receive data tra
 ## Pre-Requisites
 1. Controller and all 3 Agents (Agent 1-Agent 3) initialized and synchronized via IEEE 1905.1 topology.
 2. EasyMesh SSID provisioned with WPA2-Personal or WPA3-Personal security, consistent across Controller and all 3 Agents.
-3. Client successfully associated (to Controller or any of the 3 Agents), authenticated, and received valid DHCP IP address.
-4. Gateway IP is reachable and has internet access via the backhaul from all 3 Agents.
-5. rbuscli accessible on Controller for DataElements queries.
-6. iperf3 (or equivalent traffic tool) available on client and Controller.
-7. External server (8.8.8.8 or similar) reachable for connectivity tests.
-8. Note: `Device.N` below refers to whichever Controller/Agent (Device.1-Device.4) the client actually associates to.
+3. rbuscli accessible on Controller for DataElements queries.
+4. iperf3 (or equivalent traffic tool) available on client and Controller.
+5. External server (8.8.8.8 or similar) reachable for connectivity tests.
 
 ---
 
@@ -589,7 +566,7 @@ Verify that a Wi-Fi client device can successfully transmit and receive data tra
 | Gateway IP | `<Gateway-IP>` |
 | Test Duration | 10 seconds per traffic test |
 | Packet Size | 1024 bytes (default for iperf3) |
-| Traffic Type | TCP and UDP |
+| Traffic Type | TCP |
 
 ---
 
@@ -597,32 +574,208 @@ Verify that a Wi-Fi client device can successfully transmit and receive data tra
 
 | Step Number | Controller | Client | Expected Result |
 |-------------|-----------|--------|-----------------|
-| 1 | Verify client is associated on the attached Device.N: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{k}.STANumberOfEntries` | N/A | Count >= 1 (client associated to Controller or one of the 3 Agents) |
-| 2 | Verify DHCP lease active: `rbuscli getv Device.DHCPv4.Server.Pool.{i}.ClientNumberOfEntries` | N/A | Count >= 1 (client has active lease) |
+| 1 | Get enabled clients and randomly select one controller client and one extender client| N/A | Count >= 1 (client associated to Controller or one of the 3 Agents) |
+| 2 | N/A | Connect selected clients to `Easymesh SSID` and verify association status| Client gets connected to `Easymesh SSID` |
 | 3 | N/A | Verify client IP assigned: `ip addr show <wlan_iface>` | grep `"inet "` Output shows valid IP in `<IP_Addr>` range |
-| 4 | N/A | Verify routing table: `ip route show` | Output shows default route via `<Gateway-IP>` |
-| 5 | N/A | Test upstream TCP traffic (10 second test): `iperf3 -c <Gateway-IP> -t 10 -J` | TCP connection established, data transmitted successfully (traffic backhauled through the Agent if not directly attached to Controller) |
-| 6 | N/A | Verify upstream throughput: `iperf3 -c <Gateway-IP> -t 10` | grep `"sender"` Output shows: `bits_per_second` with measurable bandwidth (> 1 Mbps expected on WiFi)` |
-| 7 | N/A | Test upstream UDP traffic: `iperf3 -c <Gatway-IP> -u -t 10 -b 10M` | UDP packets transmitted, jitter and loss reported |
-| 8 | N/A | Verify upstream UDP loss: `iperf3 -c <Gateway-IP> -u -t 10` | grep `"lost"` Output shows minimal packet loss (< 5% acceptable) |
-| 9 | Start downstream traffic server on Controller (if iperf3 server available) | N/A | Listening for incoming connections on port 5201 |
-| 10 | N/A | Test downstream TCP traffic (10 second test): `iperf3 -c <Gateway-IP> -t 10 -R -J` | TCP connection established in reverse direction, data received |
-| 11 | N/A | Verify downstream throughput: `iperf3 -c <Gateway-IP> -t 10 -R` | grep `"receiver"` Output shows measurable bandwidth on receive side |
-| 12 | N/A | Test bi-directional traffic (simultaneous): `iperf3 -c <Gateway-IP> -t 10 --bidir` | Both upload and download traffic flowing simultaneously |
-| 13 | N/A | Test connectivity to external server: `ping -c 5 8.8.8.8` | All 5 packets transmitted and received (0% packet loss) |
-| 14 | N/A | Test HTTP/DNS connectivity: `curl -I http://www.google.com` or `nslookup google.com` | HTTP response received or DNS resolves successfully |
-| 15 | N/A | Verify TCP connection establishment: `nc -zv 8.8.8.8 53` | Successfully connects to remote server |
-| 16 | Query the attached Device.N for traffic statistics: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{k}.STA.{l}.BytesSent` | N/A | Bytes sent count increases during traffic test |
-| 17 | Query the attached Device.N for received traffic: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{k}.STA.{l}.BytesReceived` | N/A | Bytes received count increases during traffic test |
-| 18 | N/A | Monitor client interface counters during traffic: `watch -n 1 "ip -s link show <wlan_iface>"` | RX/TX bytes and packets increase continuously |
-| 19 | N/A | Verify no interface errors: `ip -s link show <wlan_iface>` | grep `"errors"` Output shows: `0 errors, 0 dropped` on RX/TX` |
-| 20 | N/A | Extended traffic test (30 seconds): `iperf3 -c <Gatway-IP> -t 30` | Sustained throughput maintained over longer duration |
-| 21 | Confirm traffic statistics updated on the attached Controller/Agent | Confirm client maintains connection and throughput during extended test | Controller/Agent and Client traffic flowing successfully |
+| 4 | N/A | Test upstream TCP traffic (10 second test): `iperf3 -c <Gateway-IP> -t 10 -J` | TCP connection established, data transmitted successfully (traffic backhauled through the Agent if not directly attached to Controller) |
+| 6 | N/A | check for Sender Bitrate, Receiver bitrate and retransmission rate| Output shows: the required data |
 
 ---
 
+# Test Case 11: EM_ClientAssociation_TrafficFlow_TCP_Downstream
 
-# Test Case 11: EM_ClientAssociation_SuccessRateRepeatedCycles
+## Objective
+Verify that the Controller can successfully transmit TCP data traffic (downstream) to selected Wi-Fi client devices over the EasyMesh network after authentication, association, and IP address assignment, whether the clients are attached directly to the Controller or through an Agent.
+
+## Test Type
+**Positive**
+
+---
+
+## Test Environment
+
+| Component | Description |
+|-----------|-------------|
+| Controller | EasyMesh Controller with DHCP and routing enabled |
+| Agent 1 | EasyMesh Agent |
+| Agent 2 | EasyMesh Agent |
+| Agent 3 | EasyMesh Agent |
+| Client (DUT) | Wi-Fi STA capable of 802.11n/802.11ac or higher |
+| Network Setup | Mesh topology with 1 Controller + 3 Agents in operational state with network connectivity |
+
+---
+
+## Pre-Requisites
+
+1. Controller and all 3 Agents (Agent 1–Agent 3) initialized and synchronized via IEEE 1905.1 topology.
+2. EasyMesh SSID provisioned with WPA2-Personal or WPA3-Personal security, consistent across the Controller and all 3 Agents.
+3. `rbuscli` accessible on the Controller for DataElements queries.
+4. `iperf3` available on the Controller and selected Wi-Fi clients.
+5. Selected Wi-Fi clients are capable of establishing TCP connections with the Controller.
+6. Controller bridge IP address is configured and reachable from the connected clients.
+
+---
+
+## Test Configuration
+
+| Parameter | Value |
+|-----------|-------|
+| SSID Name | EasyMesh-MESH |
+| Security Type | WPA2-Personal or WPA3-Personal |
+| Client IP | `<IP_Addr>` (from DHCP pool) |
+| Controller Server IP | `<Controller-Bridge-IP>` |
+| Test Duration | 10 seconds per traffic test |
+| Packet Size | 1024 bytes (iperf3 default) |
+| Traffic Type | TCP |
+| Traffic Direction | Downstream (Controller → Client) |
+
+---
+
+## Test Procedure and Expected Results
+
+| Step Number | Controller | Client | Expected Result |
+|-------------|-----------|--------|-----------------|
+| 1 | Get enabled clients and randomly select one Controller client and one Extender client. | N/A | At least one Controller client and one Extender client are available for testing. |
+| 2 | Retrieve the EasyMesh SSID and fronthaul password from the Controller. | Connect selected clients to the EasyMesh SSID and verify association status. | Selected clients successfully connect and associate with the EasyMesh SSID. |
+| 3 | N/A | Verify client IP address using `ip addr show <wlan_iface>`. | Each selected client receives a valid IP address from the DHCP pool. |
+| 4 | Retrieve the Controller bridge IP address and start the TCP iperf3 server on the Controller using `iperf3 -s -B <Controller-Bridge-IP>`. | N/A | TCP iperf3 server starts successfully and listens on the Controller bridge IP address. |
+| 5 | Keep the TCP iperf3 server running. | Initiate TCP downstream traffic using `iperf3 -c <Controller-Bridge-IP> -t 10 -R -J`. | TCP connection is established and data is successfully received by the client from the Controller. Traffic is backhauled through the Agent when the client is connected to an Agent. |
+| 6 | Stop the iperf3 server after traffic generation completes. | Retrieve and inspect the iperf3 client log. | Log contains `iperf Done` and indicates successful completion of the downstream traffic test. |
+| 7 | N/A | Verify TCP sender bitrate, receiver bitrate, and retransmission count from the iperf3 output. | Sender bitrate and receiver bitrate are reported, and TCP retransmission information is available in the iperf3 output. |
+| 8 | N/A | Verify the overall TCP downstream traffic result for each selected client. | TCP downstream traffic is successfully verified for all selected clients. |
+
+---
+
+# Test Case 12: EM_ClientAssociation_TrafficFlow_UDP_Upstream
+
+## Objective
+Verify that selected Wi-Fi client devices can successfully transmit UDP data traffic (upstream) to the Controller over the EasyMesh network after authentication, association, and IP address assignment, whether attached directly to the Controller or through Agent 1.
+
+## Test Type
+**Positive**
+
+---
+
+## Test Environment
+
+| Component | Description |
+|-----------|-------------|
+| Controller | EasyMesh Controller with DHCP and routing enabled |
+| Agent 1 | EasyMesh Agent |
+| Agent 2 | EasyMesh Agent |
+| Agent 3 | EasyMesh Agent |
+| Client (DUT) | Wi-Fi STA capable of 802.11n/802.11ac or higher |
+| Network Setup | Mesh topology with 1 Controller + 3 Agents in operational state with network connectivity |
+
+---
+
+## Pre-Requisites
+
+1. Controller and all 3 Agents (Agent 1–Agent 3) initialized and synchronized via IEEE 1905.1 topology.
+2. EasyMesh SSID provisioned with WPA2-Personal or WPA3-Personal security, consistent across the Controller and all 3 Agents.
+3. `rbuscli` accessible on the Controller for DataElements queries.
+4. `iperf3` available on the Controller and selected Wi-Fi clients.
+5. Selected Wi-Fi clients are capable of establishing UDP traffic with the Controller.
+6. Controller bridge IP address is configured and reachable from the connected clients.
+
+---
+
+## Test Configuration
+
+| Parameter | Value |
+|-----------|-------|
+| SSID Name | EasyMesh-MESH |
+| Security Type | WPA2-Personal or WPA3-Personal |
+| Client IP | `<IP_Addr>` (from DHCP pool) |
+| Controller Server IP | `<Controller-Bridge-IP>` |
+| Test Duration | 10 seconds per traffic test |
+| Packet Size | Default iperf3 UDP packet size |
+| Traffic Type | UDP |
+| Traffic Direction | Upstream (Client → Controller) |
+
+---
+
+## Test Procedure and Expected Results
+
+| Step Number | Controller | Client | Expected Result |
+|-------------|-----------|--------|-----------------|
+| 1 | Get enabled clients and randomly select one Controller client and one Extender client. | N/A | At least one Controller client and one Extender client are available for testing. |
+| 2 | Retrieve the EasyMesh SSID and fronthaul password from the Controller. | Connect selected clients to the EasyMesh SSID and verify association status. | Selected clients successfully connect and associate with the EasyMesh SSID. |
+| 3 | N/A | Verify client IP address using `ip addr show <wlan_iface>`. | Each selected client receives a valid IP address from the DHCP pool. |
+| 4 | Retrieve the Controller bridge IP address and start the UDP iperf3 server using `iperf3 -s -B <Controller-Bridge-IP>`. | N/A | UDP iperf3 server starts successfully on the Controller. |
+| 5 | Keep the UDP iperf3 server running. | Initiate UDP upstream traffic using `iperf3 -c <Controller-Bridge-IP> -u -t 10`. | UDP traffic is successfully transmitted from the client to the Controller. Traffic is backhauled through the Agent when the client is connected to an Agent. |
+| 6 | Stop the iperf3 server after traffic generation completes. | Retrieve and inspect the iperf3 client log. | Log contains `iperf Done.` indicating successful completion of the UDP traffic test. |
+| 7 | N/A | Verify UDP sender bitrate from the iperf3 output. | UDP sender bitrate is successfully reported. |
+| 8 | N/A | Verify UDP receiver bitrate, jitter, lost datagrams, total datagrams, and packet loss percentage. | UDP receiver statistics are successfully reported, including bitrate, jitter, and packet loss information. |
+| 9 | N/A | Verify the overall UDP upstream traffic result for each selected client. | UDP upstream traffic flow is successfully verified for all selected clients. |
+
+---
+# Test Case 13: EM_ClientAssociation_TrafficFlow_UDP_Downstream
+
+## Objective
+Verify that the Controller can successfully transmit UDP data traffic (downstream) to selected Wi-Fi client devices over the EasyMesh network after authentication, association, and IP address assignment, whether attached directly to the Controller or through Agent 1.
+
+## Test Type
+**Positive**
+
+---
+
+## Test Environment
+
+| Component | Description |
+|-----------|-------------|
+| Controller | EasyMesh Controller with DHCP and routing enabled |
+| Agent 1 | EasyMesh Agent |
+| Agent 2 | EasyMesh Agent |
+| Agent 3 | EasyMesh Agent |
+| Client (DUT) | Wi-Fi STA capable of 802.11n/802.11ac or higher |
+| Network Setup | Mesh topology with 1 Controller + 3 Agents in operational state with network connectivity |
+
+---
+
+## Pre-Requisites
+
+1. Controller and all 3 Agents (Agent 1–Agent 3) initialized and synchronized via IEEE 1905.1 topology.
+2. EasyMesh SSID provisioned with WPA2-Personal or WPA3-Personal security, consistent across the Controller and all 3 Agents.
+3. `rbuscli` accessible on the Controller for DataElements queries.
+4. `iperf3` available on the Controller and selected Wi-Fi clients.
+5. Selected Wi-Fi clients are capable of receiving UDP traffic from the Controller.
+6. Controller bridge IP address is configured and reachable from the connected clients.
+
+---
+
+## Test Configuration
+
+| Parameter | Value |
+|-----------|-------|
+| SSID Name | EasyMesh-MESH |
+| Security Type | WPA2-Personal or WPA3-Personal |
+| Client IP | `<IP_Addr>` (from DHCP pool) |
+| Controller Server IP | `<Controller-Bridge-IP>` |
+| Test Duration | 10 seconds per traffic test |
+| Packet Size | Default iperf3 UDP packet size |
+| Traffic Type | UDP |
+| Traffic Direction | Downstream (Controller → Client) |
+
+---
+
+## Test Procedure and Expected Results
+
+| Step Number | Controller | Client | Expected Result |
+|-------------|-----------|--------|-----------------|
+| 1 | Get enabled clients and randomly select one Controller client and one Extender client. | N/A | At least one Controller client and one Extender client are available for testing. |
+| 2 | Retrieve the EasyMesh SSID and fronthaul password from the Controller. | Connect selected clients to the EasyMesh SSID and verify association status. | Selected clients successfully connect and associate with the EasyMesh SSID. |
+| 3 | N/A | Verify client IP address using `ip addr show <wlan_iface>`. | Each selected client receives a valid IP address from the DHCP pool. |
+| 4 | Retrieve the Controller bridge IP address and start the UDP iperf3 server using `iperf3 -s -B <Controller-Bridge-IP>`. | N/A | UDP iperf3 server starts successfully on the Controller. |
+| 5 | Keep the UDP iperf3 server running. | Initiate UDP downstream traffic using `iperf3 -c <Controller-Bridge-IP> -u -t 10 -R`. | UDP traffic is successfully transmitted from the Controller to the client. Traffic is backhauled through the Agent when the client is connected to an Agent. |
+| 6 | Stop the iperf3 server after traffic generation completes. | Retrieve and inspect the iperf3 client log. | Log contains `iperf Done` indicating successful completion of the UDP downstream traffic test. |
+| 7 | N/A | Verify UDP sender bitrate and sender packet loss from the iperf3 output. | UDP sender bitrate and packet loss statistics are successfully reported. |
+| 8 | N/A | Verify UDP receiver bitrate, jitter, lost datagrams, total datagrams, and packet loss percentage. | UDP receiver statistics are successfully reported, including bitrate, jitter, and packet loss information. |
+| 9 | N/A | Verify the overall UDP downstream traffic result for each selected client. | UDP downstream traffic flow is successfully verified for all selected clients. |
+
+---
+
+# Test Case 14: EM_ClientAssociation_SuccessRateRepeatedCycles
 
 ## Objective
 Verify that a Wi-Fi client device maintains a high association success rate (> 99%) when undergoing repeated connect/disconnect cycles to the EasyMesh SSID over an extended period, across a mesh of 1 Controller and 3 Agents.
@@ -684,7 +837,7 @@ Verify that a Wi-Fi client device maintains a high association success rate (> 9
 | 10 | Confirm association success rate > 99% across the Controller and 3 Agents | Confirm no unexpected disconnections | Test PASSED if success rate >= 99% |
 
 ---
-# Test Case 12: EM_ClientAssociation_AssociationTimeThreshold
+# Test Case 15: EM_ClientAssociation_AssociationTimeThreshold
 
 ## Objective
 Verify that a Wi-Fi client device associates to the EasyMesh SSID within an acceptable time threshold after initiating connection request, regardless of whether it associates to the Controller or one of the 3 Agents.
@@ -748,7 +901,7 @@ Verify that a Wi-Fi client device associates to the EasyMesh SSID within an acce
 
 ---
 
-# Test Case 13: EM_ClientAssociation_ControllerDataElementsVisibility
+# Test Case 16: EM_ClientAssociation_ControllerDataElementsVisibility
 
 ## Objective
 Verify that a Wi-Fi client device appears in the Controller's Data Elements connected-client list after successful authentication and association to the EasyMesh SSID, whether it is physically attached to the Controller or to one of the 3 Agents.
@@ -807,7 +960,7 @@ Verify that a Wi-Fi client device appears in the Controller's Data Elements conn
 
 ---
 
-# Test Case 14: EM_ClientAssociation_ReassociationAfterDisconnection
+# Test Case 17: EM_ClientAssociation_ReassociationAfterDisconnection
 
 ## Objective
 Verify that a Wi-Fi client device automatically re-associates to the EasyMesh SSID after disconnection (power off/WiFi toggle) without requiring manual reconfiguration of credentials, potentially reassociating to a different Agent or the Controller than before.
@@ -871,7 +1024,7 @@ Verify that a Wi-Fi client device automatically re-associates to the EasyMesh SS
 
 ---
 
-# Test Case 15: EM_ClientAssociation_DisassociationHandling
+# Test Case 18: EM_ClientAssociation_DisassociationHandling
 
 ## Objective
 Verify that client disassociation is handled cleanly - client is properly removed from the topology and connected-client list on the Controller and on whichever of the 3 Agents it was attached to, after disconnection.
