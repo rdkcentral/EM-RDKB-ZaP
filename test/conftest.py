@@ -56,6 +56,25 @@ setup_sections = {
 protocol_validation_results = []
 setup_failure = ""
 
+
+def open_device_connections(initialize):
+	# Collect connection failures so setup can report all affected devices.
+	failed_connections = []
+	for device in initialize.get_testbed_devices():
+		try:
+			initialize.connect_with_device(device)
+		except Exception as error:
+			failed_connections.append(f"Could not open {device} connection: {error}")
+	return failed_connections
+
+def close_device_connections(initialize):
+	# Best-effort cleanup is shared by session and per-test fixtures.
+	for device in initialize.get_testbed_devices():
+		try:
+			initialize.close_connection(device)
+		except Exception:
+			pass
+
 @pytest.fixture(scope="session", autouse=True)
 def initialize():
 	zaero_obj = zaero.zaero()
@@ -108,22 +127,26 @@ def verify_test_environment(initialize, update_runtime_database):
 	captured_output = io.StringIO()
 	with redirect_stdout(captured_output):
 		report_logger.print_title("Test Environment Prerequisite Check")
-		for check in (
-			test_environment_checks.validate_mld0_vap_configurations,
-			test_environment_checks.validate_mesh_and_iot_vap_configurations,
-			test_environment_checks.validate_mld0_links_to_private_vaps,
-			test_environment_checks.verify_mesh_backhaul_interfaces,
-			test_environment_checks.validate_extender_parent_connections,
-			test_environment_checks.validate_mesh_service_status,
-		):
-			try:
-				check_result = check(initialize)
-				if check_result is False:
+		try:
+			for check in (
+				test_environment_checks.validate_mld0_vap_configurations,
+				test_environment_checks.validate_mesh_and_iot_vap_configurations,
+				test_environment_checks.validate_mld0_links_to_private_vaps,
+				test_environment_checks.verify_mesh_backhaul_interfaces,
+				test_environment_checks.validate_extender_parent_connections,
+				test_environment_checks.validate_mesh_service_status,
+			):
+				try:
+					check_result = check(initialize)
+					if check_result is False:
+						validation_result = False
+						failed_checks.append(check.__name__)
+				except Exception as error:
 					validation_result = False
-					failed_checks.append(check.__name__)
-			except Exception as error:
-				validation_result = False
-				failed_checks.append(f"{check.__name__}: {error}")
+					failed_checks.append(f"{check.__name__}: {error}")
+		finally:
+			# Release prerequisite SSH aliases before per-test connections start.
+			close_device_connections(initialize)
 	setup_sections["test_environment_check"] = captured_output.getvalue()
 	print(setup_sections["test_environment_check"], end="")
 	if validation_result is False or setup_failure:
@@ -137,13 +160,20 @@ def verify_test_environment(initialize, update_runtime_database):
 	initialize.setup_validated = True
 
 @pytest.fixture(scope="function", autouse=True)
-def test_setup(initialize, verify_test_environment):
+def test_setup(request, initialize, verify_test_environment):
 	if not getattr(initialize, "setup_validated", False):
 		pytest.skip("Test Environment validation did not pass")
 
-	initialize.set_sniffer_log_location("controller", initialize.pcap_log_dir)
 	playwright_started = browser_started = False
 	try:
+		# Open fresh device sessions; teardown owns closing them after each test.
+		report_logger.print_info(f"INFO: Checking device connections before execution of test case: {request.node.name}")
+		connection_errors = open_device_connections(initialize)
+		for error in connection_errors:
+			report_logger.print_error(error)
+		if connection_errors:
+			pytest.fail("Could not open all device connections:\n" + "\n".join(connection_errors))
+		initialize.set_sniffer_log_location("controller", initialize.pcap_log_dir)
 		initialize.ui_start_playwright("controller")
 		playwright_started = True
 		time.sleep(1)
@@ -174,6 +204,8 @@ def test_setup(initialize, verify_test_environment):
 				initialize.ui_stop_playwright("controller")
 			except Exception:
 				pass
+		# Close test-owned SSH aliases before the next test starts.
+		close_device_connections(initialize)
 
 @pytest.fixture
 def resource_usage_dir(request):
@@ -209,17 +241,17 @@ def pytest_runtest_makereport(item, call):
 	errors = report_logger.get_error_logs() + zi_logger.get_error_logs()
 	if errors:
 		report.outcome = "failed"
-		report.longrepr = "Error logs found:\n" + "\n".join(errors)
+		report.longrepr = "Error logs found:\n" + "\n".join(str(error) for error in errors)
 
 def pytest_html_results_table_html(report, data):
-	if report.when != "call":
+	if report.when == "teardown" or (report.when == "setup" and not report.failed):
 		data.clear()
 		return
 	new_data = []
 	call_output = "\n".join(
 		content
 		for section_name, content in getattr(report, "sections", [])
-		if section_name in ("Captured stdout call", "Captured log call")
+		if section_name in ( f"Captured stdout {report.when}", f"Captured log {report.when}",)
 	)
 	if report.failed and hasattr(report, "longrepr"):
 		new_data.append(
@@ -236,7 +268,7 @@ def pytest_html_results_table_html(report, data):
 	data.extend(new_data)
 
 def pytest_html_results_table_row(report, cells):
-	if report.when != "call":
+	if report.when == "teardown" or (report.when == "setup" and not report.failed):
 		cells.clear()
 	elif cells:
 		test_name = report.location[2]
@@ -326,7 +358,7 @@ def pytest_html_results_summary(prefix, summary, postfix):
 		)
 
 @pytest.fixture(scope="function", autouse=True)
-def protocol_validation(request, initialize):
+def protocol_validation(request, initialize, test_setup):
 	capture_name = f"{request.node.name}.pcap"
 	report_logger.print_title("========== Start Frame Capture ==========")
 	backhaul_iface = initialize.read_from_database("controller", "backhaul_capture_iface")
