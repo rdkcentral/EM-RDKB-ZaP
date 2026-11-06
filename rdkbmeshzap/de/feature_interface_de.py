@@ -42,6 +42,7 @@ class FeatureInterfaceDE(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
         try:
             index = self.db_obj.read_from_database(device, index)
             #interface = self.db_obj.read_from_database(device, "wifi_iface").format(index)
@@ -51,7 +52,7 @@ class FeatureInterfaceDE(DatabaseModule,
 
         command = f"dmcli eRT setv Device.WiFi.DataElements.Network.SSID.{index}.SSID string {ssid}"
         zi_logger.log(f"COMMAND : {command}")
-        _, error = connection_obj.execute_command(device, command,
+        _, error = connection_obj.execute_command(command,
                                               return_stderr=True)
         if error != '':
             raise RuntimeError(f"Command execution failed : {command}")
@@ -65,6 +66,7 @@ class FeatureInterfaceDE(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
         try:
             index = self.db_obj.read_from_database(device, index)
             #interface = self.db_obj.read_from_database(device, "wifi_iface").format(index)
@@ -73,7 +75,7 @@ class FeatureInterfaceDE(DatabaseModule,
             raise RuntimeError(f"Could not find out the Radio of the device : {device}")
         cutVal = '{print $3}'
         command = f"dmcli eRT getv Device.WiFi.DataElements.Network.SSID.{index}.SSID | grep 'value:' | awk -F': ' '{cutVal}'"
-        output, error = connection_obj.execute_command(device, command,
+        output, error = connection_obj.execute_command(command,
                                                    return_stderr=True)
         if error != '':
             raise RuntimeError(f"Command execution failed : {command}")
@@ -90,6 +92,7 @@ class FeatureInterfaceDE(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
         try:
             index_val = self.db_obj.read_from_database(device, index)
             if 'mld' in index:
@@ -101,7 +104,7 @@ class FeatureInterfaceDE(DatabaseModule,
             raise RuntimeError(f"Could not find out the Radio of the device : {device}")
         cutVal = '{print $2}'
         command = f"iw dev {ifname} info | grep ssid | awk '{cutVal}'"
-        output, error = connection_obj.execute_command(device, command,
+        output, error = connection_obj.execute_command(command,
                                                    return_stderr=True)
         zi_logger.log(f"output : {output}, ssid : {ssid}")
         if error != '':
@@ -116,9 +119,10 @@ class FeatureInterfaceDE(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
         index = self.db_obj.read_from_database(device, index)
         cmd = f"rbuscli get Device.WiFi.DataElements.Network.Device.{index}.RadioNumberOfEntries"
-        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output}")        
         return output.partition('Value')[2].lstrip(' :').split()[0]
@@ -130,8 +134,9 @@ class FeatureInterfaceDE(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
         cmd = f"rbuscli get Device.WiFi.DataElements.Network.DeviceNumberOfEntries"
-        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output}")
         
@@ -145,9 +150,10 @@ class FeatureInterfaceDE(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
         # index = self.db_obj.read_from_database(device, index)
         cmd = f"rbuscli get Device.WiFi.DataElements.Network.Device.{index}.ID"
-        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
 
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output}")
@@ -162,9 +168,10 @@ class FeatureInterfaceDE(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
         index = self.db_obj.read_from_database(device, index)
         cmd = f"rbuscli get Device.WiFi.DataElements.Network.SSID.{index}.AKMsAllowed"
-        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output.strip()}")
 
@@ -177,9 +184,10 @@ class FeatureInterfaceDE(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
         index = self.db_obj.read_from_database(device, index)
         cmd = f"rbuscli get Device.WiFi.DataElements.Network.SSID.{index}.MFPConfig"
-        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
 
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output.strip()}")
@@ -192,8 +200,9 @@ class FeatureInterfaceDE(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
         cmd = f"rbuscli get Device.DHCPv4.Server.Enable"
-        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
 
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output.strip()}")
@@ -206,9 +215,10 @@ class FeatureInterfaceDE(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
         index = self.db_obj.read_from_database(device, index)
         cmd = f"rbuscli get Device.DHCPv4.Server.Pool.{index}.MinAddress"
-        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
 
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output.strip()}")
@@ -222,9 +232,10 @@ class FeatureInterfaceDE(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
         index = self.db_obj.read_from_database(device, index)
         cmd = f"rbuscli get Device.DHCPv4.Server.Pool.{index}.MaxAddress"
-        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
 
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output.strip()}")
@@ -238,10 +249,11 @@ class FeatureInterfaceDE(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
         index = self.db_obj.read_from_database(device, index)
         sta_index = self.db_obj.read_from_database(device, sta_index)
         cmd = f"rbuscli get Device.DHCPv4.Server.Pool.{index}.Client.{sta_index}.Chaddr"
-        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
 
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output.strip()}")
@@ -254,9 +266,10 @@ class FeatureInterfaceDE(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
         index = self.db_obj.read_from_database(device, index)
         cmd = f"rbuscli get Device.DHCPv4.Server.Pool.{index}.ClientNumberOfEntries"
-        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
 
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output.strip()}")
@@ -270,9 +283,10 @@ class FeatureInterfaceDE(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
         index = self.db_obj.read_from_database(device, index)
         cmd = f"rbuscli get Device.IP.Interface.{index}.Enable"
-        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
 
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output.strip()}")
@@ -285,10 +299,11 @@ class FeatureInterfaceDE(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
         index = self.db_obj.read_from_database(device, index)
         ip_index = self.db_obj.read_from_database(device, ip_index)
         cmd = f"rbuscli get Device.IP.Interface.{index}.IPv4Address.{ip_index}.IPAddress"
-        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
 
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output.strip()}")
@@ -301,11 +316,12 @@ class FeatureInterfaceDE(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
         index = self.db_obj.read_from_database(device, index)
         sta_index = self.db_obj.read_from_database(device, sta_index)
         ip_index = self.db_obj.read_from_database(device, ip_index)
         cmd = f"rbuscli get Device.DHCPv4.Server.Pool.{index}.Client.{sta_index}.IPv4Address.{ip_index}.IPAddress"
-        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
 
         if 'Value :' not in output:
             raise RuntimeError(f"Command execution failed : {output.strip()}")
@@ -318,8 +334,9 @@ class FeatureInterfaceDE(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
         cmd = f"rbuscli get Device.WiFi.DataElements.Network.ControllerID"
-        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
         # No 'Value' in the output 
         if 'Value :' not in output:
               raise RuntimeError(f"Failed to get controller ID: {output.strip()}")      
@@ -333,9 +350,10 @@ class FeatureInterfaceDE(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
+        connection_obj.switch_connection(device)
         cutval = "'{print $6}'"
         cmd = f"rbuscli get Device.WiFi.DataElements. | grep -i -B 2 {device_mac} |grep 'Name' | awk -F. {cutval} | sort -u"
-        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
+        output, error = connection_obj.execute_command(cmd, return_stderr=True)
         if error or not output.strip():
             raise RuntimeError(f"Failed to get device index for {device}: {output.strip()}")
         device_index = int(output.strip())

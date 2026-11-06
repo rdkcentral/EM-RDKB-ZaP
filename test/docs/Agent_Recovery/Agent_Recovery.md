@@ -45,24 +45,81 @@ Verify that all onboarded EasyMesh Extenders automatically recover after reboot,
 
 | Step Number | Controller | Extenders (3 Nos) | Expected Result |
 |-------------|------------|-------------------|-----------------|
-| 1 | Record the baseline topology using RDKB-CLI and DataElements using `rbuscli get Device.WiFi.DataElements.Network.Topology`. Start IEEE 1905 packet capture. | N/A | Baseline topology is recorded and packet capture is started. |
-| 2 | Capture **t0** (timer start) at the instant the Extender reboot is initiated. | Reboot all Extenders simultaneously. | All Extenders reboot successfully and **t0** is recorded on the Controller. |
-| 3 | N/A | Wait for all Extenders to complete the boot-up sequence. | All Extenders complete boot-up and become reachable. |
-| 4 | N/A | Verify that EasyMesh and IEEE 1905 services are operational on all Extenders. If any service is not operational, wait 5 seconds and retry until all required services are running. | EasyMesh and IEEE 1905 services are operational on all Extenders. |
-| 5 | Record **t1-Ext1**, **t1-Ext2**, and **t1-Ext3** when the backhaul link of each Extender is successfully re-established. | Verify that the backhaul link of each extender is operational using `iw dev <mesh_backhaul_intf> link`. | All Extenders have an active backhaul connection to their respective parent nodes, and individual recovery timestamps are recorded. |
-| 6 | Verify reachability of all Extenders from the Controller using `ping <extender_ip>`. | N/A | All Extenders are reachable from the Controller. If any Extender is unreachable, mark the test case as **Failed**. |
-| 7 | Stop IEEE 1905 packet capture. | N/A | Packet capture is stopped successfully. |
-| 8 | Re-read the topology using RDKB-CLI and DataElements using `rbuscli get Device.WiFi.DataElements.Network.Topology`. Compare the recovered topology against the baseline topology. | N/A | All Extenders are present in the topology with correct connectivity information. No missing, stale, or duplicate entries are observed. |
-| 9 | Analyze the captured IEEE 1905 packets. | N/A | Topology Query and Topology Response messages are exchanged successfully between controller and all the extenders. |
-| 10 | Compare the measured recovery duration (**t1-ExtN − t0**) for each Extender against the KPI threshold. | N/A | Recovery time for each Extender is less than **120 seconds**. |
+| 1 | N/A | Discover all Extenders and store each Extender's AL MAC address for capture validation. | The Extenders and their AL MAC addresses are recorded. |
+| 2 | Record one monotonic recovery start time and initiate reboot of all Extenders concurrently. | Reboot all Extenders concurrently. | Reboot commands are issued and all Extenders share the same recovery KPI window. |
+| 3 | Start IEEE 1905 packet capture on the Controller after the Extender reboot commands are issued. | N/A | A Controller capture is running while the Extenders recover. |
+| 4 | N/A | Reconnect to each Extender over SSH concurrently. Close its previous connection and retry every 5 seconds until the recovery KPI deadline. | Each Extender's SSH connection is restored within the KPI, or its recovery is recorded as failed. |
+| 5 | N/A | After SSH reconnects, verify `onewifi`, `ieee1905_em_agent`, and `em_agent` every 2 seconds until the KPI deadline. Record elapsed time from Step 2. | All required services become active and a recovery duration is recorded for each Extender. |
+| 6 | N/A | Validate each Extender's recovery KPI and reachability. | Every Extender is reachable and recovered within the configured KPI. |
+| 7 | N/A | Identify each recovered Extender's upstream parent device. | An upstream parent is identified for each recovered Extender. |
+| 8 | N/A | Keep the Controller capture running for 60 seconds after recovery to allow topology traffic to propagate. | Recovery topology traffic is present in the capture. |
+| 9 | Stop and collect the IEEE 1905 capture from the Controller. | N/A | The Controller capture is saved locally for analysis. |
+| 10 | Reassemble the Controller capture. For each Extender AL MAC, check for Topology Query and Topology Response messages whose source or destination matches that AL MAC. | N/A | Both message types are found for every Extender in the Controller capture. |
+| 11 | Review accumulated recovery, reachability, parent-link, and capture-validation results. | N/A | The test fails if any Extender recovery or validation check failed. |
 
 ---
 
-# Test Case 2: EM_AgentRecovery_ParentAgent_DaisyChainTopology
+# Test Case 2: EM_AgentRecovery_ConsecutiveReboots
 
 ## Objective
 
-Verify that a parent Agent in a Daisy Chain topology recovers successfully after reboot and that downstream Agents become reachable again through the restored hierarchy.
+Verify that all Extenders recover reliably and within the configured KPI across five consecutive reboot cycles, with no cumulative degradation or stale-state buildup over repeated recovery cycles.
+
+## Test Type
+
+**Positive**
+
+---
+
+## Test Environment
+
+| Component | Description |
+|-----------|-------------|
+| Controller | EasyMesh Controller |
+| Extenders | 3 EasyMesh Agents |
+| Network Topology Type | Hybrid |
+| Packet Analyzer | IEEE 1905 packet analysis tool |
+
+---
+
+## Pre-Requisites
+
+1. All Extenders are onboarded with active EasyMesh backhaul connections.
+2. All Agents are visible in the Controller topology.
+3. EasyMesh and IEEE 1905 services are running on all devices.
+4. DataElements is accessible via rbuscli.
+
+---
+
+## Test Configuration
+
+| Parameter | Value |
+|-----------|-------|
+| Recovery KPI | Less than 120 seconds (each cycle) |
+| IEEE 1905 Messages Validated | Topology Query, Topology Response |
+| Reboot Cycles | Multiple consecutive reboots (5 cycles) |
+| DataElements | Device.WiFi.DataElements.Network.Topology |
+| Network Topology | Controller and 3 Extenders in an active EasyMesh Hybrid topology |
+
+---
+
+## Test Procedure and Expected Results
+
+| Step Number | Controller | Extenders (3 Nos) | Expected Result |
+|-------------|------------|-------------------|-----------------|
+| 1 | N/A | Discover all Extenders and store each Extender's AL MAC address for later capture validation. | The Extenders and their AL MAC addresses are recorded. |
+| 2 | For each cycle, record a common monotonic start time and reboot all Extenders concurrently. After Cycles 1–4 pass, start the Controller's single IEEE 1905 capture immediately before the Cycle 5 reboot. | Reboot all Extenders concurrently for five consecutive cycles. | All five recovery cycles are completed; the capture covers Cycle 5 only. |
+| 3 | N/A | After each reboot, reconnect to every Extender over SSH concurrently. Close its previous connection and retry every 5 seconds until the cycle's KPI deadline. | SSH connectivity is restored for every Extender within each cycle's KPI. |
+| 4 | N/A | After each Extender reconnects, verify `onewifi`, `ieee1905_em_agent`, and `em_agent` every 2 seconds until the cycle's KPI deadline. Record recovery time from that cycle's start. | Required services become active and recovery time is recorded for each Extender in every cycle. |
+| 5 | N/A | Validate each Extender's recovery KPI and reachability after every cycle. | All Extenders are reachable and recover within the KPI across all five cycles. |
+| 6 | After Cycle 5, identify each Extender's upstream parent device, then keep the capture running for 60 seconds to allow topology traffic to propagate. | N/A | An upstream parent is identified for every Extender, and the Cycle 5 capture includes the propagation period. |
+| 7 | Stop and collect the Controller capture. | N/A | The capture covering Cycle 5 and the following propagation period is saved locally. |
+| 8 | Reassemble the Cycle 5 capture. For each Extender AL MAC, check for Topology Query and Topology Response messages whose source or destination matches that AL MAC. | N/A | Both message types are found for every Extender in the Cycle 5 capture. |
+| 9 | Review accumulated recovery results from all five cycles and the Cycle 5 topology validation. | N/A | The test fails if any cycle's recovery or any Cycle 5 topology validation check failed. |
+
+---
+
+# Test Case 3: EM_AgentRecovery_ParentAgent_DaisyChainTopology
 
 ## Test Type
 
@@ -118,7 +175,7 @@ Verify that a parent Agent in a Daisy Chain topology recovers successfully after
 
 ---
 
-# Test Case 3: EM_AgentRecovery_AllAgents_DaisyChainTopology
+# Test Case 4: EM_AgentRecovery_AllAgents_DaisyChainTopology
 
 ## Objective
 
@@ -178,7 +235,7 @@ Verify that all Agents in a Daisy Chain topology recover successfully after simu
 
 ---
 
-# Test Case 4: EM_AgentRecovery_ChildAgent_DaisyChainTopology
+# Test Case 5: EM_AgentRecovery_ChildAgent_DaisyChainTopology
 
 ## Objective
 
@@ -238,7 +295,7 @@ Verify that when a single mid-chain child Agent reboots while its parent and the
 
 ---
 
-# Test Case 5: EM_AgentRecovery_WiredBackhaul
+# Test Case 6: EM_AgentRecovery_WiredBackhaul
 
 ## Objective
 
@@ -296,70 +353,6 @@ Verify that an onboarded EasyMesh Extender connected through an Ethernet (wired)
 | 8 | Re-read the topology using RDKB-CLI and DataElements using `rbuscli get Device.WiFi.DataElements.Network.Topology`. Compare the recovered topology against the baseline topology. | N/A | Topology matches the baseline with no missing, stale, or duplicate entries. |
 | 9 | Analyze the captured IEEE 1905 packets. | N/A | Topology Query and Topology Response messages are exchanged successfully following recovery of all wired Extenders. |
 | 10 | Compare the measured recovery duration (**t1-ExtN − t0**) for each Extender against the KPI threshold. | N/A | Recovery time for each Extender is less than **120 seconds**. |
-
----
-
-# Test Case 6: EM_AgentRecovery_ConsecutiveReboots
-
-## Objective
-
-Verify that an Agent recovers reliably and within the configured KPI across multiple consecutive reboots, with no cumulative degradation or stale-state buildup over repeated recovery cycles.
-
-## Test Type
-
-**Positive**
-
----
-
-## Test Environment
-
-| Component | Description |
-|-----------|-------------|
-| Controller | EasyMesh Controller |
-| Extenders | 3 EasyMesh Agents |
-| Network Topology Type | Hybrid |
-| Packet Analyzer | IEEE 1905 packet analysis tool |
-
----
-
-## Pre-Requisites
-
-1. The target Agent is onboarded with an active EasyMesh backhaul connection.
-2. All Agents are visible in the Controller topology.
-3. EasyMesh and IEEE 1905 services are running on all devices.
-4. DataElements is accessible via rbuscli.
-
----
-
-## Test Configuration
-
-| Parameter | Value |
-|-----------|-------|
-| Recovery KPI | Less than 120 seconds (each cycle) |
-| IEEE 1905 Messages Validated | Topology Query, Topology Response |
-| Reboot Cycles | Multiple consecutive reboots (5 cycles) |
-| DataElements | Device.WiFi.DataElements.Network.Topology |
-| Network Topology | Controller and 3 Extenders in an active EasyMesh Hybrid topology |
-
----
-
-## Test Procedure and Expected Results
-
-| Step Number | Controller | Extenders (3 Nos) | Expected Result |
-|-------------|------------|-------------------|-----------------|
-| 1 | Record the baseline topology using RDKB-CLI and DataElements using `rbuscli get Device.WiFi.DataElements.Network.Topology`. Start IEEE 1905 packet capture. | N/A | Baseline topology is recorded and packet capture is started on the Controller. |
-| 2 | Trigger reboot of the target Extender (Cycle 1). | Reboot the target Extender. | Extender reboot is initiated successfully. |
-| 3 | N/A | Verify Extender boot completion and EasyMesh/IEEE 1905 service status. If any service is not operational, wait 5 seconds and retry until recovery is complete. | Extender becomes operational and all required services are running. |
-| 4 | Repeat Steps 2 and 3 for Cycles 2, 3, and 4. | N/A | Extender recovers successfully after each reboot cycle. |
-| 5 | Record **t0-Cycle5** (timer start) at reboot trigger time. | Reboot the target Extender (Cycle 5). | Extender reboot is triggered and **t0-Cycle5** is recorded on the Controller. |
-| 6 | N/A | Wait for the Extender to complete the boot-up sequence. | Extender completes boot-up and becomes reachable. |
-| 7 | N/A | Verify that EasyMesh and IEEE 1905 services are operational on the rebooted Extender. If any service is not operational, wait 5 seconds and retry until all required services are running. | EasyMesh and IEEE 1905 services are operational on the Extender. |
-| 8 | Record **t1-Cycle5** when the Extender backhaul link is successfully re-established. | Verify that the Extender backhaul link is operational using `iw dev <mesh_backhaul_intf> link`. | Extender backhaul link is operational and **t1-Cycle5** is recorded. |
-| 9 | Verify reachability of the recovered Extender from the Controller using `ping <extender_ip>`. | N/A | The Extender is reachable from the Controller. If the Extender is unreachable, mark the test case as **Failed**. |
-| 10 | Stop IEEE 1905 packet capture. | N/A | Packet capture is stopped successfully. |
-| 11 | Re-read the topology using RDKB-CLI and DataElements using `rbuscli get Device.WiFi.DataElements.Network.Topology`. | N/A | Topology matches the baseline with no missing, stale, or duplicate entries after the final reboot cycle. |
-| 12 | Analyze the captured IEEE 1905 packets. | N/A | Topology Query and Topology Response messages are exchanged successfully during Extender recovery. |
-| 13 | Compare the measured recovery duration (**t1-Cycle5 − t0-Cycle5**) against the KPI threshold. | N/A | Recovery time is less than **120 seconds** and no service degradation, stale topology entries, or accumulated recovery issues are observed after five consecutive Extender reboot cycles. |
 
 ---
 

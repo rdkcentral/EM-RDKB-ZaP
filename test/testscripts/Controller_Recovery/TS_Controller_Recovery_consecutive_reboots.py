@@ -20,13 +20,12 @@ import threading
 import pytest
 from packet_analyzer.ieee1905_utils import *
 from packet_analyzer.packet_dissector import *
-from rdkbmeshzap.common_utils import report_logger
-import controller_recovery_utils as cr_utils
-from rdkbmeshzap.common_utils import device_utils
+from rdkbmeshzap.common_utils import device_utils, report_logger
+from rdkbmeshzap.common_utils import recovery_utils as cr_utils
 
 def test_controller_recovery_consecutive_reboots(initialize):
     report_logger.print_test("Entering test_controller_recovery_consecutive_reboots")
-    CONTROLLER_RECOVERY_KPI_SECONDS = cr_utils.get_controller_recovery_kpi(initialize)
+    CONTROLLER_RECOVERY_KPI_SECONDS = cr_utils.get_recovery_kpi(initialize, "controller")
     capture_names = {}
     capture_started = set()
     extender_al_macs = {}
