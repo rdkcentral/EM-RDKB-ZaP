@@ -1,20 +1,3 @@
-# If not stated otherwise in this file or this component LICENSE file the
-# following copyright and licenses apply:
-#
-# Copyright 2026 Zilogic Systems
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import re
 
 from streamlit import radio
@@ -106,59 +89,65 @@ def test_client_association_traffic_flow_UDP_upstream(initialize):
             report_logger.print_info(f"INFO: Removed existing iperf client log file: {client_log_removed}")
             time.sleep(5)
             report_logger.print_info(f"INFO: Starting iperf client on {client} to connect to Controller {server_ip} for UDP upstream traffic")
-            initialize.start_iperf_client(
-                client,
-                server_ip,
-                client_ip,
-                protocol="udp",
-                log_name="controller_upstream_UDP_iperf_client.log",
-                time=10)
-            time.sleep(30)
-            report_logger.print_info("INFO: Stopping iperf server on Controller")
-            initialize.stop_iperf_server("controller")
-            time.sleep(5)
+            try:
+                initialize.start_iperf_client(
+                    client,
+                    server_ip,
+                    client_ip,
+                    protocol="udp",
+                    log_name="controller_upstream_UDP_iperf_client.log",
+                    time=10)
+                time.sleep(30)
+            finally:
+                report_logger.print_info("INFO: Stopping iperf server on Controller")
+                initialize.stop_iperf_server("controller")
+                time.sleep(5)
             report_logger.print_info(f"INFO: Verifying UDP upstream iperf client log for {client}")
             log_output = initialize.execute_command(client,"cat controller_upstream_UDP_iperf_client.log")
             if "iperf Done." in log_output:
                 report_logger.print_info( f"INFO: UDP upstream traffic flow from {client} to Controller is successful")
                 udp_summary_pattern = (
-                    r'\]\s+[\d.]+-[\d.]+\s+sec\s+'
-                    r'[\d.]+\s+\S+\s+'
-                    r'([\d.]+)\s+(\S+)\s+'
-                    r'([\d.]+)\s+ms\s+'
-                    r'(\d+)/(\d+)\s+\(([\d.]+)%\)\s+'
-                    r'(sender|receiver)')
-                udp_summaries = re.findall(udp_summary_pattern,log_output,re.IGNORECASE)
-                sender_summary = None
-                receiver_summary = None
-                for summary in udp_summaries:
-                    if summary[6].lower() == "sender":
-                        sender_summary = summary
-                    elif summary[6].lower() == "receiver":
-                        receiver_summary = summary
-                if sender_summary:
-                    sender_bitrate = sender_summary[0]
-                    sender_unit = sender_summary[1]
-                    report_logger.print_info(f"INFO: UDP Sender Bitrate: {sender_bitrate} {sender_unit}")
-                else:
-                    report_logger.print_error(f"FAIL: Failed to retrieve UDP sender bitrate for {client}")
-                    traffic_step_passed = False
-                if receiver_summary:
-                    receiver_bitrate = receiver_summary[0]
-                    receiver_unit = receiver_summary[1]
-                    receiver_jitter = receiver_summary[2]
-                    lost_datagrams = receiver_summary[3]
-                    total_datagrams = receiver_summary[4]
-                    packet_loss = receiver_summary[5]
-                    report_logger.print_info(f"INFO: UDP Receiver Bitrate: {receiver_bitrate} {receiver_unit}")
-                    report_logger.print_info(f"INFO: UDP Receiver Jitter: {receiver_jitter} ms")
-                    report_logger.print_info(f"INFO: UDP Lost Datagrams: {lost_datagrams}/{total_datagrams}")
-                    report_logger.print_info( f"INFO: UDP Packet Loss: {packet_loss}%")
-                else:
-                    report_logger.print_error(f"FAIL: Failed to retrieve UDP receiver statistics for {client}")
-                    traffic_step_passed = False
+                r'[\s*\d+]\s+[\d.]+-[\d.]+\s+sec\s+'
+                r'[\d.]+\s+\S+\s+'
+                r'(?P<bitrate>[\d.]+)\s+(?P<unit>\S+)\s+'
+                r'(?P<jitter>[\d.]+)\s+ms\s+'
+                r'(?P<lost>\d+)/(?P<total>\d+)\s+'
+                r'((?P<loss>[\d.]+)%)\s+'
+                r'(?P<role>sender|receiver)\b')
+            udp_summaries = re.finditer(
+                udp_summary_pattern,
+                log_output,
+                re.IGNORECASE)
+            sender_summary = None
+            receiver_summary = None
+            for summary in udp_summaries:
+                role = summary.group("role").lower()
+                if role == "sender":
+                    sender_summary = summary
+                elif role == "receiver":
+                    receiver_summary = summary
+            # Verify sender statistics
+            if sender_summary:
+                sender_bitrate = sender_summary.group("bitrate")
+                sender_unit = sender_summary.group("unit")
+                report_logger.print_info( f"INFO: UDP Sender Bitrate: {sender_bitrate} {sender_unit}")
             else:
-                report_logger.print_error(f"FAIL: UDP upstream traffic flow from {client} to Controller failed")
+                report_logger.print_error(f"FAIL: Failed to retrieve UDP sender bitrate for {client}")
+                traffic_step_passed = False
+            # Verify receiver statistics
+            if receiver_summary:
+                receiver_bitrate = receiver_summary.group("bitrate")
+                receiver_unit = receiver_summary.group("unit")
+                receiver_jitter = receiver_summary.group("jitter")
+                lost_datagrams = receiver_summary.group("lost")
+                total_datagrams = receiver_summary.group("total")
+                packet_loss = receiver_summary.group("loss")
+                report_logger.print_info(f"INFO: UDP Receiver Bitrate: {receiver_bitrate} {receiver_unit}")
+                report_logger.print_info(f"INFO: UDP Receiver Jitter: {receiver_jitter} ms")
+                report_logger.print_info(f"INFO: UDP Lost Datagrams: {lost_datagrams}/{total_datagrams}")
+                report_logger.print_info(f"INFO: UDP Packet Loss: {packet_loss}%")
+            else:
+                report_logger.print_error(f"FAIL: Failed to retrieve UDP receiver statistics for {client}")
                 traffic_step_passed = False
         if traffic_step_passed:
             report_logger.print_success("PASS: UDP upstream traffic flow completed successfully for all selected clients")

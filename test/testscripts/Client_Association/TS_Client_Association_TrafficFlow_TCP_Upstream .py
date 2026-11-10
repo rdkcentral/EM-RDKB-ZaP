@@ -106,17 +106,19 @@ def test_client_association_traffic_flow_TCP_upstream(initialize):
             report_logger.print_info(f"INFO: Removed existing iperf client log file: {client_log_removed}")
             time.sleep(5)
             report_logger.print_info(f"INFO: Starting iperf client on {client} to connect to Controller {server_ip}")
-            initialize.start_iperf_client(
-                client,
-                server_ip,
-                client_ip,
-                protocol="tcp",
-                log_name="controller_upstream_tcp_iperf_client.log",
-                time=10)
-            time.sleep(30)
-            report_logger.print_info("INFO: Stopping iperf server on Controller")
-            initialize.stop_iperf_server("controller")
-            time.sleep(5)
+            try:
+                initialize.start_iperf_client(
+                    client,
+                    server_ip,
+                    client_ip,
+                    protocol="tcp",
+                    log_name="controller_upstream_tcp_iperf_client.log",
+                    time=10)
+                time.sleep(30)
+            finally:
+                report_logger.print_info(f"INFO: Stopping iperf server on Controller")
+                initialize.stop_iperf_server("controller")
+                time.sleep(5)
             report_logger.print_info(f"INFO: Verifying TCP upstream iperf client log for {client}")
             log_output = initialize.execute_command( client,"cat controller_upstream_tcp_iperf_client.log")
             if "iperf Done" in log_output:
@@ -137,7 +139,11 @@ def test_client_association_traffic_flow_TCP_upstream(initialize):
                     report_logger.print_info(f"INFO: TCP Sender Bitrate: {sender_bitrate} {sender_unit}")
                     report_logger.print_info(f"INFO: TCP Receiver Bitrate: {receiver_bitrate} {receiver_unit}")
                     report_logger.print_info(f"INFO: TCP Retransmissions: {retransmissions}")
-                    report_logger.print_info(f"INFO:TCP upstream traffic flow from {client} to Controller completed successfully")
+                    if float(sender_bitrate) > 0 and float(receiver_bitrate) > 0:
+                         report_logger.print_info(f"INFO: TCP upstream traffic flow from {client} to Controller completed successfully")
+                    else:
+                         report_logger.print_error(f"FAIL: TCP upstream throughput is zero for {client}")
+                         traffic_step_passed = False
                 else:
                     report_logger.print_error(f"FAIL: Sender or receiver statistics are missing for {client}")
                     traffic_step_passed = False
