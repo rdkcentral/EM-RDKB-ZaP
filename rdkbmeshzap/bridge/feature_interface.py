@@ -636,3 +636,42 @@ class FeatureInterface(FeatureInterfaceModules):
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.get_operating_radio_details(device, band)
+
+    def get_security_mode(self,
+            device: str,
+            method = 'gui') -> str:
+        """
+        To get the security mode of the fronthaul network.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_security_mode(device)
+
+    def get_supported_security_modes(self,
+                                     device: str,
+                                     method = 'gui') -> list:
+        """
+        Get all supported security modes for the Home Network profile.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_supported_security_modes(device)
+
+    def set_security_mode(self,
+                          device: str,
+                          security_mode: str,
+                          method = 'gui'):
+        """
+        Set security mode for the Home Network Profile
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        iface_obj.set_security_mode(device, security_mode)
+
+    def get_nmcli_scan_output(self, device: str, method='cli') -> str:
+        """
+        Get the nmcli scan output of the device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_nmcli_scan_output(device)

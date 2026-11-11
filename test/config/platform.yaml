@@ -158,3 +158,4 @@ test_parameters:
         aa:bb:cc:dd:ee:ff : 0xff                             # replace with extender1 al mac and its multi-ap profile type
         aa:bb:cc:dd:ee:ff : 0xff                             # replace with extender2 al mac and its multi-ap profile type
         aa:bb:cc:dd:ee:ff : 0xff                             # replace with extender3 al mac and its multi-ap profile type
+    wifi_scanner_device: 'controller_wlan_client_1'          #client device used for Wi-Fi scanning

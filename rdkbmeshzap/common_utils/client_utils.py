@@ -19,6 +19,7 @@ import re
 import shlex
 import time
 from rdkbmeshzap.common_utils import report_logger
+NMCLI_SCAN_RETRY_LIMIT = 16
 
 def get_client_bssids(client, ssid, ssh):
     """
@@ -294,3 +295,34 @@ def verify_client_association(initialize, client):
     except Exception as e:
         report_logger.print_error(f"FAIL: Association verification failed for {client}: {e}")
         return False
+
+def verify_security_mode(nmcli_output, target_bssid, expected_security_mode):
+    """
+    Verify the security mode of a specific BSSID from nmcli output.
+    Args:
+        nmcli_output (str): Output of 'nmcli device wifi list'.
+        target_bssid (str): BSSID to search for.
+        expected_security_mode (str): Expected security mode.
+    Returns:
+        tuple:
+            (True, actual_security_mode)  -> if matched
+            (False, actual_security_mode) -> if not matched
+    Raises:
+        LookupError: If the BSSID is not found.
+    """
+    for line in nmcli_output.splitlines():
+        fields = line.split()
+        # Skip header, blank lines, and malformed entries
+        if len(fields) < 9:
+            continue
+        if fields[0] == "*":
+            bssid = fields[1]
+            security_mode = " ".join(fields[9:])
+        else:
+            bssid = fields[0]
+            security_mode = " ".join(fields[8:])
+        if bssid.lower() == target_bssid.lower():
+            return security_mode == expected_security_mode, security_mode
+    raise LookupError(
+        f"BSSID '{target_bssid}' not found in nmcli output"
+    )

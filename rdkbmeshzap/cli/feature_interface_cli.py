@@ -33,6 +33,7 @@
 # limitations under the License.
 
 from importlib.resources import path
+import time
 import re
 import shlex
 from paramiko import file
@@ -838,3 +839,48 @@ class FeatureInterfaceCLI(DatabaseModule,
             "operating_channel": channel,
             "operating_class": operating_class,
             "operating_bandwidth": bandwidth }
+
+    def get_nmcli_scan_output(self, device: str) -> str:
+        """
+        To get the nmcli scan output of the device.
+        """
+        zi_logger.print_context()
+        client_username = self.db_obj.read_from_database(device, "username")
+        client_password = self.db_obj.read_from_database(device, "password")
+        wifi_interface = self.db_obj.read_from_database(device, "data_iface")
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        zi_logger.log("Executing nmcli scan command")
+        command_scan = (
+            f"nmcli device wifi rescan ifname {shlex.quote(wifi_interface)}"
+            if client_username == "root"
+            else (
+                f"printf '%s\\n' {shlex.quote(client_password)} | "
+                f"sudo -S -p '' sh -c "
+                f"\"nmcli device wifi rescan ifname {shlex.quote(wifi_interface)}\""
+            )
+        )
+        output, error = connection_obj.execute_command(
+            device, command_scan, return_stderr=True, timeout=60
+        )
+        if error:
+            raise RuntimeError(f"nmcli scan command failed on {device}: {error.strip()}")
+        time.sleep(5)
+        command_list = (
+            f"nmcli device wifi list ifname {shlex.quote(wifi_interface)}"
+            if client_username == "root"
+            else (
+                f"printf '%s\\n' {shlex.quote(client_password)} | "
+                f"sudo -S -p '' sh -c "
+                f"\"nmcli device wifi list ifname {shlex.quote(wifi_interface)}\""
+            )
+        )
+        previous_log_state = zi_logger.enable_log
+        zi_logger.set_log_state(False)
+        network_list, error = connection_obj.execute_command(
+            device, command_list, return_stderr=True, timeout=60
+        )
+        zi_logger.set_log_state(previous_log_state)
+        if error:
+            raise RuntimeError(f"nmcli list command failed on {device}: {error.strip()}")
+        return network_list
