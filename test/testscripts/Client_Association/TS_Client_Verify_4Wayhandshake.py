@@ -115,7 +115,8 @@ def test_client_association_4wayhandshake(initialize):
         step_passed = True
         for client in clients:
             try:
-                handshake_messages = ( initialize.verify_four_way_handshake_messages(client, "cli"))
+                interface = initialize.read_from_database(client, 'data_iface')
+                handshake_messages = ( initialize.verify_four_way_handshake_messages(client, interface, "cli"))
                 if handshake_messages:
                     report_logger.print_info(f"INFO: 4-way handshake messages verified for {client}")
                 else:

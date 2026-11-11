@@ -737,34 +737,37 @@ class FeatureInterfaceCLI(DatabaseModule,
             raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
         return str(output).strip()
 
-    def verify_four_way_handshake_messages(self, device: str) -> str:
+    def verify_four_way_handshake_messages(self, device: str, interface: str) -> str:
         """
-        To verify the WPA 4-Way Handshake messages of the Wi-Fi client.
+        Verify the WPA 4-Way Handshake messages of the Wi-Fi client.
         """
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        cmd = ("journalctl -u wpa_supplicant --no-pager "
-            "| grep -E 'RX message 1 of 4-Way Handshake|"
-            "Sending EAPOL-Key 2/4|"
-            "RX message 3 of 4-Way Handshake|"
-            "Sending EAPOL-Key 4/4'")
+        cmd = (
+            "journalctl -u wpa_supplicant --since '5 minutes ago' --no-pager "
+            f"| grep '{interface}' "
+            "| awk "
+            "'/RX message 1 of 4-Way Handshake/ && !m1++ {print; found++} "
+            "/Sending EAPOL-Key 2\\/4/ && !m2++ {print; found++} "
+            "/RX message 3 of 4-Way Handshake/ && !m3++ {print; found++} "
+            "/Sending EAPOL-Key 4\\/4/ && !m4++ {print; found++} "
+            "found == 4 {exit}'")
         output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
         combined_output = f"{output}\n{error}"
         handshake_messages = [
             'RX message 1 of 4-Way Handshake',
             'Sending EAPOL-Key 2/4',
             'RX message 3 of 4-Way Handshake',
-            'Sending EAPOL-Key 4/4']
+            'Sending EAPOL-Key 4/4'
+        ]
         missing_messages = [
             message for message in handshake_messages
-            if message not in combined_output]
+            if message not in combined_output
+        ]
         if missing_messages:
-            raise RuntimeError(
-                "WPA 4-Way Handshake verification failed. "
-                f"Missing messages: {missing_messages}\n"
-                f"Captured logs:\n{combined_output}")
-        return combined_output
+            raise RuntimeError("WPA 4-Way Handshake verification failed. "f"Missing messages: {missing_messages}")
+        return ("WPA 4-Way Handshake completed successfully. All 4 handshake messages verified.")
     
     def get_wpa_cli_capability(self, device: str, capability: str) -> list:
         """
@@ -801,7 +804,11 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        command = "iw list"
+        command = (
+            "iw list | grep -iE "
+            "'EHT MAC CAPABILITIES|EHT IFTYPES|"
+            "HE MAC CAPABILITIES|HE IFTYPES|"
+            "VHT CAPABILITIES|HT20/HT40|HT TX/RX MCS|HT CAPABILITIES' || true")
         output, error = connection_obj.execute_command(device, command,
                                                         return_stdout=True,
                                                         return_stderr=True)
