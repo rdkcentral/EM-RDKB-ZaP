@@ -24,14 +24,10 @@ def remove_and_connect_client(initialize, client, ssid, password):
     """
     Syntax: remove_and_connect_client(initialize, client, ssid, password)
     Description: Remove existing Wi-Fi connections from the client and attempt to connect it to the specified SSID using the available 2.4 GHz, 5 GHz, or 6 GHz radio BSSID of the associated device.
-<<<<<<< HEAD
     Parameters: initialize - Testbed interface, 
                 client - Client device name, 
                 ssid - Wi-Fi network SSID, 
                 password - Wi-Fi network password.
-=======
-    Parameters: initialize - Testbed interface; client - Client device name; ssid - Wi-Fi network SSID; password - Wi-Fi network password.
->>>>>>> 92c86c6 (Issue #133 Test Script Development for Client Association Phase2)
     Return Value: True if the client successfully connects through any available radio; otherwise, False.
     Example: remove_and_connect_client(initialize, "controller_wlan_client_1", "EasyMesh_SSID", "password123")
     """

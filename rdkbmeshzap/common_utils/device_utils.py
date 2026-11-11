@@ -403,7 +403,9 @@ def retrieve_and_store_device_index(initialize, device, device_mac):
     """
     Syntax: retrieve_and_store_device_index(initialize, device, device_mac)
     Description: Retrieve the device index for a given device and its MAC address, and store it in the database.
-    Parameters: initialize - Testbed interface; device - Device name; device_mac - Device MAC address.
+    Parameters: initialize - Testbed interface; 
+                device - Device name; 
+                device_mac - Device MAC address.
     Return Value: The retrieved device index.
     Example: retrieve_and_store_device_index(initialize, "controller", "00:11:22:33:44:55")
     """
