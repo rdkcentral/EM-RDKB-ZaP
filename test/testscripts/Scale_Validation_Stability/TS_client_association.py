@@ -13,8 +13,7 @@
 # limitations under the License.
 
 import time
-from rdkbmeshzap.common_utils import device_utils, report_logger
-from rdkbmeshzap.common_utils.client_utils import connect_wlan_clients
+from rdkbmeshzap.common_utils import client_utils, device_utils, report_logger
 from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
 
 def test_em_scale_client_association(initialize):
@@ -30,18 +29,29 @@ def test_em_scale_client_association(initialize):
         if not clients:
             report_logger.print_error("No clients are marked present in the database")
             return
-        report_logger.print_step("STEP 2: Connect configured WLAN clients and verify availability before baseline capture")
+        report_logger.print_step("STEP 2: Retrieve WLAN credentials for client connection")
         try:
-            clients = connect_wlan_clients(initialize, clients)
+            ssid, password = initialize.get_fronthaul_credentials("controller")
         except Exception as error:
-            report_logger.print_error(f"FAIL: {error}")
+            report_logger.print_error(f"Unable to retrieve WLAN credentials: {error}")
+            return
+        report_logger.print_step("STEP 3: Connect configured WLAN clients and verify availability before baseline capture")
+        connected_clients = []
+        for client in clients:
+            if client_utils.remove_and_connect_client(initialize, client, ssid, password):
+                connected_clients.append(client)
+            else:
+                report_logger.print_info(f"INFO: Unable to connect WLAN client '{client}'")
+        clients = connected_clients
+        if not clients:
+            report_logger.print_error("FAIL: No WLAN clients could be connected")
             return
         report_logger.print_success(f"PASS: Connected clients before client-presence test: {', '.join(clients)}")
         expected_client_count = get_enabled_scale_setup(initialize)["expected_client_count"]
         poll_interval_sec = POLL_INTERVAL_SEC
         test_duration_sec = TEST_DURATION_SEC
         all_devices = ["controller"] + agents
-        report_logger.print_step("STEP 3: Verify each active extender is reachable before capturing baseline client associations")
+        report_logger.print_step("STEP 4: Verify each active extender is reachable before capturing baseline client associations")
         for agent_index, agent in enumerate(agents, start=1):
             for attempt in range(1, 7):
                 try:
@@ -55,19 +65,19 @@ def test_em_scale_client_association(initialize):
                 time.sleep(10)
             else:
                 report_logger.print_error(f"Extender '{agent}' did not become reachable before baseline capture")
-        report_logger.print_step("STEP 4: Capture fronthaul client MACs on each device and validate the baseline count")
+        report_logger.print_step("STEP 5: Capture fronthaul client MACs on each device and validate the baseline count")
         baseline = get_fronthaul_station_macs_by_device(initialize, all_devices)
         total_baseline = len(set().union(*baseline.values())) if baseline else 0
         if total_baseline < expected_client_count:
             report_logger.print_error(f"Baseline client count mismatch: observed {total_baseline}, expected exactly {expected_client_count}")
         report_logger.print_success(f"PASS: Baseline captured: {total_baseline} clients across the discovered devices")
-        report_logger.print_step("STEP 5: Periodically compare each active extender's client MAC associations with the baseline")
+        report_logger.print_step("STEP 6: Periodically compare each active extender's client MAC associations with the baseline")
         start_time = time.time()
         poll_count = 0
         while time.time() - start_time < test_duration_sec:
             elapsed_min = int((time.time() - start_time) / 60)
             poll_count += 1
-            report_logger.print_step(f"STEP 5.{poll_count}: Compare current client MAC associations with the baseline")
+            report_logger.print_step(f"STEP 6.{poll_count}: Compare current client MAC associations with the baseline")
             report_logger.print_info(f"INFO: Poll #{poll_count} at ~{elapsed_min} min elapsed")
             current = get_fronthaul_station_macs_by_device(initialize, all_devices)
             mismatches = get_client_association_mismatches(baseline, current)
@@ -78,7 +88,7 @@ def test_em_scale_client_association(initialize):
             else:
                 report_logger.print_success(f"PASS: Client presence matches baseline ({current_client_count} clients)")
             time.sleep(poll_interval_sec)
-        report_logger.print_step("STEP 6: Capture latest client MAC associations and validate count and baseline membership")
+        report_logger.print_step("STEP 7: Capture latest client MAC associations and validate count and baseline membership")
         final = get_fronthaul_station_macs_by_device(initialize, all_devices)
         final_mismatches = get_client_association_mismatches(baseline, final)
         final_client_count = len(set().union(*final.values())) if final else 0
