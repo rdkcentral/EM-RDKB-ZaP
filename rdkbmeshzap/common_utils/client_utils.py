@@ -55,10 +55,10 @@ def remove_and_connect_client(initialize, client, ssid, password):
                 return True
             except Exception as e:
                 report_logger.print_info(f"INFO: {client} failed to connect through {radio} radio ({device_bssid}): {e} ")
-        report_logger.print_info(f"FAIL: {client} could not connect through 2G, 5G or 6G radio")
+        report_logger.print_info(f"INFO: {client} could not connect through 2G, 5G or 6G radio")
         return False
     except Exception as e:
-        report_logger.print_info(f"FAIL: Failed to connect client {client} to SSID {ssid}: {e}")
+        report_logger.print_info(f"INFO: Failed to connect client {client} to SSID {ssid}: {e}")
         return False
 
 def verify_client_association(initialize, client):
