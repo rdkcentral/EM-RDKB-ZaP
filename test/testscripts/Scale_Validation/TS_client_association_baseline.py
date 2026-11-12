@@ -31,13 +31,14 @@ def test_em_scale_client_association_baseline(initialize):
         if not clients:
             report_logger.print_error("No WLAN clients are marked present in the database")
             return
-        report_logger.print_step("STEP 2: Connect configured WLAN clients and verify availability for baseline capture")
+        report_logger.print_step("STEP 2: Retrieve WLAN credentials for client connection")
         report_logger.print_info(f"INFO: WLAN clients selected for connection: {clients}")
         try:
             ssid, password = initialize.get_fronthaul_credentials("controller")
         except Exception as error:
             report_logger.print_error(f"Unable to retrieve WLAN credentials: {error}")
             return
+        report_logger.print_step("STEP 3: Connect configured WLAN clients and verify availability for baseline capture")
         connected_clients = []
         for client in clients:
             if client_utils.remove_and_connect_client(initialize, client, ssid, password):
@@ -51,10 +52,10 @@ def test_em_scale_client_association_baseline(initialize):
         report_logger.print_success(f"PASS: Connected clients before baseline validation: {', '.join(clients)}")
         expected_client_count = get_enabled_scale_setup(initialize)["expected_client_count"]
         all_devices = ["controller", *agents]
-        report_logger.print_step("STEP 3: Capture client MAC associations from the controller and each active extender")
+        report_logger.print_step("STEP 4: Capture client MAC associations from the controller and each active extender")
         baseline = get_fronthaul_station_macs_by_device(initialize, all_devices)
         observed_client_count = len(set().union(*baseline.values())) if baseline else 0
-        report_logger.print_step("STEP 4: Validate that the observed client-connection count matches the expected count")
+        report_logger.print_step("STEP 5: Validate that the observed client-connection count matches the expected count")
         report_logger.print_info(f"INFO: Observed {observed_client_count} client connections across the discovered devices")
         if observed_client_count < expected_client_count:
             report_logger.print_error(f"Observed {observed_client_count} clients, expected exactly {expected_client_count}: {baseline}")

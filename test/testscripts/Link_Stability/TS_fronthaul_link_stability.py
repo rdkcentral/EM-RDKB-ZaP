@@ -25,15 +25,17 @@ def test_em_fronthaul_link_stability(initialize):
     """
     report_logger.print_test("Entering test_em_fronthaul_link_stability")
     try :
-        report_logger.print_step("STEP 1: Identify configured WLAN clients, connect them to their assigned devices, and verify availability")
+        report_logger.print_step("STEP 1: Identify configured WLAN clients")
         present_clients = device_utils.get_enabled_clients(initialize)
         if not present_clients:
             report_logger.print_error("No fronthaul clients are marked present in the database")
+        report_logger.print_step("STEP 2: Retrieve WLAN credentials for client connection")
         try:
             ssid, password = initialize.get_fronthaul_credentials("controller")
         except Exception as err:
             report_logger.print_error(f"Unable to retrieve WLAN credentials: {err}")
             return
+        report_logger.print_step("STEP 3: Connect configured WLAN clients and verify availability")
         connected_clients = []
         for client in present_clients:
             if client_utils.remove_and_connect_client(initialize, client, ssid, password):
@@ -48,10 +50,10 @@ def test_em_fronthaul_link_stability(initialize):
         poll_interval_sec = POLL_INTERVAL_SEC
         test_duration_sec = TEST_DURATION_SEC
         gateway_ip = initialize.read_from_database("controller", "bridge_ip")
-        report_logger.print_step("STEP 2: Capture and validate baseline controller-gateway reachability for each client")
+        report_logger.print_step("STEP 4: Capture and validate baseline controller-gateway reachability for each client")
         for client_index, client in enumerate(clients, start=1):
             try:
-                report_logger.print_step(f"STEP 2.{client_index}: Ping the controller gateway from client #{client_index} '{client}' and validate reachability")
+                report_logger.print_step(f"STEP 4.{client_index}: Ping the controller gateway from client #{client_index} '{client}' and validate reachability")
                 ping_result = initialize.ping_ipv4(client, gateway_ip, "3")
             except Exception as err:
                 report_logger.print_error(f"Baseline ping failed for '{client}' to gateway: {err}")
@@ -61,7 +63,7 @@ def test_em_fronthaul_link_stability(initialize):
                 continue
             report_logger.print_success(f"PASS: Client '{client}' can ping controller gateway")
         report_logger.print_info(f"INFO: Baseline ping checked for {len(clients)} configured present WLAN client(s)")
-        report_logger.print_step("STEP 3: Validate controller-gateway reachability for every client at each poll")
+        report_logger.print_step("STEP 5: Validate controller-gateway reachability for every client at each poll")
         start_time = time.time()
         poll_count = 0
         while time.time() - start_time < test_duration_sec:
@@ -70,7 +72,7 @@ def test_em_fronthaul_link_stability(initialize):
             report_logger.print_info(f"INFO: Poll #{poll_count} at ~{elapsed_min} min elapsed")
             for client_index, client in enumerate(clients, start=1):
                 try:
-                    report_logger.print_step(f"STEP 3.{poll_count}.{client_index}: Ping the controller gateway from client #{client_index} '{client}' and validate reachability")
+                    report_logger.print_step(f"STEP 5.{poll_count}.{client_index}: Ping the controller gateway from client #{client_index} '{client}' and validate reachability")
                     ping_result = initialize.ping_ipv4(client, gateway_ip, "3")
                 except Exception as err:
                     report_logger.print_error(f"Poll #{poll_count}: Ping failed for '{client}' to {gateway_ip}: {err}")
@@ -80,7 +82,7 @@ def test_em_fronthaul_link_stability(initialize):
                     continue
                 report_logger.print_success(f"PASS: Poll #{poll_count}: Client '{client}' can ping controller gateway {gateway_ip}")
             time.sleep(poll_interval_sec)
-        report_logger.print_step("STEP 4: Perform the final controller-gateway reachability check for every client")
+        report_logger.print_step("STEP 6: Perform the final controller-gateway reachability check for every client")
         for client_index, client in enumerate(clients, start=1):
             try:
                 report_logger.print_info(f"INFO: Performing final ping check for client #{client_index} '{client}'")
