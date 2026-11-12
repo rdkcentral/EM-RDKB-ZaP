@@ -124,17 +124,10 @@ def run_udp_traffic(initialize, client, direction,mode=None):
         time.sleep(5)
         # Start iperf client
         report_logger.print_info(f"INFO: Starting UDP {direction} traffic for {client}")
-        client_args = {
-            "protocol": "udp",
-            "log_name": client_log,
-            "time": 10}
+        client_args = {"protocol": "udp","log_name": client_log,"time": 10}
         if mode:
             client_args["mode"] = mode
-        initialize.start_iperf_client(
-            client,
-            server_ip,
-            client_ip,
-            **client_args)
+        initialize.start_iperf_client(client,server_ip,client_ip,**client_args)
         time.sleep(30)
         # Read and validate iperf output
         report_logger.print_info(f"INFO: Reading UDP {direction} iperf log for {client}")
@@ -178,10 +171,7 @@ def validate_udp_iperf_output(log_output,client,max_jitter=30.0,max_packet_loss=
         r'(?P<lost>\d+)/(?P<total>\d+)\s+'
         r'\((?P<loss>[\d.]+)%\)\s+'
         r'(?P<role>sender|receiver)\s*$')
-    summaries = list(re.finditer(
-        udp_summary_pattern,
-        log_output,
-        re.IGNORECASE | re.MULTILINE))
+    summaries = list(re.finditer(udp_summary_pattern,log_output,re.IGNORECASE | re.MULTILINE))
     sender = None
     receiver = None
     for summary in summaries:
@@ -283,63 +273,90 @@ def run_tcp_traffic(initialize, client, direction, mode=None):
         traffic_passed = False
     return traffic_passed
 
-def validate_tcp_iperf_output(log_output, client):
+def validate_tcp_iperf_output(log_output, client, min_bitrate_delivery_percent=80.0, min_data_delivery_percent=80.0):
     """
-    Syntax: validate_tcp_iperf_output(log_output, client)
-    Description: Validate the TCP iperf output for a given client by checking sender and receiver statistics, bitrate, and retransmission information.
-    Parameters: log_output - TCP iperf client execution output;
-                client - Wi-Fi client device name.
-    Return Value: Boolean indicating whether the TCP sender and receiver statistics were found and all bitrate validation checks passed (True if successful, False otherwise).
-    Example: validate_tcp_iperf_output(log_output, "controller_wlan_client1")
+    Syntax: validate_tcp_iperf_output(log_output, client, min_bitrate_delivery_percent=80.0, min_data_delivery_percent=80.0)
+    Description: Validate TCP iperf3 client output by checking sender and receiver statistics, bitrate, data transfer, and delivery percentages.
+    Parameters: log_output - TCP iperf3 client execution output;
+                client - Wi-Fi client device name;
+                min_bitrate_delivery_percent - Minimum acceptable receiver bitrate delivery percentage (default: 80.0);
+                min_data_delivery_percent - Minimum acceptable receiver data delivery percentage (default: 80.0).
+    Return Value: Boolean indicating whether the TCP iperf output was validated successfully (True if successful, False otherwise).
+    Example: validate_tcp_iperf_output(log_output, "controller_wlan_client1", 80.0, 80.0)
     """
-    if not log_output or "iperf Done." not in log_output:
-        report_logger.print_error(f"FAIL: TCP iperf execution did not complete for {client}")
-        return False
+    report_logger.print_info(f"Validating TCP iperf output for {client}")
+    # Match iperf3 sender and receiver summary lines.
     tcp_summary_pattern = (
-        r'^\[\s*\d+\]\s+[\d.]+-[\d.]+\s+sec\s+'
-        r'[\d.]+\s+\S+\s+'
-        r'(?P<bitrate>[\d.]+)\s+(?P<unit>\S+)'
+        r'^\[\s*\d+\]\s+'
+        r'[\d.]+-[\d.]+\s+sec\s+' 
+        r'(?P<transfer>[\d.]+)\s+(?P<transfer_unit>\S+)\s+'
+        r'(?P<bitrate>[\d.]+)\s+(?P<bitrate_unit>\S+)'
         r'(?:\s+(?P<retransmissions>\d+))?\s+'
         r'(?P<role>sender|receiver)\s*$')
-    summaries = list(re.finditer(
-        tcp_summary_pattern,
-        log_output,
-        re.IGNORECASE | re.MULTILINE))
-    sender = None
-    receiver = None
-    for summary in summaries:
-        role = summary.group("role").lower()
-
+    # Convert transfer units into bytes.
+    transfer_unit_conversion = {"Bytes": 1, "KBytes": 1024, "MBytes": 1024 ** 2, "GBytes": 1024 ** 3, "TBytes": 1024 ** 4}
+    # Convert bitrate units into bits per second.
+    bitrate_unit_conversion = {"bits/sec": 1, "Kbits/sec": 1000, "Mbits/sec": 1000 ** 2, "Gbits/sec": 1000 ** 3, "Tbits/sec": 1000 ** 4}
+    sender_data = None
+    receiver_data = None
+    # Parse sender and receiver summary lines.
+    for line in log_output.splitlines():
+        match = re.search(tcp_summary_pattern, line.strip())
+        if not match:
+            continue
+        role = match.group("role")
+        transfer = float(match.group("transfer"))
+        transfer_unit = match.group("transfer_unit")
+        bitrate = float(match.group("bitrate"))
+        bitrate_unit = match.group("bitrate_unit")
+        retransmissions = match.group("retransmissions")
+        # Validate supported units.
+        if transfer_unit not in transfer_unit_conversion:
+            report_logger.print_error(f"Unsupported transfer unit: {transfer_unit}" )
+            return False
+        if bitrate_unit not in bitrate_unit_conversion:
+            report_logger.print_error(f"Unsupported bitrate unit: {bitrate_unit}")
+            return False
+        # Convert values into common units.
+        transfer_bytes = (transfer * transfer_unit_conversion[transfer_unit])
+        bitrate_bps = (bitrate * bitrate_unit_conversion[bitrate_unit])
+        summary = {
+            "transfer_bytes": transfer_bytes,
+            "bitrate_bps": bitrate_bps,
+            "retransmissions": (int(retransmissions)
+                if retransmissions is not None else None)}
         if role == "sender":
-            sender = summary
+            sender_data = summary
         elif role == "receiver":
-            receiver = summary
-    step_passed = True
-    # Validate sender statistics
-    if sender:
-        sender_bitrate = float(sender.group("bitrate"))
-        sender_unit = sender.group("unit")
-        retransmissions = sender.group("retransmissions")
-        if retransmissions is not None:
-            report_logger.print_info(f"INFO: TCP Retransmissions: {retransmissions}")
-        if sender_bitrate > 0:
-            report_logger.print_info("INFO: TCP sender bitrate is greater than zero")
-        else:
-            report_logger.print_error("FAIL: TCP sender bitrate is zero")
-            step_passed = False
-    else:
-        report_logger.print_error("FAIL: TCP sender statistics not found")
-        step_passed = False
-    # Validate receiver statistics
-    if receiver:
-        receiver_bitrate = float(receiver.group("bitrate"))
-        receiver_unit = receiver.group("unit")
-        if receiver_bitrate > 0:
-            report_logger.print_info("INFO: TCP receiver bitrate is greater than zero")
-        else:
-            report_logger.print_error("FAIL: TCP receiver bitrate is zero")
-            step_passed = False
-    else:
-        report_logger.print_error("FAIL: TCP receiver statistics not found")
-        step_passed = False
-    return step_passed
+            receiver_data = summary
+    if sender_data is None:
+        report_logger.print_error(f"TCP sender summary not found for {client}")
+        return False
+    if receiver_data is None:
+        report_logger.print_error(f"TCP receiver summary not found for {client}")
+        return False
+    if sender_data["transfer_bytes"] <= 0:
+        report_logger.print_error(f"TCP sender transferred zero data for {client}")
+        return False
+    if sender_data["bitrate_bps"] <= 0:
+        report_logger.print_error(f"TCP sender bitrate is zero for {client}")
+        return False
+    if receiver_data["transfer_bytes"] <= 0:
+        report_logger.print_error(f"TCP receiver received zero data for {client}")
+        return False
+    if receiver_data["bitrate_bps"] <= 0:
+        report_logger.print_error(f"TCP receiver bitrate is zero for {client}")
+        return False
+    bitrate_delivery_percent = (receiver_data["bitrate_bps"] /sender_data["bitrate_bps"]) * 100
+    data_delivery_percent = (receiver_data["transfer_bytes"] /sender_data["transfer_bytes"]) * 100
+    report_logger.print_info(f"TCP bitrate delivery: {bitrate_delivery_percent:.2f}%")
+    report_logger.print_info(f"TCP data delivery: {data_delivery_percent:.2f}%")
+    report_logger.print_info(f"TCP retransmissions: {sender_data['retransmissions']}")
+    if bitrate_delivery_percent < min_bitrate_delivery_percent:
+        report_logger.print_error(f"TCP bitrate delivery below threshold for {client}. Expected: {min_bitrate_delivery_percent}%, Actual: {bitrate_delivery_percent:.2f}%")
+        return False
+    if data_delivery_percent < min_data_delivery_percent:
+        report_logger.print_error(f"TCP data delivery below threshold for {client}. Expected: {min_data_delivery_percent}%, Actual: {data_delivery_percent:.2f}%")
+        return False
+    report_logger.print_success(f"Bitrate and data delivery validation succeeded for {client}")
+    return True 

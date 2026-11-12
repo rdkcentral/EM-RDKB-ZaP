@@ -29,10 +29,12 @@ def test_client_association_traffic_flow_UDP_downstream(initialize):
         selected_clients = traffic_utils.select_wifi_clients(initialize)
         if not selected_clients:
             report_logger.print_error("FAIL: No WLAN clients available for testing")
+            return
         report_logger.print_step("STEP 2: Connect selected clients to EasyMesh SSID and verify association")
         connected_clients, association_passed = (traffic_utils.connect_and_verify_clients(initialize, selected_clients))
         if not connected_clients:
-            report_logger.print_error("FAIL: No selected clients successfully connected")
+            report_logger.print_error("FAIL: Failed to connect selected clients")
+            return
         report_logger.print_info(f"INFO: Successfully connected clients: {connected_clients}")
         report_logger.print_step("STEP 3: Start UDP downstream traffic flow from selected Wi-Fi clients to Controller")
         traffic_passed = True
