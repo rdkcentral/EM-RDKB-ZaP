@@ -26,10 +26,10 @@ def test_wifi_security_wpa2_personal_propagation(initialize):
     """
     device_bssids = {}
     verified_devices = {}
+    security_mode_set_flag = False
     step_index = 1
     report_logger.print_test(f"Entering test_wifi_security_wpa2_personal_propagation")
     report_logger.print_step(f"STEP {step_index}: Getting Current fronthaul security mode")
-    step_index += 1
     try:
         try:
             initial_security_mode = initialize.get_security_mode("controller")
@@ -40,8 +40,8 @@ def test_wifi_security_wpa2_personal_propagation(initialize):
         if initial_security_mode == "WPA2 Personal":
             report_logger.print_info("INFO: Security mode is already WPA2 Personal.")
         else:
-            report_logger.print_step(f"STEP {step_index}: Getting supported security modes")
             step_index += 1
+            report_logger.print_step(f"STEP {step_index}: Getting supported security modes")
             try:
                 supported_sec_modes = initialize.get_supported_security_modes("controller")
                 report_logger.print_info(f"INFO: Supported security modes: {supported_sec_modes}")
@@ -53,18 +53,17 @@ def test_wifi_security_wpa2_personal_propagation(initialize):
                 return
             else:
                 report_logger.print_info("INFO: WPA2 Personal security is supported")
-
-            report_logger.print_step(f"STEP {step_index}: setting security mode to : WPA2 Personal")
             step_index += 1
+            report_logger.print_step(f"STEP {step_index}: setting security mode to : WPA2 Personal")
             try:
                 initialize.set_security_mode("controller", "WPA2 Personal")
                 report_logger.print_success(f"PASS: Successfully set security mode to WPA2 Personal")
+                security_mode_set_flag = True
             except Exception as e:
                 report_logger.print_error(f"ERROR: Failed to set security mode: {e}")
                 return
-
-        report_logger.print_step(f"STEP {step_index}: Retrieving the wifi client for wifi scanning")
         step_index += 1
+        report_logger.print_step(f"STEP {step_index}: Retrieving the wifi client for wifi scanning")
         wifi_client_devices = device_utils.get_enabled_clients(initialize)
         if not wifi_client_devices:
             report_logger.print_error("ERROR: No enabled wifi client devices found")
@@ -79,12 +78,13 @@ def test_wifi_security_wpa2_personal_propagation(initialize):
                 device_bssids[device] = {}
                 device_bssids[device]["2g_radio_mac"] = initialize.read_from_database(device, "2g_radio_mac")
                 device_bssids[device]["5g_radio_mac"] = initialize.read_from_database(device, "5g_radio_mac")
-        sub_step_index = 1
+        sub_step_index = 0
+        step_index += 1
         for device, bssids in device_bssids.items():
             for radio_type, target_bssid in bssids.items():
                 #add step inside the print_step
-                report_logger.print_step(f"STEP {step_index}.{sub_step_index}: Verifying security mode for {device} ({radio_type}) - {target_bssid}")
                 sub_step_index += 1
+                report_logger.print_step(f"STEP {step_index}.{sub_step_index}: Verifying security mode for {device} ({radio_type}) - {target_bssid}")
                 for attempt in range(1, NMCLI_SCAN_RETRY_LIMIT):
                         try:
                             nmcli_scan_output = initialize.get_nmcli_scan_output(wifi_client_device)
@@ -114,17 +114,16 @@ def test_wifi_security_wpa2_personal_propagation(initialize):
                         except Exception as error:
                             if attempt < NMCLI_SCAN_RETRY_LIMIT - 1:
                                 report_logger.print_info(f"INFO: exception occurred: {error}. Retrying({attempt})...")
-                                initialize.set_client_radio_state(wifi_client_device,0)\
+                                initialize.set_client_radio_state(wifi_client_device,0)
                                 time.sleep(3)
                                 initialize.set_client_radio_state(wifi_client_device,1)
                                 time.sleep(60)
                                 continue
                             else:
                                 report_logger.print_error(f"FAIL: Failed to verify security mode for {device} ({radio_type}) [{target_bssid}] after {NMCLI_SCAN_RETRY_LIMIT - 1} attempts: {error}")
+        sub_step_index = 0
         step_index += 1
-        sub_step_index = 1
         report_logger.print_step(f"STEP {step_index}: retrieving ssid and password from controller")
-        step_index += 1
         try:
             ssid = initialize.get_ssid("controller", "2g_ssid_index", 'de')
             password = initialize.get_fronthaul_password("controller","gui")
@@ -135,8 +134,8 @@ def test_wifi_security_wpa2_personal_propagation(initialize):
         if verified_devices:
             for device, radios in verified_devices.items():
                 for radio_type, bssid in radios.items():
-                    report_logger.print_step(f"STEP {step_index}.{sub_step_index}: Connecting {wifi_client_device} to SSID {ssid} of {device} through {radio_type} radio ({bssid})")
                     sub_step_index += 1
+                    report_logger.print_step(f"STEP {step_index}.{sub_step_index}: Connecting {wifi_client_device} to SSID {ssid} of {device} through {radio_type} radio ({bssid})")
                     try:
                         report_logger.print_info(f"INFO: Removing Existing conneections for {wifi_client_device}")
                         initialize.remove_all_wifi_connections(wifi_client_device)
@@ -163,4 +162,12 @@ def test_wifi_security_wpa2_personal_propagation(initialize):
                                 report_logger.print_info(f"INFO: exception occurred: {ERR}")
                                 report_logger.print_error(f"FAIL: Failed to connect {wifi_client_device} to SSID {ssid} of {device} through {radio_type} radio ({bssid}) after {NMCLI_SCAN_RETRY_LIMIT - 1} attempts: {ERR}")
     finally:
+        if security_mode_set_flag:
+            step_index += 1
+            report_logger.print_step(f"STEP {step_index}: Reverting security mode to initial value")
+            try:
+                initialize.set_security_mode("controller", initial_security_mode)
+                report_logger.print_info(f"INFO: Successfully set security mode to {initial_security_mode}")
+            except Exception as e:
+                report_logger.print_error(f"ERROR: Failed to revert security mode: {e}")
         report_logger.print_test("Exiting test_wifi_security_wpa2_personal_propagation")
