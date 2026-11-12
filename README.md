@@ -142,4 +142,4 @@ python3 -m streamlit run test_dashboard/test_dashboard.py
 
 ## Author
 
-Zilogic Systems
+Zilogic Systems , RDK Management
