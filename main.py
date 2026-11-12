@@ -49,6 +49,8 @@ def run_tests(base_dir, test_files, cli_args=None):
         "-m",
         "pytest",
         "-v",
+        # Keep console output concise; conftest stores failure details in the HTML report.
+        "--tb=no",
         "--capture=tee-sys",
         "--show-capture=no",
         f"--html={reports_path}/report.html",
