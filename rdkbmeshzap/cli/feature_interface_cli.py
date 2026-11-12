@@ -867,20 +867,20 @@ class FeatureInterfaceCLI(DatabaseModule,
             raise RuntimeError(f"nmcli scan command failed on {device}: {error.strip()}")
         time.sleep(5)
         command_list = (
-            f"nmcli device wifi list ifname {shlex.quote(wifi_interface)}"
+            f"nmcli -f BSSID,SECURITY device wifi list ifname {shlex.quote(wifi_interface)}"
             if client_username == "root"
             else (
                 f"printf '%s\\n' {shlex.quote(client_password)} | "
                 f"sudo -S -p '' sh -c "
-                f"\"nmcli device wifi list ifname {shlex.quote(wifi_interface)}\""
+                f"\"nmcli -f BSSID,SECURITY device wifi list ifname {shlex.quote(wifi_interface)}\""
             )
         )
         previous_log_state = zi_logger.enable_log
         zi_logger.set_log_state(False)
-        network_list, error = connection_obj.execute_command(
-            device, command_list, return_stderr=True, timeout=60
-        )
-        zi_logger.set_log_state(previous_log_state)
+        try:
+            network_list, error = connection_obj.execute_command(device, command_list, return_stderr=True, timeout=60)
+        finally:
+             zi_logger.set_log_state(previous_log_state)
         if error:
             raise RuntimeError(f"nmcli list command failed on {device}: {error.strip()}")
         return network_list

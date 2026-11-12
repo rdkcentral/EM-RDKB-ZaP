@@ -19,7 +19,7 @@ import re
 import shlex
 import time
 from rdkbmeshzap.common_utils import report_logger
-NMCLI_SCAN_RETRY_LIMIT = 16
+NMCLI_SCAN_RETRY_LIMIT = 6
 
 def get_client_bssids(client, ssid, ssh):
     """
@@ -310,17 +310,13 @@ def verify_security_mode(nmcli_output, target_bssid, expected_security_mode):
     Raises:
         LookupError: If the BSSID is not found.
     """
-    for line in nmcli_output.splitlines():
-        fields = line.split()
-        # Skip header, blank lines, and malformed entries
-        if len(fields) < 9:
+    for line in nmcli_output.splitlines()[1:]:  # Skip header
+        line = line.strip()
+        if not line:
             continue
-        if fields[0] == "*":
-            bssid = fields[1]
-            security_mode = " ".join(fields[9:])
-        else:
-            bssid = fields[0]
-            security_mode = " ".join(fields[8:])
+        fields = line.split(maxsplit=1)
+        bssid = fields[0]
+        security_mode = fields[1] if len(fields) > 1 else ""
         if bssid.lower() == target_bssid.lower():
             return security_mode == expected_security_mode, security_mode
     raise LookupError(

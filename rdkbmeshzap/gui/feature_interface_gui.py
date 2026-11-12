@@ -207,17 +207,13 @@ class FeatureInterfaceGUI(DatabaseModule,
         self.ui_obj.ui_navigate_to_home_page(device)
         time.sleep(3)
         self.ui_obj.ui_navigate_to_required_page("Wireless Settings")
-        time.sleep(3)
-        
+        time.sleep(3)        
         try:
             page = self.ui_obj._page
-            security_text = page.locator(
-                ".profile-card:has(h4:text('Home Network')) .profile-detail:has(.label:text('Security')) .value"
-            ).inner_text()
+            security_text = page.locator(".profile-card:has(h4:text('Home Network')) .profile-detail:has(.label:text('Security')) .value").inner_text()
             security_mode = security_text.strip().replace('🔒', '').replace('\n', ' ').strip()
             return security_mode
         except Exception as error:
-            # zi_logger.log(f"Failed to get security mode: {error}")
             raise RuntimeError(f"Could not get security mode: {error}") from error
 
     def get_supported_security_modes(self, device: str) -> list:
@@ -238,11 +234,8 @@ class FeatureInterfaceGUI(DatabaseModule,
         
         try:
             page = self.ui_obj._page
-            
             # Click Edit button for Home Network profile
-            edit_button = page.locator(
-                ".profile-card:has(h4:text('Home Network')) button:has-text('Edit')"
-            )
+            edit_button = page.locator(".profile-card:has(h4:text('Home Network')) button:has-text('Edit')")
             edit_button.click()
             time.sleep(2)
             zi_logger.log("Clicked Edit button for Home Network profile")
@@ -276,9 +269,7 @@ class FeatureInterfaceGUI(DatabaseModule,
         try:
             page = self.ui_obj._page
             # Click Edit button for Home Network profile
-            edit_button = page.locator(
-                ".profile-card:has(h4:text('Home Network')) button:has-text('Edit')"
-            )
+            edit_button = page.locator(".profile-card:has(h4:text('Home Network')) button:has-text('Edit')")
             edit_button.click()
             time.sleep(2)
             # Set the security mode dropdown by ID
