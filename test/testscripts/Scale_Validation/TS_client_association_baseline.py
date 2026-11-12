@@ -38,6 +38,7 @@ def test_em_scale_client_association_baseline(initialize):
         except Exception as error:
             report_logger.print_error(f"Unable to retrieve WLAN credentials: {error}")
             return
+        report_logger.print_success("PASS: Fronthaul credentials retrieved successfully")
         report_logger.print_step("STEP 3: Connect configured WLAN clients and verify availability for baseline capture")
         connected_clients = []
         for client in clients:
