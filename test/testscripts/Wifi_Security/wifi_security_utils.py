@@ -70,7 +70,7 @@ def common_setup(initialize):
             final_security_mode = initialize.get_security_mode("controller")
         except Exception as error:
             report_logger.print_error(f"ERROR: Failed to get security mode during cleanup: {error}")
-            return
+            raise
         if final_security_mode != current_security_mode:
             report_logger.print_info("INFO: Reverting security mode to initial value")
             try:
@@ -78,6 +78,7 @@ def common_setup(initialize):
                 report_logger.print_info(f"INFO: Successfully set security mode to "f"{current_security_mode}")
             except Exception as error:
                 report_logger.print_error(f"ERROR: Failed to revert security mode: {error}")
+                raise
 
 def verify_security_mode_propagation(initialize, device_bssids, expected_security_mode, wifi_client_device,step_index):
     """
