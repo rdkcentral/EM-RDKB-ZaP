@@ -39,14 +39,16 @@ import time
 from contextlib import redirect_stdout
 from html import escape
 from pathlib import Path
+from urllib.parse import quote
 from datetime import datetime
 
 import zaero
+from playwright.sync_api import Error as PlaywrightError
 from zaero.utils import zi_logger
 from zaero.utils.database import Database
 from packet_analyzer.protocol_validation import common_protocol_validation
 from packet_analyzer.packet_dissector import error_list
-from rdkbmeshzap.common_utils import report_logger, test_environment_checks
+from rdkbmeshzap.common_utils import failure_diagnostics, report_logger, test_environment_checks
 
 setup_sections = {
 	"setup_accessibility": "",
@@ -55,6 +57,26 @@ setup_sections = {
 }
 protocol_validation_results = []
 setup_failure = ""
+
+def open_device_connections(initialize):
+	# Collect connection failures so setup can report all affected devices.
+	failed_connections = []
+	for device in initialize.get_testbed_devices():
+		try:
+			connected = initialize.connect_with_device(device)
+			if connected is False:
+				failed_connections.append(f"Could not open {device} connection: connection API returned False")
+		except Exception as error:
+			failed_connections.append(f"Could not open {device} connection: {error}")
+	return failed_connections
+
+def close_device_connections(initialize):
+	# Best-effort cleanup is shared by session and per-test fixtures.
+	for device in initialize.get_testbed_devices():
+		try:
+			initialize.close_connection(device)
+		except Exception:
+			pass
 
 @pytest.fixture(scope="session", autouse=True)
 def initialize():
@@ -85,9 +107,7 @@ def validate_setup_accessibility(initialize):
 		setup_failure = "Setup Accessibility validation failed"
 		pytest.exit(setup_failure, returncode=1)
 	initialize.accessibility_validated = True
-	report_logger.print_success(
-		"PASS: All configured devices passed accessibility validation"
-	)
+	report_logger.print_success("PASS: All configured devices passed accessibility validation")
 
 @pytest.fixture(scope="session", autouse=True)
 def update_runtime_database(initialize, validate_setup_accessibility):
@@ -108,22 +128,26 @@ def verify_test_environment(initialize, update_runtime_database):
 	captured_output = io.StringIO()
 	with redirect_stdout(captured_output):
 		report_logger.print_title("Test Environment Prerequisite Check")
-		for check in (
-			test_environment_checks.validate_mld0_vap_configurations,
-			test_environment_checks.validate_mesh_and_iot_vap_configurations,
-			test_environment_checks.validate_mld0_links_to_private_vaps,
-			test_environment_checks.verify_mesh_backhaul_interfaces,
-			test_environment_checks.validate_extender_parent_connections,
-			test_environment_checks.validate_mesh_service_status,
-		):
-			try:
-				check_result = check(initialize)
-				if check_result is False:
+		try:
+			for check in (
+				test_environment_checks.validate_mld0_vap_configurations,
+				test_environment_checks.validate_mesh_and_iot_vap_configurations,
+				test_environment_checks.validate_mld0_links_to_private_vaps,
+				test_environment_checks.verify_mesh_backhaul_interfaces,
+				test_environment_checks.validate_extender_parent_connections,
+				test_environment_checks.validate_mesh_service_status,
+			):
+				try:
+					check_result = check(initialize)
+					if check_result is False:
+						validation_result = False
+						failed_checks.append(check.__name__)
+				except Exception as error:
 					validation_result = False
-					failed_checks.append(check.__name__)
-			except Exception as error:
-				validation_result = False
-				failed_checks.append(f"{check.__name__}: {error}")
+					failed_checks.append(f"{check.__name__}: {error}")
+		finally:
+			# Release prerequisite SSH aliases before per-test connections start.
+			close_device_connections(initialize)
 	setup_sections["test_environment_check"] = captured_output.getvalue()
 	print(setup_sections["test_environment_check"], end="")
 	if validation_result is False or setup_failure:
@@ -137,13 +161,20 @@ def verify_test_environment(initialize, update_runtime_database):
 	initialize.setup_validated = True
 
 @pytest.fixture(scope="function", autouse=True)
-def test_setup(initialize, verify_test_environment):
+def test_setup(request, initialize, verify_test_environment):
 	if not getattr(initialize, "setup_validated", False):
 		pytest.skip("Test Environment validation did not pass")
 
-	initialize.set_sniffer_log_location("controller", initialize.pcap_log_dir)
 	playwright_started = browser_started = False
 	try:
+		# Open fresh device sessions; teardown owns closing them after each test.
+		report_logger.print_info(f"INFO: Checking device connections before execution of test case: {request.node.name}")
+		connection_errors = open_device_connections(initialize)
+		for error in connection_errors:
+			report_logger.print_error(f"FAIL: {error}")
+		if connection_errors:
+			pytest.fail("Could not open all device connections:\n" + "\n".join(connection_errors))
+		initialize.set_sniffer_log_location("controller", initialize.pcap_log_dir)
 		initialize.ui_start_playwright("controller")
 		playwright_started = True
 		time.sleep(1)
@@ -174,6 +205,8 @@ def test_setup(initialize, verify_test_environment):
 				initialize.ui_stop_playwright("controller")
 			except Exception:
 				pass
+		# Close test-owned SSH aliases before the next test starts.
+		close_device_connections(initialize)
 
 @pytest.fixture
 def resource_usage_dir(request):
@@ -191,7 +224,6 @@ def resource_usage_dir(request):
     resource_usage_dir.mkdir(parents=True, exist_ok=True)
     return str(resource_usage_dir)
 
-
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_setup(item):
 	report_logger.clear_error_logs()
@@ -202,42 +234,138 @@ def pytest_runtest_setup(item):
 def pytest_runtest_makereport(item, call):
 	outcome = yield
 	report = outcome.get_result()
-	if report.when == "setup":
-		return
 	if report.when != "call":
 		return
+	excinfo = getattr(call, "excinfo", None)
+	playwright_exception = getattr(excinfo, "value", None)
+	if not isinstance(playwright_exception, PlaywrightError):
+		playwright_exception = None
+	if report.longrepr:
+		# Preserve traceback details for the custom HTML cell before Console output is shortened.
+		report.user_properties.append(("failure_details", str(report.longrepr)))
 	errors = report_logger.get_error_logs() + zi_logger.get_error_logs()
 	if errors:
 		report.outcome = "failed"
-		report.longrepr = "Error logs found:\n" + "\n".join(map(str, errors))
+		formatted_errors = "\n".join(str(error) for error in errors)
+		report.longrepr = "Error logs found:\n" + formatted_errors
+		report.user_properties.append(("error_logs", formatted_errors))
+	if playwright_exception is not None:
+		report.user_properties.append(("playwright_failure", f"ERROR: {type(playwright_exception).__name__}: {playwright_exception}"))
+	captured_output = "\n".join(
+		content
+		for section_name, content in report.sections
+		if section_name in ("Captured stdout call", "Captured log call")
+	)
+	if captured_output:
+		report.user_properties.append(("captured_test_output", captured_output))
+		report.sections = [
+			(section_name, content)
+			for section_name, content in report.sections
+			if section_name not in ("Captured stdout call", "Captured log call")
+		]
+	html_path = item.config.getoption("htmlpath", default=None)
+	if report.failed:
+		if not errors and html_path:
+			# Keep the Console concise; the original traceback remains available in failure_details.
+			report.longrepr = ""
+		try:
+			initialize = item.funcargs.get("initialize")
+			if initialize is None:
+				return
+			diagnostic_result = (
+				failure_diagnostics.collect_failure_diagnostics(
+					initialize,
+					Path(html_path).resolve().parent,
+					item.name,
+				)
+				if html_path
+				else None
+			)
+			if diagnostic_result:
+				scenario_dir, diagnostic_paths = diagnostic_result
+				report_dir = Path(html_path).resolve().parent
+				# Link to the device-log folder relative to the generated HTML report.
+				relative_diagnostics = scenario_dir.relative_to(report_dir).as_posix() + "/"
+				report.user_properties.append(
+					(
+						"failure_diagnostics_link:Device logs",
+						quote(relative_diagnostics, safe="/"),
+					)
+				)
+				report.sections.append(
+					("Failure diagnostics", "\n".join(str(path) for path in diagnostic_paths))
+				)
+				report.longrepr = report.longrepr or "Test failed"
+		except Exception as error:
+			diagnostics_error = f"{type(error).__name__}: {error}"
+			report.user_properties.append(("failure_diagnostics_error", diagnostics_error))
+			try:
+				report.sections.append(("Failure diagnostics collection error", diagnostics_error))
+			except Exception:
+				# Ignore this reporting error so it does not hide the test failure.
+				pass
 
 def pytest_html_results_table_html(report, data):
-	if report.when != "call":
+	if report.when == "teardown" or (report.when == "setup" and not report.failed):
 		data.clear()
 		return
 	new_data = []
-	call_output = "\n".join(
-		content
-		for section_name, content in getattr(report, "sections", [])
-		if section_name in ("Captured stdout call", "Captured log call")
-	)
+	properties = getattr(report, "user_properties", [])
+	captured_output = "\n".join(value for name, value in properties if name == "captured_test_output")
+	captured_output += "\n" + "\n".join(content for section_name, content in getattr(report, "sections", []) if section_name in (f"Captured stdout {report.when}", f"Captured log {report.when}"))
 	if report.failed and hasattr(report, "longrepr"):
-		longrepr = str(report.longrepr)
+		property_values = {
+			key: "\n".join(value for name, value in properties if name == key)
+			for key in ("failure_details", "playwright_failure", "error_logs", "failure_diagnostics_error")
+		}
+		failure_details = property_values["failure_details"]
+		if not failure_details and report.when == "setup":
+			failure_details = str(report.longrepr or "")
+		playwright_error = property_values["playwright_failure"]
+		error_logs = property_values["error_logs"]
+		diagnostics_error = property_values["failure_diagnostics_error"]
+		error_details = [failure_details] if failure_details else []
+		if playwright_error and not failure_details:
+			error_details.append(playwright_error)
+		if error_logs:
+			error_details.append(error_logs)
+		if diagnostics_error:
+			error_details.append(f"Failure diagnostics collection error: {diagnostics_error}")
+		failure_text = (
+			"<strong>Error logs:</strong><br>"
+			+ "<br><br>".join(escape(details) for details in error_details)
+			if error_details
+			else escape("Test failed")
+		)
+		diagnostics_links = [
+			(name.partition(":")[2], value)
+			for name, value in properties
+			if name.startswith("failure_diagnostics_link:")
+		]
+		if diagnostics_links:
+			# Escape both link text and URL because these values are inserted into HTML.
+			links_html = "<br>".join(
+				f'<a href="{escape(url, quote=True)}">{escape(label)}</a>'
+				for label, url in diagnostics_links
+			)
+			with redirect_stdout(io.StringIO()):
+				diagnostics_title = report_logger.print_title("Failure diagnostics:")
+			failure_text += f"<br><br>{diagnostics_title} {links_html}"
 		new_data.append(
 			'<div><span style="color:red; font-weight:bold; '
-			f'white-space:pre-wrap;">{escape(longrepr)}</span></div>'
-		)
-	if call_output:
+			f'white-space:pre-wrap;">{failure_text}</span></div>'
+	)
+	if captured_output.strip():
 		html = "<br>".join(
 			report_logger.format_report_line(line)
-			for line in call_output.splitlines()
+			for line in captured_output.splitlines()
 		)
 		new_data.append(f"<div>{html}</div>")
 	data.clear()
 	data.extend(new_data)
 
 def pytest_html_results_table_row(report, cells):
-	if report.when != "call":
+	if report.when == "teardown" or (report.when == "setup" and not report.failed):
 		cells.clear()
 	elif cells:
 		test_name = report.location[2]
@@ -327,7 +455,7 @@ def pytest_html_results_summary(prefix, summary, postfix):
 		)
 
 @pytest.fixture(scope="function", autouse=True)
-def protocol_validation(request, initialize):
+def protocol_validation(request, initialize, test_setup):
 	capture_name = f"{request.node.name}.pcap"
 	report_logger.print_title("========== Start Frame Capture ==========")
 	backhaul_iface = initialize.read_from_database("controller", "backhaul_capture_iface")
