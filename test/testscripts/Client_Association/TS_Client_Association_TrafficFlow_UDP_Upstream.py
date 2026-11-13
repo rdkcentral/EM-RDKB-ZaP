@@ -37,7 +37,7 @@ def test_client_association_traffic_flow_UDP_upstream(initialize):
             return
         report_logger.print_info(f"INFO: Successfully connected clients: {connected_clients}")
         report_logger.print_step("STEP 3: Start UDP upstream traffic flow from selected Wi-Fi clients to Controller")
-        traffic_passed = True
+        traffic_step_passed = True
         for client in connected_clients:
             report_logger.print_info(f"INFO: Starting UDP upstream traffic flow from {client} to Controller.")
             traffic_passed = traffic_utils.run_udp_traffic(
@@ -45,19 +45,11 @@ def test_client_association_traffic_flow_UDP_upstream(initialize):
                 client,
                 direction = "upstream")
             time.sleep(5)
-        if association_passed and traffic_passed:
-            report_logger.print_success(f"PASS: UDP upstream traffic flow verified successfully for all selected clients")
-        else:
-            report_logger.print_error(f"FAIL: UDP upstream traffic test failed")
-        report_logger.print_step("STEP 4: Validate UDP traffic flow.")
-        traffic_step_passed = True
-        for client in connected_clients:
-            report_logger.print_info(f"INFO: Reading UDP upstream iperf log for {client}.")
-            log_output = initialize.execute_command(client,"cat controller_upstream_UDP_iperf_client.log")
-            if not traffic_utils.validate_udp_iperf_output(log_output, client):
-                traffic_step_passed = False
+            if association_passed and traffic_passed:
+                report_logger.print_success(f"PASS: UDP upstream traffic flow verified successfully for all selected clients")
             else:
-                report_logger.print_success(f"PASS: UDP upstream traffic validation successful for {client}")
+                report_logger.print_error(f"FAIL: UDP upstream traffic test failed")
+                traffic_step_passed = False        
         if traffic_step_passed:
             report_logger.print_success("PASS: All UDP upstream traffic validations successful.")
         else:

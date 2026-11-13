@@ -36,6 +36,7 @@ def test_client_association_traffic_flow_TCP_upstream(initialize):
             return
         report_logger.print_info(f"INFO: Successfully connected clients: {connected_clients}")
         report_logger.print_step("STEP 3: Start TCP upstream traffic flow from selected Wi-Fi clients to Controller")
+        traffic_step_passed = True
         for client in connected_clients:
             report_logger.print_info(f"INFO: Starting TCP upstream traffic flow from {client} to Controller.")
             traffic_passed = traffic_utils.run_tcp_traffic(
@@ -46,15 +47,7 @@ def test_client_association_traffic_flow_TCP_upstream(initialize):
                 report_logger.print_success(f"PASS: TCP upstream traffic flow verified successfully for all selected clients")
             else:
                 report_logger.print_error(f"FAIL: TCP upstream traffic test failed")
-        report_logger.print_step("STEP 4: Validate TCP traffic flow.")
-        traffic_step_passed = True
-        for client in connected_clients:
-            report_logger.print_info(f"INFO: Reading TCP upstream iperf log for {client}.")
-            log_output = initialize.execute_command(client,"cat controller_upstream_tcp_iperf_client.log")
-            if not traffic_utils.validate_tcp_iperf_output(log_output, client):
-                traffic_step_passed = False
-            else:
-                report_logger.print_success(f"PASS: TCP upstream traffic validation successful for {client}")
+                traffic_step_passed = False        
         if traffic_step_passed:
             report_logger.print_success("PASS: All TCP upstream traffic validations successful.")
         else:

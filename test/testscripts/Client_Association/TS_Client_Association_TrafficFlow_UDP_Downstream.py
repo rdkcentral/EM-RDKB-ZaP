@@ -37,7 +37,7 @@ def test_client_association_traffic_flow_UDP_downstream(initialize):
             return
         report_logger.print_info(f"INFO: Successfully connected clients: {connected_clients}")
         report_logger.print_step("STEP 3: Start UDP downstream traffic flow from selected Wi-Fi clients to Controller")
-        traffic_passed = True
+        traffic_step_passed = True
         for client in connected_clients:
             report_logger.print_info(f"INFO: Starting UDP downstream traffic flow from Controller to {client}.")
             traffic_passed = traffic_utils.run_udp_traffic(
@@ -46,19 +46,11 @@ def test_client_association_traffic_flow_UDP_downstream(initialize):
                 direction = "downstream",
                 mode = "reverse")
             time.sleep(5)
-        if association_passed and traffic_passed:
-            report_logger.print_success(f"PASS: UDP downstream traffic flow verified successfully for all selected clients")
-        else:
-            report_logger.print_error(f"FAIL: UDP downstream traffic test failed")
-        report_logger.print_step("STEP 4: Validate UDP traffic flow.")
-        traffic_step_passed = True
-        for client in connected_clients:
-            report_logger.print_info(f"INFO: Reading UDP downstream iperf log for {client}.")
-            log_output = initialize.execute_command(client,"cat controller_downstream_UDP_iperf_client.log")
-            if not traffic_utils.validate_udp_iperf_output(log_output, client):
-                traffic_step_passed = False
+            if association_passed and traffic_passed:
+                report_logger.print_success(f"PASS: UDP downstream traffic flow verified successfully for all selected clients")
             else:
-                report_logger.print_success(f"PASS: UDP downstream traffic validation successful for {client}")
+                report_logger.print_error(f"FAIL: UDP downstream traffic test failed")
+                traffic_step_passed = False        
         if traffic_step_passed:
             report_logger.print_success("PASS: All UDP downstream traffic validations successful.")
         else:
