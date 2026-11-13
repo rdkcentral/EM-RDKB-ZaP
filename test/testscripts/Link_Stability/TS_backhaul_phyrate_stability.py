@@ -28,6 +28,7 @@ def test_em_backhaul_phy_rate_stability(initialize):
         extenders = device_utils.get_enabled_extenders(initialize)
         if not extenders:
             report_logger.print_error("No backhaul extenders are marked present in the database")
+            return
         interval = POLL_INTERVAL_SEC
         duration = TEST_DURATION_SEC
         baseline = {}

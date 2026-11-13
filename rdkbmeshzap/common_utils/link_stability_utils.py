@@ -1,3 +1,20 @@
+# If not stated otherwise in this file or this component LICENSE file the
+# following copyright and licenses apply:
+#
+# Copyright 2026 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import json
 import re
 import shlex
@@ -43,14 +60,14 @@ def parse_ping_metrics(output: str) -> dict:
     rtt_match = re.search(
         r"(?:rtt|round-trip).*?=\s*"
         r"([0-9.]+)/([0-9.]+)/([0-9.]+)",
-        output,)
+        output)
     if not loss_match or not rtt_match:
         raise ValueError(f"Unable to parse ping statistics: {output}")
     return {
         "loss_percent": float(loss_match.group(1)),
         "min_ms": float(rtt_match.group(1)),
         "avg_ms": float(rtt_match.group(2)),
-        "max_ms": float(rtt_match.group(3)),}
+        "max_ms": float(rtt_match.group(3))}
 
 def parse_iperf_throughput(output: str) -> float:
     """
@@ -65,7 +82,7 @@ def parse_iperf_throughput(output: str) -> float:
         bits_per_second = result["end"]["sum_received"]["bits_per_second"]
         return float(bits_per_second) / 1_000_000
     except (ValueError, KeyError, TypeError, json.JSONDecodeError):
-        matches = re.findall(r"([0-9]+(?:\.[0-9]+)?)\s+([KMG]?)bits/sec",output,flags=re.IGNORECASE,)
+        matches = re.findall(r"([0-9]+(?:\.[0-9]+)?)\s+([KMG]?)bits/sec",output,flags=re.IGNORECASE)
         if not matches:
             raise ValueError(f"Unable to parse iperf3 throughput: {output}")
         value, unit = matches[-1]
@@ -115,7 +132,7 @@ def run_iperf(initialize, client: str, gateway_ip: str) -> float:
     connection = initialize.read_from_database(client, "connection")
     connection_obj = initialize.get_connection_module_object(connection)
     try:
-        initialize.start_iperf_client(client,gateway_ip,bind_ip,"tcp",remote_log,time=IPERF_SAMPLE_DURATION_SEC,)
+        initialize.start_iperf_client(client,gateway_ip,bind_ip,"tcp",remote_log,time=IPERF_SAMPLE_DURATION_SEC)
         output, error = connection_obj.execute_command(client, f"cat {remote_log}", return_stderr=True)
         if error and not output:
             raise Exception(str(error).strip())
@@ -222,7 +239,7 @@ def get_client_phy_rates(initialize, client: str, host: str | None) -> dict | No
         }
     return None
 
-def validate_phy_rates(current_rates: dict | None, baseline_rates: dict | None = None, drop_percent_limit: float = PHY_RATE_DROP_PERCENT,) -> str | None:
+def validate_phy_rates(current_rates: dict | None, baseline_rates: dict | None = None, drop_percent_limit: float = PHY_RATE_DROP_PERCENT) -> str | None:
     """
     Syntax : validate_phy_rates(current_rates, baseline_rates=None, drop_percent_limit=PHY_RATE_DROP_PERCENT)
     Description : Validates PHY rates and optional baseline degradation.
@@ -273,10 +290,10 @@ def get_client_rssi(initialize, client: str, host: str | None) -> dict | None:
         return {
             "host": host,
             "interface": interface,
-            "rssi_dbm": int(signal.group(1)) if signal else None,}
+            "rssi_dbm": int(signal.group(1)) if signal else None}
     return None
 
-def validate_client_rssi(current_rssi: dict | None, baseline_rssi: int | None = None, max_rssi_degradation_db: int = MAX_RSSI_DEGRADATION_DB,) -> str | None:
+def validate_client_rssi(current_rssi: dict | None, baseline_rssi: int | None = None, max_rssi_degradation_db: int = MAX_RSSI_DEGRADATION_DB) -> str | None:
     """
     Syntax : validate_client_rssi(current_rssi, baseline_rssi=None, max_rssi_degradation_db=MAX_RSSI_DEGRADATION_DB)
     Description : Validates RSSI data and degradation.
