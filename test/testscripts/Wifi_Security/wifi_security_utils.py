@@ -36,9 +36,9 @@ def common_setup(initialize):
                  initial controller security mode during teardown if changed.
     Example: common_setup(initialize)
     """
+    report_logger.print_info("INFO: getting current security mode")
+    current_security_mode = initialize.get_security_mode("controller")
     try:
-        report_logger.print_info("INFO: getting current security mode")
-        current_security_mode = initialize.get_security_mode("controller")
         report_logger.print_success(f"PASS: Current security mode retrieved successfully: {current_security_mode}")
         report_logger.print_info("INFO: getting supported security modes")
         supported_security_modes = initialize.get_supported_security_modes("controller")
