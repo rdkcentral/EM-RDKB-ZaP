@@ -44,7 +44,7 @@ def test_em_scale_memory_utilization_baseline(initialize):
                 validated_devices.append(device)
                 report_logger.print_success(f"PASS: Baseline {device}: available={snapshot['available_percent']:.1f}%, used={snapshot['used_percent']:.1f}%, total={snapshot['total_mb']:.1f} MB")
             except Exception as error:
-                report_logger.print_error(f"Baseline memory collection failed on {device}: {error}")
+                report_logger.print_error(f"FAIL: Baseline memory collection failed on {device}: {error}")
         report_logger.print_step("STEP 3: Summarize scale-device memory baseline results")
         if validated_devices:
             report_logger.print_success("PASS: Memory baseline validated for devices: " + ", ".join(validated_devices))
@@ -52,6 +52,6 @@ def test_em_scale_memory_utilization_baseline(initialize):
                 missing_devices = sorted(set(devices) - set(validated_devices))
                 report_logger.print_error(f"FAIL: Memory baseline missing for scale devices: {', '.join(missing_devices)}")
         else:
-            report_logger.print_error("ERROR: No reachable devices were available for memory baseline validation")
+            report_logger.print_error("FAIL: No reachable devices were available for memory baseline validation")
     finally:
         report_logger.print_test("Exiting test_em_scale_memory_utilization_baseline")

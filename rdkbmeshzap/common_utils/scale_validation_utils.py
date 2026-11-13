@@ -15,10 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 import re
-import shlex
-import time
 import uuid
 
 from rdkbmeshzap.common_utils import device_utils, report_logger
@@ -48,7 +45,7 @@ CONTROLLER_DEVICE = "controller"
 
 def get_enabled_scale_setup(initialize, scale: str | None = None) -> dict:
     """
-    Syntax : get_scale_setup(initialize, scale=None)
+    Syntax : get_enabled_scale_setup(initialize, scale=None)
     Description : Reads the requested or enabled scale settings from platform YAML.
     Parameters :
         initialize - Testbed initialization and database interface.
@@ -161,7 +158,10 @@ def collect_client_iperf_samples(initialize, client_targets: dict, sample_durati
                 raise ValueError(
                     f"iperf3 log {remote_log} is empty; the client command "
                     "did not produce throughput output")
-            results[client] = parse_iperf_throughput(output_text)
+            throughput = parse_iperf_throughput(output_text)
+            if throughput <= 0:
+                raise ValueError(f"iperf3 reported non-positive throughput: {throughput} Mbps")
+            results[client] = throughput
         except Exception as error:
             report_logger.print_error(f"{client}: unable to collect iperf3 sample: {error!r}")
         finally:

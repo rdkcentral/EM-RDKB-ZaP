@@ -46,7 +46,7 @@ def test_em_scale_cpu_utilization_baseline(initialize):
                 validated_devices.append(device)
                 report_logger.print_success(f"PASS: Baseline observed on {device}: idle={snapshot['idle_percent']:.1f}%, utilization={snapshot['utilization_percent']:.1f}%")
             except Exception as error:
-                report_logger.print_error(f"Baseline CPU collection failed on {device}: {error}")
+                report_logger.print_error(f"FAIL: Baseline CPU collection failed on {device}: {error}")
 
         report_logger.print_step("STEP 3: Summarize scale-device CPU baseline results")
         if validated_devices:
@@ -55,6 +55,6 @@ def test_em_scale_cpu_utilization_baseline(initialize):
                 missing_devices = sorted(set(devices) - set(validated_devices))
                 report_logger.print_error(f"FAIL: CPU baseline missing for scale devices: {', '.join(missing_devices)}")
         else:
-            report_logger.print_error("ERROR: No reachable devices were available for CPU baseline validation")
+            report_logger.print_error("FAIL: No reachable devices were available for CPU baseline validation")
     finally:
         report_logger.print_test("Exiting test_em_scale_cpu_utilization_baseline")

@@ -18,9 +18,9 @@
 import time
 from rdkbmeshzap.common_utils import client_utils, device_utils, report_logger
 from rdkbmeshzap.common_utils.scale_validation_utils import *
-def test_em_scale_client_traffic_throughput(initialize):
+def test_em_scale_client_traffic_throughput_stability(initialize):
     """Verify client-to-extender throughput and scale stability."""
-    report_logger.print_test("Entering test_em_scale_client_traffic_throughput")
+    report_logger.print_test("Entering test_em_scale_client_traffic_throughput_stability")
     extenders = []
     devices = []
     clients = []
@@ -41,32 +41,32 @@ def test_em_scale_client_traffic_throughput(initialize):
         if excluded_clients:
             report_logger.print_info("Excluding clients without an enabled extender owner: " f"{', '.join(excluded_clients)}")
         if not extenders or not clients:
-            report_logger.print_error("No enabled extenders or WLAN clients are available")
+            report_logger.print_error("FAIL: No enabled extenders or WLAN clients are available")
             return
         try:
             ssid = initialize.get_ssid(CONTROLLER_DEVICE, "controller_device_index", "de")
             password = initialize.get_fronthaul_password(CONTROLLER_DEVICE, "gui")
         except Exception as error:
-            report_logger.print_error(f"Unable to retrieve WLAN credentials: {error}")
+            report_logger.print_error(f"FAIL: Unable to retrieve WLAN credentials: {error}")
             return
         connected_clients = []
         for client in clients:
             if client_utils.remove_and_connect_client(initialize, client, ssid, password):
                 connected_clients.append(client)
             else:
-                report_logger.print_error(f"{client} (owner={client.rsplit('_wlan_client_', 1)[0]}): unable to connect to the EasyMesh SSID")
+                report_logger.print_error(f"FAIL: {client} (owner={client.rsplit('_wlan_client_', 1)[0]}): unable to connect to the EasyMesh SSID")
         clients = connected_clients
         if not clients:
-            report_logger.print_error("No mesh-owned WLAN clients connected successfully")
+            report_logger.print_error("FAIL: No mesh-owned WLAN clients connected successfully")
             return
         scale_setup = get_enabled_scale_setup(initialize)
         expected_extenders = scale_setup["expected_agent_count"]
         expected_clients = scale_setup["expected_client_count"]
         if len(extenders) < expected_extenders:
-            report_logger.print_error(f"Configured extender count {len(extenders)} is below expected scale count {expected_extenders}")
+            report_logger.print_error(f"FAIL: Configured extender count {len(extenders)} is below expected scale count {expected_extenders}")
             return
         if len(clients) < expected_clients:
-            report_logger.print_error(f"Configured extender-client count {len(clients)} is below expected scale count {expected_clients}")
+            report_logger.print_error(f"FAIL: Configured extender-client count {len(clients)} is below expected scale count {expected_clients}")
             return
         report_logger.print_info("INFO: Using connected WLAN clients: " + ", ".join(f"{client} (owner={client.rsplit('_wlan_client_', 1)[0]})" for client in clients))
         report_logger.print_step("STEP 2: Capture topology, client association, and throughput baseline")
@@ -74,13 +74,13 @@ def test_em_scale_client_traffic_throughput(initialize):
         association_mismatches = validate_client_associations(initialize, devices, clients, baseline_associations)
         if association_mismatches:
             for mismatch in association_mismatches:
-                report_logger.print_error(f"Baseline association: {mismatch}")
+                report_logger.print_error(f"FAIL: Baseline association: {mismatch}")
             return
         baseline_presence = get_extender_presence_snapshot(initialize, extenders)
         presence_mismatches = get_extender_presence_mismatches(expected_extenders, baseline_presence, baseline_presence)
         if presence_mismatches:
             for mismatch in presence_mismatches:
-                report_logger.print_error(f"Baseline topology: {mismatch}")
+                report_logger.print_error(f"FAIL: Baseline topology: {mismatch}")
             return
         controller_ip = initialize.read_from_database(CONTROLLER_DEVICE, "bridge_ip")
         try:
@@ -98,7 +98,7 @@ def test_em_scale_client_traffic_throughput(initialize):
         baseline_throughput = collect_client_iperf_samples(initialize, client_targets, IPERF_SAMPLE_DURATION_SEC)
         missing_baseline = sorted(set(clients) - set(baseline_throughput))
         if missing_baseline:
-            report_logger.print_error("Baseline throughput is missing for clients: " f"{', '.join(missing_baseline)}")
+            report_logger.print_error("FAIL: Baseline throughput is missing for clients: " f"{', '.join(missing_baseline)}")
             return
         for client, throughput in baseline_throughput.items():
             report_logger.print_success(f"PASS: Baseline throughput {client} (owner={client.rsplit('_wlan_client_', 1)[0]})={throughput:.2f} Mbps")
@@ -110,24 +110,24 @@ def test_em_scale_client_traffic_throughput(initialize):
             presence = get_extender_presence_snapshot(initialize, extenders)
             presence_mismatches = get_extender_presence_mismatches(expected_extenders, baseline_presence, presence)
             for mismatch in presence_mismatches:
-                report_logger.print_error(f"Poll #{poll_count}: topology mismatch: {mismatch}")
+                report_logger.print_error(f"FAIL: Poll #{poll_count}: topology mismatch: {mismatch}")
             if presence_mismatches:
                 return
             association_mismatches = validate_client_associations(initialize, devices, clients, baseline_associations)
             for mismatch in association_mismatches:
-                report_logger.print_error(f"Poll #{poll_count}: client association mismatch: {mismatch}")
+                report_logger.print_error(f"FAIL: Poll #{poll_count}: client association mismatch: {mismatch}")
             if association_mismatches:
                 return
             throughput = collect_client_iperf_samples(initialize, client_targets, IPERF_SAMPLE_DURATION_SEC)
             missing_clients = sorted(set(clients) - set(throughput))
             if missing_clients:
-                report_logger.print_error(f"Poll #{poll_count}: throughput missing for clients: {', '.join(missing_clients)}")
+                report_logger.print_error(f"FAIL: Poll #{poll_count}: throughput missing for clients: {', '.join(missing_clients)}")
                 return
             for client, value in throughput.items():
                 baseline = baseline_throughput.get(client)
                 minimum = baseline * MIN_THROUGHPUT_RATIO if baseline else 0
                 if baseline is None or value < minimum:
-                    report_logger.print_error(f"Poll #{poll_count}: {client} (owner={client.rsplit('_wlan_client_', 1)[0]}) throughput degraded: observed={value:.2f} Mbps, floor={minimum:.2f} Mbps")
+                    report_logger.print_error(f"FAIL: Poll #{poll_count}: {client} (owner={client.rsplit('_wlan_client_', 1)[0]}) throughput degraded: observed={value:.2f} Mbps, floor={minimum:.2f} Mbps")
                 else:
                     report_logger.print_success(f"PASS: Poll #{poll_count}: {client} (owner={client.rsplit('_wlan_client_', 1)[0]}) throughput={value:.2f} Mbps")
             remaining = end_time - time.time()
@@ -137,16 +137,28 @@ def test_em_scale_client_traffic_throughput(initialize):
         final_presence = get_extender_presence_snapshot(initialize, extenders)
         final_presence_mismatches = get_extender_presence_mismatches(expected_extenders, baseline_presence, final_presence)
         for mismatch in final_presence_mismatches:
-            report_logger.print_error(f"Final topology mismatch: {mismatch}")
+            report_logger.print_error(f"FAIL: Final topology mismatch: {mismatch}")
         final_association_mismatches = validate_client_associations(initialize, devices, clients, baseline_associations)
         for mismatch in final_association_mismatches:
-            report_logger.print_error(f"Final association mismatch: {mismatch}")
+            report_logger.print_error(f"FAIL: Final association mismatch: {mismatch}")
         if final_presence_mismatches or final_association_mismatches:
             return
+        final_throughput = collect_client_iperf_samples(initialize, client_targets, IPERF_SAMPLE_DURATION_SEC)
+        missing_final_clients = sorted(set(clients) - set(final_throughput))
+        if missing_final_clients:
+            report_logger.print_error(f"FAIL: Final throughput missing for clients: {', '.join(missing_final_clients)}")
+            return
+        for client, value in final_throughput.items():
+            baseline = baseline_throughput.get(client)
+            minimum = baseline * MIN_THROUGHPUT_RATIO if baseline else 0
+            if baseline is None or value < minimum:
+                report_logger.print_error(f"FAIL: Final throughput degraded for {client} (owner={client.rsplit('_wlan_client_', 1)[0]}): observed={value:.2f} Mbps, floor={minimum:.2f} Mbps")
+            else:
+                report_logger.print_success(f"PASS: Final throughput {client} (owner={client.rsplit('_wlan_client_', 1)[0]})={value:.2f} Mbps")
     finally:
         if server_started:
             try:
                 initialize.stop_iperf_server(CONTROLLER_DEVICE)
             except Exception as error:
-                report_logger.print_error(f"Unable to stop iperf3 server on controller: {error}")
-        report_logger.print_test("Exiting test_em_scale_client_traffic_throughput")
+                report_logger.print_error(f"FAIL: Unable to stop iperf3 server on controller: {error}")
+        report_logger.print_test("Exiting test_em_scale_client_traffic_throughput_stability")

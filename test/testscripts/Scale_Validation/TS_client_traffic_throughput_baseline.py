@@ -18,10 +18,9 @@
 from rdkbmeshzap.common_utils import client_utils, device_utils, report_logger
 from rdkbmeshzap.common_utils.scale_validation_utils import *
 
-def test_em_scale_client_traffic_throughput(initialize):
+def test_em_scale_client_traffic_throughput_baseline(initialize):
     """Verify client-to-extender throughput with one iperf3 sample."""
-    report_logger.print_test(
-        "Entering test_em_scale_client_traffic_throughput")
+    report_logger.print_test("Entering test_em_scale_client_traffic_throughput_baseline")
     extenders = []
     devices = []
     clients = []
@@ -35,107 +34,65 @@ def test_em_scale_client_traffic_throughput(initialize):
             for client in all_clients
             if client.rsplit("_wlan_client_", 1)[0] in devices]
         if not extenders or not clients:
-            report_logger.print_error("No enabled extenders or WLAN clients are available")
+            report_logger.print_error("FAIL: No enabled extenders or WLAN clients are available")
             return
+        report_logger.print_step("STEP 1.1: Retrieve Controller fronthaul credentials")
         try:
-            ssid = initialize.get_ssid(
-                CONTROLLER_DEVICE, "controller_device_index", "de")
-            password = initialize.get_fronthaul_password(
-                CONTROLLER_DEVICE, "gui"
-            )
+            ssid, password = initialize.get_fronthaul_credentials(CONTROLLER_DEVICE)
+            report_logger.print_success("PASS: Retrieved Controller fronthaul credentials")
         except Exception as error:
-            report_logger.print_error(
-                f"Unable to retrieve WLAN credentials: {error}"
-            )
+            report_logger.print_error(f"FAIL: Unable to retrieve fronthaul credentials: {error}")
             return
-
         connected_clients = []
         for client in clients:
-            if client_utils.remove_and_connect_client(
-                initialize, client, ssid, password
-            ):
+            if client_utils.remove_and_connect_client(initialize, client, ssid, password):
                 connected_clients.append(client)
             else:
-                report_logger.print_error(
-                    f"{client} (owner={client.rsplit('_wlan_client_', 1)[0]}): unable to "
-                    "connect to the EasyMesh SSID"
-                )
+                report_logger.print_error(f"FAIL: {client} (owner={client.rsplit('_wlan_client_', 1)[0]}): unable to connect to the EasyMesh SSID")
         clients = connected_clients
         if not clients:
-            report_logger.print_error(
-                "No mesh-owned WLAN clients connected successfully"
-            )
+            report_logger.print_error("FAIL: No mesh-owned WLAN clients connected successfully")
             return
-        report_logger.print_success(
-            "Connected WLAN clients: "
-            + ", ".join(
-                f"{client} (owner={client.rsplit('_wlan_client_', 1)[0]})"
-                for client in clients
-            )
-        )
+        report_logger.print_success("PASS: Connected WLAN clients: " + ", ".join(f"{client} (owner={client.rsplit('_wlan_client_', 1)[0]})" for client in clients))
 
         scale_setup = get_enabled_scale_setup(initialize)
         expected_extenders = scale_setup["expected_agent_count"]
         expected_clients = scale_setup["expected_client_count"]
         if len(extenders) < expected_extenders:
-            report_logger.print_error(
-                f"Configured extender count {len(extenders)} is below "
-                f"expected scale count {expected_extenders}"
-            )
+            report_logger.print_error(f"FAIL: Configured extender count {len(extenders)} is below expected scale count {expected_extenders}")
             return
         if len(clients) < expected_clients:
-            report_logger.print_error(
-                f"Configured extender-client count {len(clients)} is below "
-                f"expected scale count {expected_clients}"
-            )
+            report_logger.print_error(f"FAIL: Configured extender-client count {len(clients)} is below expected scale count {expected_clients}")
             return
-        report_logger.print_success(
-            "PASS: Using connected WLAN clients: "
-            + ", ".join(
-                f"{client} (owner={client.rsplit('_wlan_client_', 1)[0]})"
-                for client in clients
-            )
-        )
-
-        report_logger.print_step(
-            "STEP 2: Validate topology and client association before throughput test"
-        )
+        report_logger.print_success("PASS: Using connected WLAN clients: " + ", ".join(f"{client} (owner={client.rsplit('_wlan_client_', 1)[0]})" for client in clients))
+        report_logger.print_step("STEP 2: Validate topology and client association before throughput test")
         baseline_associations = get_fronthaul_station_macs_by_device(
             initialize, devices)
         association_mismatches = validate_client_associations(
             initialize, devices, clients, baseline_associations)
         if association_mismatches:
             for mismatch in association_mismatches:
-                report_logger.print_error(f"Client association: {mismatch}")
+                report_logger.print_error(f"FAIL: Client association: {mismatch}")
             return
-
         baseline_presence = get_extender_presence_snapshot(initialize, extenders)
         presence_mismatches = get_extender_presence_mismatches(
             expected_extenders, baseline_presence, baseline_presence)
         if presence_mismatches:
             for mismatch in presence_mismatches:
-                report_logger.print_error(f"Topology: {mismatch}")
+                report_logger.print_error(f"FAIL: Topology: {mismatch}")
             return
-
-        controller_ip = initialize.read_from_database(
-            CONTROLLER_DEVICE, "bridge_ip")
+        controller_ip = initialize.read_from_database(CONTROLLER_DEVICE, "bridge_ip")
         try:
-            initialize.execute_command(
-                CONTROLLER_DEVICE, f"rm -f {IPERF_SERVER_LOG}"
-            )
+            initialize.execute_command(CONTROLLER_DEVICE, f"rm -f {IPERF_SERVER_LOG}")
             initialize.start_iperf_server(
                 CONTROLLER_DEVICE,
                 controller_ip,
                 IPERF_SERVER_LOG,
             )
             server_started = True
-            report_logger.print_success(
-                "PASS: Started iperf3 server on controller"
-            )
+            report_logger.print_success("PASS: Started iperf3 server on controller")
         except Exception as error:
-            report_logger.print_error(
-                f"Unable to start iperf3 server on controller: {error}"
-            )
+            report_logger.print_error(f"FAIL: Unable to start iperf3 server on controller: {error}")
             return
         client_targets = {
             client: controller_ip
@@ -145,24 +102,14 @@ def test_em_scale_client_traffic_throughput(initialize):
             initialize, client_targets, IPERF_SAMPLE_DURATION_SEC)
         missing_clients = sorted(set(clients) - set(throughput))
         if missing_clients:
-            report_logger.print_error(
-                "Throughput is missing for clients: "
-                f"{', '.join(missing_clients)}"
-            )
+            report_logger.print_error(f"FAIL: Throughput is missing for clients: {', '.join(missing_clients)}")
             return
         for client, value in throughput.items():
-            report_logger.print_success(
-                f"PASS: Throughput {client} "
-                f"(owner={client.rsplit('_wlan_client_', 1)[0]})={value:.2f} Mbps"
-            )
+            report_logger.print_success(f"PASS: Throughput {client} (owner={client.rsplit('_wlan_client_', 1)[0]})={value:.2f} Mbps")
     finally:
         if server_started:
             try:
                 initialize.stop_iperf_server(CONTROLLER_DEVICE)
             except Exception as error:
-                report_logger.print_error(
-                    f"Unable to stop iperf3 server on controller: {error}"
-                )
-        report_logger.print_test(
-            "Exiting test_em_scale_client_traffic_throughput"
-        )
+                report_logger.print_error(f"FAIL: Unable to stop iperf3 server on controller: {error}")
+        report_logger.print_test("Exiting test_em_scale_client_traffic_throughput_baseline")
