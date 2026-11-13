@@ -566,13 +566,13 @@ class FeatureInterface(FeatureInterfaceModules):
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.get_wpa_cli_status(device)
 
-    def verify_four_way_handshake_messages(self, device: str,method='cli') -> str:
-        """
-        Verify the WPA 4-Way Handshake messages of the Wi-Fi client.
-        """
-        zi_logger.print_context()
-        iface_obj = self.get_feature_interface_module_object(method)
-        return iface_obj.verify_four_way_handshake_messages(device)
+    def verify_four_way_handshake_messages(self, device: str, interface: str, method='cli') -> str:
+            """
+            Verify the WPA 4-Way Handshake messages of the Wi-Fi client.
+            """
+            zi_logger.print_context()
+            iface_obj = self.get_feature_interface_module_object(method)
+            return iface_obj.verify_four_way_handshake_messages(device, interface)
 
     def get_wpa_cli_capability(self, device: str, capability: str, method='cli') -> str:
         """
