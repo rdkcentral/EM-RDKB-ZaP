@@ -68,18 +68,17 @@ def print_recovery_summary(extenders, recovered_extenders, step="STEP 3", scope=
             else:
                 report_logger.print_error(f"FAIL: {extender} did not meet the recovery criteria {scope}")
 
-def reconnect_device(initialize, device, step, started_at=None, recovery_type="controller"):
+def reconnect_device(initialize, device, started_at=None, recovery_type="controller"):
     """
-    Syntax: reconnect_device(initialize, device, step, started_at=None, recovery_type="controller")
+    Syntax: reconnect_device(initialize, device, started_at=None, recovery_type="controller")
     Description: Reconnect a device within its configured recovery KPI window.
     Parameters:
         initialize : Testbed interface.
         device : Device name.
-        step : Report step.
         started_at : Optional recovery start time.
         recovery_type : "controller" or "agent".
     Return Value: True on success; False when recovery times out.
-    Example: reconnect_device(initialize, "extender1", 1, recovery_type="agent")
+    Example: reconnect_device(initialize, "extender1", recovery_type="agent")
     """
     report_logger.print_info(f"INFO: Waiting for {device} SSH recovery")
     recovery_kpi = get_recovery_kpi(initialize, recovery_type)
@@ -96,9 +95,13 @@ def reconnect_device(initialize, device, step, started_at=None, recovery_type="c
                 # Restore controller connectivity before reconnecting an agent.
                 if not initialize.is_device_alive("controller"):
                     initialize.close_connection("controller")
-                    initialize.connect_with_device("controller")
+                    controller_connected = initialize.connect_with_device("controller")
+                    if controller_connected is False:
+                        raise RuntimeError("controller connection API returned False")
             initialize.close_connection(device)
-            initialize.connect_with_device(device)
+            device_connected = initialize.connect_with_device(device)
+            if device_connected is False:
+                raise RuntimeError("device connection API returned False")
         except Exception as error:
             # Retry device connection until the recovery deadline expires.
             report_logger.print_info(f"INFO: {device} connect attempt {attempt} failed: {error}")
@@ -114,24 +117,21 @@ def reconnect_device(initialize, device, step, started_at=None, recovery_type="c
     report_logger.print_error(f"FAIL: {device}: could not reconnect within {recovery_kpi} seconds")
     return False
 
-def recover_device(initialize, device, started_at, results, step, recovery_type="controller"):
+def recover_device(initialize, device, started_at, results, recovery_type="controller"):
     """
-    Syntax: recover_device(initialize, device, started_at, results, step, recovery_type="controller")
+    Syntax: recover_device(initialize, device, started_at, results, recovery_type="controller")
     Description: Reconnect a device, verify services, and record its recovery time.
     Parameters:
         initialize : Testbed interface.
         device : Device name.
         started_at : Recovery start time.
         results : Result dictionary.
-        step : Report step.
         recovery_type : "controller" or "agent".
     Return Value: Recovery time in seconds, False when recovery fails, or the captured exception.
-    Example: recover_device(initialize, "extender1", started_at, results, 1, "agent")
+    Example: recover_device(initialize, "extender1", started_at, results, "agent")
     """
     try:
-        reconnected = reconnect_device(
-            initialize, device, step=f"{step}.1", started_at=started_at, recovery_type=recovery_type
-        )
+        reconnected = reconnect_device(initialize, device, started_at=started_at, recovery_type=recovery_type)
         if reconnected is False:
             results[device] = False
             return False
@@ -183,3 +183,32 @@ def validate_topology_capture(packets, extender, extender_al_mac=None):
             report_logger.print_error(f"FAIL: {message_name} was not found in the recovery capture for {extender}")
         else:
             report_logger.print_success(f"PASS: {message_name} was found in the recovery capture for {extender}")
+
+def monitor_device_reachability(initialize, device, stop_event, interval_seconds=5, status_context="during recovery", poll_failure_event=None):
+    """
+    Syntax: monitor_device_reachability(initialize, device, stop_event, interval_seconds=5, status_context="during recovery")
+    Description: Poll reachability until stopped, logging each result and signaling failures.
+    Parameters:
+        initialize : Testbed interface.
+        device : Device name.
+        stop_event : Event used to stop the monitor.
+        interval_seconds : Seconds between checks.
+        status_context : Text describing the activity during monitoring.
+        poll_failure_event : Optional Event set when a reachability poll fails.
+    Return Value: None; sets poll_failure_event when a poll fails.
+    Example: monitor_device_reachability(initialize, "extender1", stop_event)
+    """
+    poll_count = 0
+    while not stop_event.wait(interval_seconds):
+        poll_count += 1
+        try:
+            if not initialize.is_device_alive(device):
+                failure = "not reachable"
+            else:
+                report_logger.print_info(f"INFO: Poll #{poll_count} {device} reachable ({status_context})")
+                continue
+        except Exception as error:
+            failure = f"reachability check failed: {error}"
+        report_logger.print_error(f"FAIL: Poll #{poll_count} {device} {failure} ({status_context})")
+        if poll_failure_event is not None:
+            poll_failure_event.set()

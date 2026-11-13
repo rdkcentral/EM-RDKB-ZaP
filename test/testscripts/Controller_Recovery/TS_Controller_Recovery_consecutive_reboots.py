@@ -56,7 +56,7 @@ def test_controller_recovery_consecutive_reboots(initialize):
             report_logger.print_info("INFO: Controller reboot command executed")
             time.sleep(30)
             controller_results = {}
-            recovery_utils.recover_device(initialize, "controller", cycle_start, controller_results, f"{cycle + 2}.1")
+            recovery_utils.recover_device(initialize, "controller", cycle_start, controller_results)
             controller_result = controller_results.get("controller")
             if isinstance(controller_result, Exception):
                 recovery_utils.print_recovery_summary(all_extenders, recovered_extenders, step=f"STEP {cycle + 3}", scope="after controller recovery")
@@ -81,7 +81,6 @@ def test_controller_recovery_consecutive_reboots(initialize):
                     extender,
                     final_cycle_start,
                     extender_results,
-                    f"8.{index}",
                 ),
                 name=f"recover-{extender}-after-cycle-{recovery_utils.REBOOT_CYCLES}",
             )

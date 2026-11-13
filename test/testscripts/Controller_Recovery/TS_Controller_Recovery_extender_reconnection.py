@@ -63,7 +63,7 @@ def test_controller_recovery_extender_reconnection(initialize):
  
         report_logger.print_step("STEP 4: Reconnect to the controller after reboot")
         controller_results = {}
-        recovery_utils.recover_device(initialize, "controller", controller_started_at, controller_results, "4.1")
+        recovery_utils.recover_device(initialize, "controller", controller_started_at, controller_results)
         controller_result = controller_results.get("controller")
         if isinstance(controller_result, Exception):
             recovery_utils.print_recovery_summary(all_extenders, recovered_extenders, step="STEP 5", scope="after controller reboot")
@@ -85,7 +85,6 @@ def test_controller_recovery_extender_reconnection(initialize):
                     "device": extender,
                     "started_at": recovery_started[extender],
                     "results": recovery_times,
-                    "step": f"5.{index}",
                 },
                 name=f"recover-{extender}",
             )

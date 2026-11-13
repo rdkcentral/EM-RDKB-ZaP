@@ -299,26 +299,56 @@ def verify_mesh_backhaul_interfaces(initialize):
         report_logger.print_success("PASS: Mesh backhaul interfaces are valid on all enabled devices")
     return validation_result
 
-def validate_extender_parent_connections(initialize):
+def validate_extender_parent_connections(
+    initialize,
+    extenders: list[str] | None = None,
+    iw_dev_snapshot: dict[str, dict[str, dict[str, str]]] | None = None,
+    return_parent_map: bool = False,
+    ) -> bool | dict[str, str] | None:
     """
-    Syntax: validate_extender_parent_connections(initialize)
-    Description: Validate that every enabled extender is connected to a testbed parent device.
-    Parameters: initialize - Testbed initialization and device interface.
-    Return Value: True when all enabled extenders have a matching parent device.
-    Example: validate_extender_parent_connections(initialize)
+    Syntax: validate_extender_parent_connections(initialize, extenders=None, iw_dev_snapshot=None, return_parent_map=False)
+    Description: Validate Extender parent connections, reusing one interface snapshot per device;
+                 optionally return a mapping of each Extender to its parent.
+    Parameters: initialize - Testbed interface; extenders - Optional pre-fetched Extender list;
+                iw_dev_snapshot - Optional parsed per-device iw dev snapshot; return_parent_map - Return the parent mapping instead of a bool.
+    Return Value: A bool by default; when return_parent_map is True, a mapping on success
+                  (empty when no Extenders are configured) or None on failure.
+    Example: validate_extender_parent_connections(initialize, return_parent_map=True)
     """
     report_logger.print_title("Environment Check 5: Validate parent-device connections for all enabled extenders")
-    devices = ["controller"] + device_utils.get_enabled_extenders(initialize)
+    if extenders is None:
+        extenders = device_utils.get_enabled_extenders(initialize)
+    if not extenders:
+        report_logger.print_info("INFO: No enabled Extenders are configured")
+        return {} if return_parent_map else True
     validation_result = True
-    for extender in device_utils.get_enabled_extenders(initialize):
-        parent, bssid = device_utils.get_extender_parent_device(initialize, extender, devices)
-        if not parent:
+    parent_by_extender = {}
+    devices = ["controller", *extenders]
+    if iw_dev_snapshot is None:
+        iw_dev_snapshot = {}
+        for device in devices:
+            try:
+                iw_dev_snapshot[device] = device_utils.parse_iw_dev_output(initialize.get_iw_dev_info(device))
+            except Exception as error:
+                report_logger.print_info(f"INFO: {device}: unable to read wireless interfaces: {error}")
+                iw_dev_snapshot[device] = {}
+    for extender in extenders:
+        parent, bssid = device_utils.get_extender_parent_device(
+            initialize,
+            extender,
+            devices,
+            iw_dev_snapshot=iw_dev_snapshot,
+        )
+        if not parent or parent == extender:
             validation_result = False
             report_logger.print_error(f"FAIL: {extender} is not connected to a testbed device (BSSID: {bssid or 'unknown'})")
         else:
+            parent_by_extender[extender] = parent
             report_logger.print_success(f"PASS: {extender} is connected to {parent} through {bssid}")
     if validation_result:
         report_logger.print_success("PASS: All enabled extenders are connected within testbed devices")
+    if return_parent_map:
+        return parent_by_extender if validation_result else None
     return validation_result
 
 def validate_mesh_service_status(initialize):
