@@ -197,8 +197,7 @@ class FeatureInterfaceGUI(DatabaseModule,
         time.sleep(3)
         return self.ui_obj.ui_get_input_value("Fronthaul", "#profile-passphrase")
 
-    def get_security_mode(self,
-            device: str) -> str:
+    def get_security_mode(self,device: str) -> str:
         """
         To get the security mode of the fronthaul network
         """
@@ -219,11 +218,6 @@ class FeatureInterfaceGUI(DatabaseModule,
     def get_supported_security_modes(self, device: str) -> list:
         """
         Get all supported security modes for the Home Network profile
-        by editing the profile and extracting the dropdown options.
-        
-        Returns:
-            list: List of supported security modes
-                  e.g., ['WPA2 Personal', 'WPA3 Personal', 'WPA3 Transition']
         """
         zi_logger.print_context()
         self._create_ui_obj(device)

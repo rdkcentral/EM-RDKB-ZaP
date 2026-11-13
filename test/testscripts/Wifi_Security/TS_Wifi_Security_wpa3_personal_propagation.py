@@ -170,4 +170,4 @@ def test_wifi_security_wpa3_personal_propagation(initialize):
                 report_logger.print_info(f"INFO: Successfully set security mode to {initial_security_mode}")
             except Exception as e:
                 report_logger.print_error(f"ERROR: Failed to revert security mode: {e}")
-        report_logger.print_test("Exiting test_wifi_security_wpa2_personal_propagation")
+        report_logger.print_test("Exiting test_wifi_security_wpa3_personal_propagation")
