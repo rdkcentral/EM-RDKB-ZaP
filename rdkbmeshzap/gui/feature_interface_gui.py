@@ -196,3 +196,88 @@ class FeatureInterfaceGUI(DatabaseModule,
         self.ui_obj.ui_navigate_to_required_page( "Wireless Settings")
         time.sleep(3)
         return self.ui_obj.ui_get_input_value("Fronthaul", "#profile-passphrase")
+
+    def get_security_mode(self,device: str) -> str:
+        """
+        To get the security mode of the fronthaul network
+        """
+        zi_logger.print_context()
+        self._create_ui_obj(device)
+        self.ui_obj.ui_navigate_to_home_page(device)
+        time.sleep(3)
+        self.ui_obj.ui_navigate_to_required_page("Wireless Settings")
+        time.sleep(3)        
+        try:
+            page = self.ui_obj._page
+            security_text = page.locator(".profile-card:has(h4:text('Home Network')) .profile-detail:has(.label:text('Security')) .value").inner_text()
+            security_mode = security_text.strip().replace('🔒', '').replace('\n', ' ').strip()
+            return security_mode
+        except Exception as error:
+            raise RuntimeError(f"Could not get security mode: {error}") from error
+
+    def get_supported_security_modes(self, device: str) -> list:
+        """
+        Get all supported security modes for the Home Network profile
+        """
+        zi_logger.print_context()
+        self._create_ui_obj(device)
+        self.ui_obj.ui_navigate_to_home_page(device)
+        time.sleep(3)
+        self.ui_obj.ui_navigate_to_required_page("Wireless Settings")
+        time.sleep(3)
+        
+        try:
+            page = self.ui_obj._page
+            # Click Edit button for Home Network profile
+            edit_button = page.locator(".profile-card:has(h4:text('Home Network')) button:has-text('Edit')")
+            edit_button.click()
+            time.sleep(2)
+            zi_logger.log("Clicked Edit button for Home Network profile")
+            # Get the security mode dropdown by ID
+            security_dropdown = page.locator("select#profile-security")
+            # Get all options from the dropdown
+            options = security_dropdown.locator("option").all()
+            supported_modes = []
+            for option in options:
+                mode_text = option.inner_text().strip()
+                if mode_text and mode_text.lower() != "select an option":
+                    supported_modes.append(mode_text)
+            # Close the edit dialog by pressing Escape
+            page.keyboard.press('Escape')
+            time.sleep(1)
+            return supported_modes
+        except Exception as error:
+            zi_logger.log(f"Failed to get supported security modes: {error}")
+            raise RuntimeError(f"Could not get supported security modes: {error}") from error
+
+    def set_security_mode(self, device: str, security_mode: str):
+        """
+        Set the security mode for the Home Network profile.
+        """
+        zi_logger.print_context()
+        self._create_ui_obj(device)
+        self.ui_obj.ui_navigate_to_home_page(device)
+        time.sleep(3)
+        self.ui_obj.ui_navigate_to_required_page("Wireless Settings")
+        time.sleep(3)
+        try:
+            page = self.ui_obj._page
+            # Click Edit button for Home Network profile
+            edit_button = page.locator(".profile-card:has(h4:text('Home Network')) button:has-text('Edit')")
+            edit_button.click()
+            time.sleep(2)
+            # Set the security mode dropdown by ID
+            security_dropdown = page.locator("select#profile-security")
+            time.sleep(2)
+            security_dropdown.select_option(label=security_mode)
+            # zi_logger.log(f"Set security mode to: {security_mode}")
+            time.sleep(2)
+            page.click("button[type='submit']")
+            time.sleep(2)
+            page.wait_for_selector("#save-profile-settings:not([disabled])")
+            time.sleep(2)
+            page.click("#save-profile-settings")
+            # Save button lives in the edit dialog, not inside the profile card          
+        except Exception as error:
+            zi_logger.log(f"Failed to set security mode: {error}")
+            raise RuntimeError(f"Could not set security mode: {error}") from error

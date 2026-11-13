@@ -90,3 +90,30 @@ def verify_client_association(initialize, client):
     except Exception as e:
         report_logger.print_error(f"FAIL: Association verification failed for {client}: {e}")
         return False
+
+def verify_security_mode(nmcli_output, target_bssid, expected_security_mode):
+    """
+    Verify the security mode of a specific BSSID from nmcli output.
+    Args:
+        nmcli_output (str): Output of 'nmcli device wifi list'.
+        target_bssid (str): BSSID to search for.
+        expected_security_mode (str): Expected security mode.
+    Returns:
+        tuple:
+            (True, actual_security_mode)  -> if matched
+            (False, actual_security_mode) -> if not matched
+    Raises:
+        LookupError: If the BSSID is not found.
+    """
+    for line in nmcli_output.splitlines()[1:]:  # Skip header
+        line = line.strip()
+        if not line:
+            continue
+        fields = line.split(maxsplit=1)
+        bssid = fields[0]
+        security_mode = fields[1] if len(fields) > 1 else ""
+        if bssid.lower() == target_bssid.lower():
+            return security_mode == expected_security_mode, security_mode
+    raise LookupError(
+        f"BSSID '{target_bssid}' not found in nmcli output"
+    )
