@@ -93,7 +93,6 @@ def test_agent_recovery_consecutive_reboots(initialize):
                         "device": extender,
                         "started_at": cycle_start,
                         "results": recovery_times,
-                        "step": f"{step}.{2 + step_offset}",
                         "recovery_type": "agent",
                     },
                     name=f"recover-{extender}-cycle-{cycle}",

@@ -145,12 +145,31 @@ class FeatureInterfaceCLI(DatabaseModule,
             )
         return str(output).strip()
 
-    def get_iw_interface_details(self, device: str, interface: str) -> dict:
+    def get_iw_interface_details(self, device: str, interface: str, iw_dev_output: str | None = None) -> dict:
         """
         Return normalized interface, link, MAC, and radio details from ``iw dev`` output.
         """
-        output = self.get_iw_dev_interface_info(device, interface)
-        lines = [line.strip() for line in str(output or "").splitlines()]
+        output = (
+            iw_dev_output
+            if iw_dev_output is not None
+            else self.get_iw_dev_interface_info(device, interface)
+        )
+        all_lines = [line.strip() for line in str(output or "").splitlines()]
+        if iw_dev_output is not None:
+            start = next(
+                (index for index, line in enumerate(all_lines) if line == f"Interface {interface}"),
+                None,
+            )
+            if start is None:
+                lines = []
+            else:
+                end = next(
+                    (index for index in range(start + 1, len(all_lines)) if all_lines[index].startswith("Interface ")),
+                    len(all_lines),
+                )
+                lines = all_lines[start:end]
+        else:
+            lines = all_lines
         fields = {
             key: value.strip()
             for line in lines if " " in line
@@ -250,10 +269,13 @@ class FeatureInterfaceCLI(DatabaseModule,
 
     def get_backhaul_interface_details(self, device: str, interface: str) -> dict:
         """
-        Return connection, BSSID, RSSI, and uptime for a backhaul interface.
+        Return connection, BSSID, RSSI, rates, and uptime for a backhaul interface.
         """
         bssids = self.get_iw_link_details(device, interface, "bssid")
         signals = self.get_iw_link_details(device, interface, "signal")
+        rates = self.get_iw_link_details(device, interface, "rates")
+        tx_rate = next((rate[1:] for rate in rates if rate[0] == "tx"), None)
+        rx_rate = next((rate[1:] for rate in rates if rate[0] == "rx"), None)
         connected_times = self.get_iw_station_details(
             device, interface, "connected_time"
         )
@@ -261,6 +283,8 @@ class FeatureInterfaceCLI(DatabaseModule,
             "connected": bool(bssids),
             "bssid": bssids[0] if bssids else None,
             "rssi_dbm": int(signals[0]) if signals else None,
+            "tx_rate": tx_rate,
+            "rx_rate": rx_rate,
             "connected_time": (
                 int(connected_times[0]) if connected_times else None
             ),
@@ -719,34 +743,37 @@ class FeatureInterfaceCLI(DatabaseModule,
             raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
         return str(output).strip()
 
-    def verify_four_way_handshake_messages(self, device: str) -> str:
+    def verify_four_way_handshake_messages(self, device: str, interface: str) -> str:
         """
-        To verify the WPA 4-Way Handshake messages of the Wi-Fi client.
+        Verify the WPA 4-Way Handshake messages of the Wi-Fi client.
         """
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        cmd = ("journalctl -u wpa_supplicant --no-pager "
-            "| grep -E 'RX message 1 of 4-Way Handshake|"
-            "Sending EAPOL-Key 2/4|"
-            "RX message 3 of 4-Way Handshake|"
-            "Sending EAPOL-Key 4/4'")
+        cmd = (
+            "journalctl -u wpa_supplicant --since '5 minutes ago' --no-pager "
+            f"| grep '{interface}' "
+            "| awk "
+            "'/RX message 1 of 4-Way Handshake/ && !m1++ {print; found++} "
+            "/Sending EAPOL-Key 2\\/4/ && !m2++ {print; found++} "
+            "/RX message 3 of 4-Way Handshake/ && !m3++ {print; found++} "
+            "/Sending EAPOL-Key 4\\/4/ && !m4++ {print; found++} "
+            "found == 4 {exit}'")
         output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
         combined_output = f"{output}\n{error}"
         handshake_messages = [
             'RX message 1 of 4-Way Handshake',
             'Sending EAPOL-Key 2/4',
             'RX message 3 of 4-Way Handshake',
-            'Sending EAPOL-Key 4/4']
+            'Sending EAPOL-Key 4/4'
+        ]
         missing_messages = [
             message for message in handshake_messages
-            if message not in combined_output]
+            if message not in combined_output
+        ]
         if missing_messages:
-            raise RuntimeError(
-                "WPA 4-Way Handshake verification failed. "
-                f"Missing messages: {missing_messages}\n"
-                f"Captured logs:\n{combined_output}")
-        return combined_output
+            raise RuntimeError("WPA 4-Way Handshake verification failed. "f"Missing messages: {missing_messages}")
+        return ("WPA 4-Way Handshake completed successfully. All 4 handshake messages verified.")
     
     def get_wpa_cli_capability(self, device: str, capability: str) -> list:
         """
@@ -783,7 +810,11 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        command = "iw list"
+        command = (
+            "iw list | grep -iE "
+            "'EHT MAC CAPABILITIES|EHT IFTYPES|"
+            "HE MAC CAPABILITIES|HE IFTYPES|"
+            "VHT CAPABILITIES|HT20/HT40|HT TX/RX MCS|HT CAPABILITIES' || true")
         output, error = connection_obj.execute_command(device, command,
                                                         return_stdout=True,
                                                         return_stderr=True)
@@ -884,3 +915,38 @@ class FeatureInterfaceCLI(DatabaseModule,
         if error:
             raise RuntimeError(f"nmcli list command failed on {device}: {error.strip()}")
         return network_list
+    def get_bridge_info(self, device: str, bridge_iface: str) -> str:
+        """
+        Get the interfaces attached to the specified bridge.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        command = f"brctl show {shlex.quote(bridge_iface)}"
+        output, error = connection_obj.execute_command(device, command, return_stderr=True)
+        if error:
+            raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
+        return str(output).strip()
+
+    def get_bridge_station_interfaces(self, device: str, bridge_iface: str) -> list[str]:
+        """
+        Return wireless station interfaces attached to the specified bridge.
+        """
+        interfaces = []
+        bridge_found = False
+        for line in self.get_bridge_info(device, bridge_iface).splitlines():
+            fields = line.split()
+            if not fields or fields[0] == "bridge":
+                continue
+            if fields[0].startswith("br"):
+                bridge_found = fields[0] == bridge_iface
+                if bridge_found:
+                    candidate = fields[-1]
+                    if candidate.startswith("wifi") and ".sta" in candidate:
+                        interfaces.append(candidate)
+                continue
+            if bridge_found:
+                candidate = fields[-1]
+                if candidate.startswith("wifi") and ".sta" in candidate:
+                    interfaces.append(candidate)
+        return list(dict.fromkeys(interfaces))

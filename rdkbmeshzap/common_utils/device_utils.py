@@ -340,25 +340,47 @@ def verify_extender_services(initialize, extender, deadline=None):
         deadline,
     ) 
 
-def get_extender_parent_device(initialize, extender, devices):
+def get_extender_parent_device(initialize, extender, devices, iw_dev_snapshot=None):
     """
     Syntax: get_extender_parent_device(initialize, extender, devices)
-    Description: Identify the testbed device providing the extender's connected backhaul BSSID.
+    Description: Find the device hosting the mesh-backhaul AP connected to the extender.
     Parameters: initialize - Testbed interface; extender - Extender name; devices - Candidate parent devices.
     Return Value: A tuple containing the parent device name and connected BSSID, or None values when unavailable.
     Example: get_extender_parent_device(initialize, "extender1", ["controller", "extender1"])
     """
-    link_output = initialize.get_iw_dev_link_info(extender, "wifi1.3")
-    match = re.search(r"Connected to\s+([0-9a-fA-F:]{17})", str(link_output), re.IGNORECASE)
-    if not match:
+    try:
+        backhaul_interface = initialize.read_from_database(extender, "backhaul_interface")
+    except Exception as error:
+        report_logger.print_error(f"FAIL: {extender}: unable to read backhaul_interface: {error}")
         return None, None
-    bssid = match.group(1).lower()
+    if not backhaul_interface:
+        return None, None
+    try:
+        bssids = initialize.get_iw_link_details(extender, backhaul_interface, "bssid")
+    except Exception as error:
+        report_logger.print_error(f"FAIL: {extender}: unable to read backhaul BSSID on {backhaul_interface}: {error}")
+        return None, None
+    if not bssids:
+        return None, None
+    bssid = str(bssids[0]).lower()
+    mesh_backhaul_ssid = initialize.read_from_database("controller", "mesh_backhaul_ssid").strip()
+
     for device in devices:
         try:
-            output = initialize.get_iw_dev_interface_info(device, "wifi1.1")
-        except Exception:
+            interface_details = (
+                iw_dev_snapshot.get(device, {})
+                if iw_dev_snapshot is not None
+                else parse_iw_dev_output(initialize.get_iw_dev_info(device))
+            )
+        except Exception as error:
+            report_logger.print_info(f"INFO: {device}: unable to read wireless interfaces: {error}")
             continue
-        if re.search(rf"\baddr\s+{re.escape(bssid)}\b", str(output), re.IGNORECASE):
+        if any(
+            details["addr"] == bssid
+            and details["ssid"] == mesh_backhaul_ssid
+            and details["type"].lower() == "ap"
+            for details in interface_details.values()
+        ):
             return device, bssid
     return None, bssid
 
@@ -381,10 +403,135 @@ def retrieve_and_store_device_index(initialize, device, device_mac):
     """
     Syntax: retrieve_and_store_device_index(initialize, device, device_mac)
     Description: Retrieve the device index for a given device and its MAC address, and store it in the database.
-    Parameters: initialize - Testbed interface; device - Device name; device_mac - Device MAC address.
+    Parameters: initialize - Testbed interface; 
+                device - Device name; 
+                device_mac - Device MAC address.
     Return Value: The retrieved device index.
     Example: retrieve_and_store_device_index(initialize, "controller", "00:11:22:33:44:55")
     """
     index = initialize.get_device_index("controller", device_mac, "de")
     initialize.db_obj.write_into_database("controller", f"{device}_device_index",index)
     return index
+
+def parse_iw_dev_output(output: str) -> dict[str, dict[str, str]]:
+    """
+    Syntax: parse_iw_dev_output(output)
+    Description: Parse ``iw dev`` output into interface address, SSID, and type details.
+    Parameters: output - Raw output from the ``iw dev`` command.
+    Return Value: A dictionary keyed by interface name, with address, SSID, and type fields.
+    Example: parse_iw_dev_output(iw_dev_output)
+    """
+    interfaces = {}
+    current_interface = None
+    for line in str(output or "").splitlines():
+        line = line.strip()
+        if line.startswith("Interface "):
+            fields = line.split(maxsplit=1)
+            if len(fields) != 2:
+                current_interface = None
+                continue
+            current_interface = fields[1]
+            interfaces[current_interface] = {"addr": "", "ssid": "", "type": ""}
+        elif current_interface and " " in line:
+            key, value = line.split(maxsplit=1)
+            if key in {"addr", "ssid", "type"}:
+                interfaces[current_interface][key] = (
+                    value.strip().lower() if key == "addr" else value.strip()
+                )
+    return interfaces
+
+def retrieve_and_store_radio_index(initialize, device, band, radio_mac):
+    """
+    Syntax: retrieve_and_store_radio_index(initialize, device, band, radio_mac)
+    Description: Retrieve the radio index using its MAC address and store it in the corresponding database field.
+    Parameters:
+        initialize - Initialization object used to access radio index and database utilities.
+        device - Device name for which the radio index is retrieved.
+        band - Radio frequency band (2G, 5G, or 6G).
+        radio_mac - MAC address of the radio.
+    Return Value: The retrieved radio index.
+    Example: retrieve_and_store_radio_index(initialize, "controller", "2g", radio_mac)
+    """
+    index = initialize.get_radio_index("controller", radio_mac, "de")
+    initialize.db_obj.write_into_database("controller", f"{device}_{band}_radio_index", index)
+    return index
+
+def retrieve_and_store_bss_index(initialize, device, band, bss_mac):
+    """
+    Syntax: retrieve_and_store_bss_index(initialize, device, band, bss_mac)
+    Description: Retrieve the BSS index using its MAC address and store it in the corresponding database field.
+    Parameters:
+        initialize - Initialization object used to access BSS index and database utilities.
+        device - Device name for which the BSS index is retrieved.
+        band - Radio frequency band (2G, 5G, or 6G).
+        bss_mac - MAC address of the BSS.
+    Return Value: The retrieved BSS index.
+    Example: retrieve_and_store_bss_index(initialize, "controller", "2g", bss_mac)
+    """
+    index = initialize.get_bss_index("controller", bss_mac, "de")
+    initialize.db_obj.write_into_database("controller", f"{device}_{band}_radio_bss_index", index)
+    return index
+
+def retrieve_and_store_all_indexes(initialize):
+    """
+    Syntax: retrieve_and_store_all_indexes(initialize)
+    Description: Retrieve and store device, radio, and BSS indexes for the controller and all enabled extenders.
+    Parameters:
+        initialize - Initialization object used to access device information and database utilities.
+    Return Value: True if all available device, radio, and BSS indexes are retrieved and stored successfully; otherwise, False.
+    Example: retrieve_and_store_all_indexes(initialize)
+    """
+    all_passed = True
+    devices = ["controller"] + get_enabled_extenders(initialize)
+    # Retrieve and store device indexes
+    for device in devices:
+        try:
+            device_mac = initialize.read_from_database(device, "2g_radio_mac")
+            if not device_mac:
+                report_logger.print_error(f"FAIL: 2.4 GHz radio MAC not found for {device}")
+                all_passed = False
+                continue
+            device_index = retrieve_and_store_device_index(initialize, device, device_mac)
+            if device_index is None:
+                report_logger.print_error(f"FAIL: Device index not found for {device}")
+                all_passed = False
+            else:
+                report_logger.print_info(f"INFO: Device index for {device}: {device_index}")
+        except Exception as e:
+            report_logger.print_error(f"FAIL: Failed to retrieve device index for {device}: {e}")
+            all_passed = False
+    # Retrieve and store radio indexes
+    for device in devices:
+        for band in ("2g", "5g", "6g"):
+            try:
+                radio_mac = initialize.read_from_database(device, f"{band}_radio_mac")
+                if not radio_mac:
+                    report_logger.print_info(f"INFO: Skipping {band} radio for {device}: Radio MAC not found")
+                    continue
+                radio_index = retrieve_and_store_radio_index(initialize, device, band, radio_mac)
+                if radio_index is None:
+                    report_logger.print_error(f"FAIL: Radio index not found for {device} ({band})")
+                    all_passed = False
+                else:
+                    report_logger.print_info(f"INFO: Radio index for {device} {band}: {radio_index}")
+            except Exception as e:
+                report_logger.print_error(f"FAIL: Failed to retrieve {band} radio index for {device}: {e}")
+                all_passed = False
+    # Retrieve and store BSS indexes
+    for device in devices:
+        for band in ("2g", "5g", "6g"):
+            try:
+                radio_mac = initialize.read_from_database(device, f"{band}_radio_mac")
+                if not radio_mac:
+                    report_logger.print_info(f"INFO: Skipping {band} radio for {device}: radio MAC not found")
+                    continue
+                bss_index = retrieve_and_store_bss_index(initialize, device, band, radio_mac)
+                if bss_index is None:
+                    report_logger.print_error(f"FAIL: BSS index not found for {device} ({band})")
+                    all_passed = False
+                else:
+                    report_logger.print_info(f"INFO: BSS index for {device} {band}: {bss_index}")
+            except Exception as e:
+                report_logger.print_error(f"FAIL: Failed to retrieve {band} BSS index for {device}: {e}")
+                all_passed = False
+    return all_passed

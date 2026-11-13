@@ -86,7 +86,6 @@ def test_agent_recovery_controller_rediscovery(initialize):
                     "device": extender,
                     "started_at": recovery_started[extender],
                     "results": recovery_times,
-                    "step": "2.3",
                     "recovery_type": "agent",
                 },
                 name=f"recover-{extender}",
