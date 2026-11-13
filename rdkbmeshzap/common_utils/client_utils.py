@@ -19,7 +19,6 @@ import re
 import shlex
 import time
 from rdkbmeshzap.common_utils import report_logger
-NMCLI_SCAN_RETRY_LIMIT = 6
 
 def get_client_bssids(client, ssid, ssh):
     """
