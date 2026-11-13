@@ -17,7 +17,7 @@
 
 import time
 from rdkbmeshzap.common_utils import client_utils, device_utils, report_logger
-from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
+from rdkbmeshzap.common_utils.link_stability_utils import *
 
 def test_em_fronthaul_phyrate_stability(initialize):
     """
@@ -59,7 +59,7 @@ def test_em_fronthaul_phyrate_stability(initialize):
                 bssid = initialize.get_association_status(client, "cli")
                 host = get_device_advertising_bssid(initialize, bssid)
                 state = get_client_phy_rates(initialize, client, host)
-                error = validate_client_phy_rates(state)
+                error = validate_phy_rates(state)
             except Exception as err:
                 report_logger.print_error(f"Unable to capture baseline PHY rate for '{client}': {err}")
                 continue
@@ -82,7 +82,7 @@ def test_em_fronthaul_phyrate_stability(initialize):
                     bssid = initialize.get_association_status(client, "cli")
                     host = get_device_advertising_bssid(initialize, bssid)
                     state = get_client_phy_rates(initialize, client, host)
-                    error = validate_client_phy_rates(state, baseline_rates[client], PHY_RATE_DROP_PERCENT)
+                    error = validate_phy_rates(state, baseline_rates[client], PHY_RATE_DROP_PERCENT)
                 except Exception as err:
                     report_logger.print_error(f"PHY-rate poll #{poll_count} failed for '{client}': {err}")
                     continue
@@ -101,7 +101,7 @@ def test_em_fronthaul_phyrate_stability(initialize):
             except Exception as err:
                 report_logger.print_error(f"Final PHY-rate Monitoring failed for '{client}': {err}")
                 continue
-            error = validate_client_phy_rates(state, baseline_rates[client], PHY_RATE_DROP_PERCENT)
+            error = validate_phy_rates(state, baseline_rates[client], PHY_RATE_DROP_PERCENT)
             if error:
                 report_logger.print_error(f"Client '{client}' final PHY validation failed: {error}")
                 continue

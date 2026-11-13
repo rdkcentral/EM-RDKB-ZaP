@@ -268,10 +268,13 @@ class FeatureInterfaceCLI(DatabaseModule,
 
     def get_backhaul_interface_details(self, device: str, interface: str) -> dict:
         """
-        Return connection, BSSID, RSSI, and uptime for a backhaul interface.
+        Return connection, BSSID, RSSI, rates, and uptime for a backhaul interface.
         """
         bssids = self.get_iw_link_details(device, interface, "bssid")
         signals = self.get_iw_link_details(device, interface, "signal")
+        rates = self.get_iw_link_details(device, interface, "rates")
+        tx_rate = next((rate[1:] for rate in rates if rate[0] == "tx"), None)
+        rx_rate = next((rate[1:] for rate in rates if rate[0] == "rx"), None)
         connected_times = self.get_iw_station_details(
             device, interface, "connected_time"
         )
@@ -279,6 +282,8 @@ class FeatureInterfaceCLI(DatabaseModule,
             "connected": bool(bssids),
             "bssid": bssids[0] if bssids else None,
             "rssi_dbm": int(signals[0]) if signals else None,
+            "tx_rate": tx_rate,
+            "rx_rate": rx_rate,
             "connected_time": (
                 int(connected_times[0]) if connected_times else None
             ),
