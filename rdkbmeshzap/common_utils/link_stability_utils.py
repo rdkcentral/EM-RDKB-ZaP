@@ -34,7 +34,7 @@ TEST_DURATION_SEC = 3600
 # Number of packets used for regular ping measurements.
 PING_COUNT = 10
 # Number of packets used for the final ping measurement.
-FINAL_PING_COUNT = 1000
+FINAL_PING_COUNT = 100
 # Maximum time allowed for the final ping in seconds.
 FINAL_PING_DEADLINE_SEC = 120
 # Remote log file used by the controller iperf server.
@@ -56,14 +56,19 @@ def parse_ping_metrics(output: str) -> dict:
         output - Raw Linux ping command output.
     Return Value: A dictionary containing loss_percent, min_ms, avg_ms, and max_ms.
     """
+    packet_match = re.search(
+        r"(\d+)\s+packets transmitted,\s+(\d+)\s+received",
+        output)
     loss_match = re.search(r"([0-9]+(?:\.[0-9]+)?)%\s*packet loss", output)
     rtt_match = re.search(
         r"(?:rtt|round-trip).*?=\s*"
         r"([0-9.]+)/([0-9.]+)/([0-9.]+)",
         output)
-    if not loss_match or not rtt_match:
+    if not packet_match or not loss_match or not rtt_match:
         raise ValueError(f"Unable to parse ping statistics: {output}")
     return {
+        "transmitted": int(packet_match.group(1)),
+        "received": int(packet_match.group(2)),
         "loss_percent": float(loss_match.group(1)),
         "min_ms": float(rtt_match.group(1)),
         "avg_ms": float(rtt_match.group(2)),
@@ -82,7 +87,10 @@ def parse_iperf_throughput(output: str) -> float:
         bits_per_second = result["end"]["sum_received"]["bits_per_second"]
         return float(bits_per_second) / 1_000_000
     except (ValueError, KeyError, TypeError, json.JSONDecodeError):
-        matches = re.findall(r"([0-9]+(?:\.[0-9]+)?)\s+([KMG]?)bits/sec",output,flags=re.IGNORECASE)
+        matches = re.findall(
+            r"([0-9]+(?:\.[0-9]+)?)\s+([KMG]?)bits/sec\s+receiver\b",
+            output,
+            flags=re.IGNORECASE)
         if not matches:
             raise ValueError(f"Unable to parse iperf3 throughput: {output}")
         value, unit = matches[-1]
@@ -112,7 +120,11 @@ def run_ping(initialize, client: str, gateway_ip: str, count: int,
         output = str(output)
     if error:
         raise Exception(str(error).strip())
-    return parse_ping_metrics(output)
+    metrics = parse_ping_metrics(output)
+    if metrics["transmitted"] < count:
+        raise ValueError(
+            f"Ping transmitted {metrics['transmitted']} of {count} requested packets")
+    return metrics
 
 def run_iperf(initialize, client: str, gateway_ip: str) -> float:
     """
