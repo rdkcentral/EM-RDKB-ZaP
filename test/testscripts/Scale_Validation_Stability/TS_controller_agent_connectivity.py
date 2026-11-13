@@ -17,7 +17,7 @@
 
 from rdkbmeshzap.common_utils import device_utils, report_logger
 import time
-from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
+from rdkbmeshzap.common_utils.scale_validation_utils import *
 
 def test_em_scale_controller_agent_stability(initialize):
     """

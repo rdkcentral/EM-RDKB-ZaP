@@ -17,7 +17,7 @@
 
 import time
 from rdkbmeshzap.common_utils import device_utils, report_logger
-from rdkbmeshzap.common_utils.link_and_scale_stability_utils import *
+from rdkbmeshzap.common_utils.scale_validation_utils import *
 
 def test_em_scale_cpu_utilization(initialize):
 	"""
