@@ -1,40 +1,39 @@
 # Test Case 1: EM_Backhaul_Wireless_Formation_LinkType
 ## Objective
-Verify that a Wi-Fi (wireless) backhaul link is successfully established between Agent 1 and its upstream Multi-AP device, and that LinkType is correctly reported as "Wi-Fi" in the Controller's DataElements data model.
+Verify that a Wi-Fi (Wireless) backhaul link is successfully established between the Agent under test and the Controller after the Agent reboots, and that the backhaul link type is Wi-Fi, by validating wireless association, backhaul SSID, signal strength, link type (bridge forwarding table), connectivity, and IEEE1905 topology formation.
 ## Test Type
 **Positive**
 ---
 ## Test Environment
 | Component | Description |
 |-----------|-------------|
-| Controller | EasyMesh Controller (rbuscli available) |
-| Agent 1 | EasyMesh Agent configured for Wi-Fi backhaul onboarding |
-| Packet Capture | `tcpdump` run locally on Agent 1's backhaul radio interface (e.g., `wlan1`) |
+| Controller | EasyMesh Controller |
+| Agent 1 | EasyMesh Agent configured for Wi-Fi backhaul |
+| Packet Capture | tcpdump running on Controller (brlan0) |
 ---
 ## Pre-Requisites
-1. Controller is onboarded and EasyMesh/IEEE 1905 services are running.
-2. Agent 1 has backhaul Wi-Fi credentials (SSID/passphrase) provisioned via WPS/M1-M2 or manual configuration.
-3. DataElements object is accessible through rbuscli on the Controller.
-4. Shell/console access to Agent 1 is available to run `tcpdump`.
-5. Agents 2–4 are held powered-off / factory-reset so they do not interfere with this single-Agent test.
+1. Controller is onboarded and EasyMesh services are running.
+2. Agent 1 is already onboarded and configured for wireless backhaul.
+3. Shell access to Controller and Agent 1 is available.
+4. Backhaul SSID (mesh_backhaul) is configured.
 ---
 ## Test Configuration
 | Parameter | Value |
 |-----------|-------|
 | Backhaul Variant | Wireless (Wi-Fi) |
 | Agent Under Test | Agent 1 |
-| Verification Method | rbuscli DataElements get + local tcpdump on Agent 1 |
-| Network Topology | Agent 1 --Wi-Fi backhaul--> Controller |
+| Verification Method | iw link status, bridge fdb, ping, IEEE1905 packet capture |
+| Network Topology | Agent 1 → Wi-Fi Backhaul → Controller |
 ---
 ## Test Procedure and Expected Results
 | Step Number | Controller/Agent | Expected Result |
 |-------------|------------|-----------------|
-| 1 | On Agent 1, start capture before onboarding: `tcpdump -i wlan1 -w /tmp/backhaul_wireless.pcap ether proto 0x888e` | tcpdump begins listening for EAPOL frames on Agent 1's backhaul radio interface |
-| 2 | Power on/trigger Agent 1 to associate to the backhaul BSS | Agent 1 begins 802.11 authentication/association to the backhaul BSS |
-| 3 | **[Packet Capture]** Stop capture after onboarding completes; inspect with `tcpdump -r /tmp/backhaul_wireless.pcap -n` | Capture shows 4 EAPOL-Key frames (M1–M4) exchanged on `wlan1` between Agent 1's bSTA and the backhaul BSS, confirming the 4-Way Handshake completed |
-| 4 | Verify link type using `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.MultiAPDevice.Backhaul.LinkType` (Agent 1's Device instance) | rbuscli returns "Wi-Fi", confirming the backhaul medium is wireless |
-| 5 | Verify backhaul status using `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.MultiAPDevice.Backhaul.MACAddress` and `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.MultiAPDevice.Backhaul.BackhaulMACAddress` (Agent 1's Device instance) | Both near-end and far-end MAC addresses are returned as valid, non-null MAC addresses, confirming the backhaul link endpoints are populated |
-| 6 | Verify BSS backhaul usage flag using `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.Radio.{i}.BSS.{i}.BackhaulUse` (Agent 1's backhaul BSS instance) | Value returned is "true" , confirming this BSS is actively in use as a backhaul BSS |
+| 1 | Start packet capture on Controller using `tcpdump -i brlan0 -w /tmp/ieee1905.pcap ether proto 0x893a` | Packet capture starts successfully. |
+| 2 | Reboot Agent 1 (CLI reboot) to trigger wireless backhaul onboarding and wait for the Wi-Fi backhaul on wifi1.3 to come up | Agent comes back up and initiates wireless backhaul onboarding. |
+| 3 | Verify the backhaul link using `iw dev wifi1.3 link` | Agent is connected to a backhaul BSSID, the connected SSID is mesh_backhaul, and a signal strength value is displayed. |
+| 4 | Verify the backhaul link type on Agent 1 using `bridge fdb show \| grep -i <controller_al_mac>` | The Controller AL MAC is learned on port `wifi1.3` (`dev wifi1.3`), confirming that the path to the Controller is the Wi-Fi backhaul, so the link type is Wi-Fi. If it is learned on a wired port (e.g. `eth*`/`lan*`) or not learned at all, the test fails. |
+| 5 | Verify connectivity by running `ping <agent_ip>` from the Controller | Successful ping response is observed. |
+| 6 | Stop capture after the IEEE1905 onboarding exchange completes and inspect using Wireshark | IEEE1905 Topology Discovery and AP Autoconfiguration Search messages for Agent 1 are observed, followed by a completed Topology Query/Response exchange between Agent 1 and the Controller, correlated using Agent 1's AL MAC. Topology Notification is logged for information only; its absence does not fail the test. |
 
 ---
 
@@ -157,42 +156,7 @@ Verify that in a hybrid backhaul configuration, when Agent 3's active Ethernet b
 
 ---
 
-# Test Case 5: EM_Backhaul_ALID_Verification
-## Objective
-Verify that after backhaul formation, Agent 1 correctly reports the IEEE 1905.1 Abstraction Layer ID (ALID) of the upstream Agent/Controller providing its backhaul, and that this is consistent with the topology discovered on the wire/air.
-## Test Type
-**Positive**
----
-## Test Environment
-| Component | Description |
-|-----------|-------------|
-| Controller | EasyMesh Controller (rbuscli available) |
-| Agent 1 | EasyMesh Agent with backhaul link already established (per Test Case 1) |
-| Packet Capture | `tcpdump` run locally on Agent 1's active backhaul interface (Wi-Fi, per Test Case 1) |
----
-## Pre-Requisites
-1. Backhaul link is already formed between Agent 1 and Controller.
-2. DataElements object is accessible through rbuscli on the Controller.
-3. Shell/console access to Agent 1 is available to run `tcpdump`.
----
-## Test Configuration
-| Parameter | Value |
-|-----------|-------|
-| Agent Under Test | Agent 1 |
-| Verification Method | rbuscli DataElements get + local tcpdump cross-check |
-| Network Topology | Agent 1 --Backhaul--> Controller (ALID known) |
----
-## Test Procedure and Expected Results
-| Step Number | Controller/Agent | Expected Result |
-|-------------|------------|-----------------|
-| 1 | On Agent 1, capture 1905.1 traffic on its active backhaul interface: `tcpdump -i <backhaul_intf> -w /tmp/alid_check.pcap ether proto 0x893a` while a fresh Topology Query/Response cycle occurs | Capture records Topology Discovery/Response CMDUs on Agent 1's active backhaul interface |
-| 2 | Inspect capture with `tcpdump -r /tmp/alid_check.pcap -n -v` | Capture shows the AL MAC Address TLV in the Topology Discovery/Response frames from the upstream device |
-| 3 | Verify ALID using `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.BackhaulALID` (Agent 1's Device instance) | rbuscli returns a MAC address value matching the AL MAC Address TLV observed in the capture, confirming Agent 1 correctly identifies its backhaul-providing device |
-| 4 | Cross-check Controller identity using `rbuscli get Device.WiFi.DataElements.Network.ControllerID` | rbuscli returns the Controller's unique identifier, which should match the BackhaulALID reported by Agent 1 as a directly-connected Agent |
-
----
-
-# Test Case 6: EM_Backhaul_Stats_Verification
+# Test Case 5: EM_Backhaul_Stats_Verification
 ## Objective
 Verify that once backhaul is established, the Controller's DataElements data model correctly populates traffic and link-quality statistics for Agent 2's backhaul link.
 ## Test Type
@@ -229,45 +193,46 @@ Verify that once backhaul is established, the Controller's DataElements data mod
 
 ---
 
-# Test Case 7: EM_Backhaul_SteerWiFiBackhaul_Command
+# Test Case 6: EM_Backhaul_Reassociation
 ## Objective
-Verify that the Controller can request Agent 1's Wi-Fi backhaul STA to steer (re-associate) to a different target BSS using the SteerWiFiBackhaul() command, and that the backhaul topology updates to reflect the new association.
+Verify that Agent 1's Wi-Fi backhaul STA successfully re-associates and restores connectivity after a controlled backhaul interface restart, and that a new authentication sequence is completed.
 ## Test Type
 **Positive**
 ---
 ## Test Environment
 | Component | Description |
 |-----------|-------------|
-| Controller | EasyMesh Controller (rbuscli available) |
-| Agent 1 | EasyMesh Agent with an active Wi-Fi backhaul link (per Test Case 1), and credentials already valid for a second target BSS |
-| Packet Capture | `tcpdump` run locally on Agent 1's backhaul radio interface (e.g., `wlan1`) |
+| Controller | EasyMesh Controller |
+| Agent 1 | EasyMesh Agent with active Wi-Fi backhaul link |
+| Packet Capture | tcpdump running on Agent 1 backhaul interface (wifi1.3) |
 ---
 ## Pre-Requisites
-1. Agent 1's Wi-Fi backhaul is currently associated to BSS-A.
-2. A second candidate backhaul BSS (BSS-B) is available and Agent 1 already holds credentials for it.
-3. Shell/console access to Agent 1 is available to run `tcpdump`.
+1. Agent 1 backhaul connection is operational.
+2. SSH access to Agent 1 is available.
+3. tcpdump utility is available on Agent 1.
+4. Backhaul interface is identified (e.g., wifi1.3).
 ---
 ## Test Configuration
 | Parameter | Value |
 |-----------|-------|
 | Agent Under Test | Agent 1 |
-| Command | `Device.WiFi.DataElements.Network.Device.{i}.MultiAPDevice.Backhaul.SteerWiFiBackhaul()` (Agent 1's Device instance) |
-| Input | TargetBSS = BSSID of BSS-B |
-| Verification Method | rbuscli DataElements get + local tcpdump on Agent 1 |
+| Trigger Method | Backhaul Interface Restart |
+| Interface | wifi1.3 |
+| Verification Method | iw, tcpdump, interface status verification |
 ---
 ## Test Procedure and Expected Results
-| Step Number | Controller/Agent | Expected Result |
+| Step Number | Controller/Agent Action | Expected Result |
 |-------------|------------|-----------------|
-| 1 | Verify current association using `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.MultiAPDevice.Backhaul.MACAddress` (Agent 1's Device instance) | rbuscli returns a MAC address matching BSS-A, confirming baseline association |
-| 2 | On Agent 1, start capture: `tcpdump -i wlan1 -w /tmp/steer_check.pcap ether proto 0x888e` | tcpdump begins listening for EAPOL frames on Agent 1's backhaul radio interface |
-| 3 | Invoke `rbuscli set Device.WiFi.DataElements.Network.Device.{i}.MultiAPDevice.Backhaul.SteerWiFiBackhaul() TargetBSS=<BSSID of BSS-B>` (Agent 1's Device instance) | Command is accepted for asynchronous execution |
-| 4 | **[Packet Capture]** Stop capture after steering completes; inspect with `tcpdump -r /tmp/steer_check.pcap -n` | Capture shows a fresh EAPOL-Key (M1–M4) exchange on `wlan1`, evidencing Agent 1's bSTA completed a new 4-Way Handshake consistent with a re-association to BSS-B |
-| 5 | Verify command result using `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.MultiAPDevice.Backhaul.Status` (Agent 1's Device instance) | rbuscli returns "Success", confirming the steering request completed |
-| 6 | Verify updated association using `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.MultiAPDevice.Backhaul.MACAddress` (Agent 1's Device instance) | rbuscli returns a MAC address matching BSS-B, confirming Agent 1's backhaul topology updated to the new target BSS |
+| 1 | Verify current association using `iw dev wifi1.3 link` | Current BSSID and connection state are displayed. |
+| 2 | Start capture using `tcpdump -i wifi1.3 -w /tmp/backhaul_reassoc.pcap ether proto 0x888e` | Packet capture starts successfully and monitors EAPOL traffic. |
+| 3 | Trigger re-association using `ifconfig wifi1.3 down`, then `ifconfig wifi1.3 up` | Backhaul link disconnects and initiates reconnection. |
+| 4 | Verify connection using `iw dev wifi1.3 link` | Agent reconnects successfully to a valid backhaul BSSID. |
+| 5 | Stop packet capture and inspect using `tcpdump -r /tmp/backhaul_reassoc.pcap -n` | Fresh EAPOL 4-Way Handshake (M1-M4) is observed. |
+| 6 | Compare pre- and post-reassociation connection details | Backhaul connectivity is restored successfully and link becomes operational. |
 
 ---
 
-# Test Case 8: EM_Backhaul_PreferredBackhauls_Configuration
+# Test Case 7: EM_Backhaul_PreferredBackhauls_Configuration
 ## Objective
 Verify that the Controller can configure a preferred backhaul link for Agent 4 using SetPreferredBackhauls(), and that the PreferredBackhauls table is correctly populated and honored during backhaul (re)formation.
 ## Test Type
@@ -301,154 +266,128 @@ Verify that the Controller can configure a preferred backhaul link for Agent 4 u
 
 ---
 
-# Test Case 9: EM_Backhaul_AKM_Security_Configuration
+# Test Case 8: EM_Backhaul_AKM_Security_Configuration
 ## Objective
-Verify that the backhaul BSS's allowed AKM suite for backhaul STA connections can be configured, and that Agent 1's Wi-Fi backhaul link only forms successfully when its bSTA's security credentials match the configured AKM.
+Verify that the configured backhaul AKM is used and that successful WPA authentication occurs during wireless backhaul association.
 ## Test Type
 **Positive**
 ---
 ## Test Environment
 | Component | Description |
 |-----------|-------------|
-| Controller | EasyMesh Controller (rbuscli available) |
-| Agent 1 | EasyMesh Agent attempting Wi-Fi backhaul association |
-| Packet Capture | `tcpdump` run locally on Agent 1's backhaul radio interface (e.g., `wlan1`) |
+| Controller | EasyMesh Controller |
+| Agent 1 | Wi-Fi Backhaul Agent |
+| Packet Capture | tcpdump running on Agent 1 |
 ---
 ## Pre-Requisites
-1. Backhaul BSS is up and advertising a backhaul-capable BSSID.
-2. Agent 1's bSTA is provisioned with credentials matching the AKM to be configured.
-3. Shell/console access to Agent 1 is available to run `tcpdump`.
+1. Backhaul SSID is available.
+2. Agent 1 contains valid credentials.
+3. Shell access to Agent 1 is available.
 ---
 ## Test Configuration
 | Parameter | Value |
 |-----------|-------|
 | Agent Under Test | Agent 1 |
-| Parameter Under Test | `Device.WiFi.DataElements.Network.Device.{i}.Radio.{i}.BSS.{i}.BackhaulAKMsAllowed` |
-| Verification Method | rbuscli DataElements set/get + local tcpdump on Agent 1 |
+| Verification Method | AKM verification and connection validation |
 ---
 ## Test Procedure and Expected Results
 | Step Number | Controller/Agent | Expected Result |
 |-------------|------------|-----------------|
-| 1 | Verify current AKM configuration using `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.Radio.{i}.BSS.{i}.BackhaulAKMsAllowed` (backhaul BSS instance) | rbuscli returns the currently configured AKM suite list |
-| 2 | Configure AKM using `rbuscli set Device.WiFi.DataElements.Network.Device.{i}.Radio.{i}.BSS.{i}.BackhaulAKMsAllowed "<AKM suite value>"` | Configuration is accepted and applied on the backhaul BSS |
-| 3 | On Agent 1, start capture: `tcpdump -i wlan1 -w /tmp/akm_check.pcap ether proto 0x888e`, then trigger Agent 1's bSTA to (re)associate to this backhaul BSS | tcpdump begins listening; Agent 1 begins association using credentials matching the configured AKM |
-| 4 | **[Packet Capture]** Stop capture; inspect with `tcpdump -r /tmp/akm_check.pcap -n -v` | Capture confirms a full EAPOL-Key (M1–M4) exchange completed on `wlan1`, evidencing the handshake succeeded under the configured AKM |
-| 5 | Verify successful backhaul formation using `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.Radio.{i}.BSS.{i}.BackhaulUse` (Agent 1's backhaul BSS instance) | rbuscli returns "true", confirming the backhaul BSS is now in use with the configured AKM |
+| 1 | Verify AKM configuration using `rbuscli get Device.WiFi.DataElements.Network.Device.1.Radio.1.BSS.1.BackhaulAKMsAllowed` | Configured AKM value is displayed. |
+| 2 | Verify wireless association using `iw dev wifi1.3 link` | Agent connects successfully to the backhaul SSID. |
+| 3 | Verify signal strength and connection parameters using `iw dev wifi1.3 link` | Valid link information is displayed. |
+| 4 | Verify connectivity between Controller and Agent using ping | Connectivity is established successfully. |
+| 5 | Verify Agent remains connected to the backhaul SSID | Stable wireless backhaul connection is maintained. |
 
 ---
 
-# Test Case 10: EM_Backhaul_Topology_DeviceCount_Update
+# Test Case 9: EM_Backhaul_DownstreamAgent_MultiHop_Verification
 ## Objective
-Verify that when Agent 4 successfully forms a backhaul link (joining Agents 1–3, already onboarded), the Controller's network topology (Device table) updates to include Agent 4.
+Verify that when Agent 2 forms its backhaul through Agent 1 as an intermediate hop, Agent 1 correctly identifies the downstream backhaul connection using link status, bridge FDB learning, and packet capture analysis, confirming a multi-hop topology without relying on DataElements parameters.
 ## Test Type
 **Positive**
 ---
 ## Test Environment
 | Component | Description |
 |-----------|-------------|
-| Controller | EasyMesh Controller (rbuscli available) |
-| Agent 1–3 | EasyMesh Agents already onboarded and backhauled to the Controller |
-| Agent 4 | New EasyMesh Agent not yet part of the network |
-| Packet Capture | `tcpdump` run locally on the Controller's interface facing Agent 4's backhaul medium |
----
-## Pre-Requisites
-1. Controller is running with an existing, known topology: Controller + Agent 1, Agent 2, Agent 3 (4 devices).
-2. Agent 4 has valid backhaul credentials for the medium under test (Wireless/Ethernet/Hybrid).
-3. Shell/console access to the Controller is available to run `tcpdump`.
----
-## Test Configuration
-| Parameter | Value |
-|-----------|-------|
-| Agent Under Test | Agent 4 |
-| Verification Method | rbuscli DataElements get + local tcpdump on Controller |
-| Network Topology (Before) | 4 devices (Controller + Agent 1, Agent 2, Agent 3) |
-| Network Topology (After) | 5 devices (Controller + Agent 1, Agent 2, Agent 3, Agent 4) |
----
-## Test Procedure and Expected Results
-| Step Number | Controller | Expected Result |
-|-------------|------------|-----------------|
-| 1 | Verify baseline device count using `rbuscli get Device.WiFi.DataElements.Network.DeviceNumberOfEntries` | rbuscli returns "4", the current device count before Agent 4 joins |
-| 2 | On the Controller, start capture: `tcpdump -i <uplink_intf> -w /tmp/topology_check.pcap ether proto 0x893a` | tcpdump begins listening for IEEE 1905.1 CMDU frames on the Controller's own interface |
-| 3 | Power on and onboard Agent 4 so it forms its backhaul link | Agent 4 begins backhaul association on the configured medium |
-| 4 | **[Packet Capture]** Stop capture after onboarding; inspect with `tcpdump -r /tmp/topology_check.pcap -n -v` | Capture shows Topology Discovery, Topology Query, and Topology Response CMDUs, followed by a Topology Notification CMDU received by the Controller announcing Agent 4 |
-| 5 | Verify updated device count using `rbuscli get Device.WiFi.DataElements.Network.DeviceNumberOfEntries` | rbuscli returns "5", confirming the topology was updated with Agent 4 |
-| 6 | Verify Agent 4's identity using `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.ID` (Agent 4's new Device instance) | rbuscli returns a valid MAC address uniquely identifying Agent 4, confirming it is correctly represented in the topology |
-
----
-
-# Test Case 11: EM_Backhaul_DownstreamAgent_MACList_Verification
-## Objective
-Verify that when Agent 2 forms its backhaul through Agent 1 as an intermediate hop, Agent 1 correctly reports Agent 2's backhaul MAC address, confirming a multi-hop topology.
-## Test Type
-**Positive**
----
-## Test Environment
-| Component | Description |
-|-----------|-------------|
-| Controller | EasyMesh Controller (rbuscli available) |
-| Agent 1 | Intermediate EasyMesh Agent (already backhauled to Controller) |
-| Agent 2 | Downstream EasyMesh Agent (backhauls through Agent 1) |
-| Packet Capture | `tcpdump` run locally on Agent 1's downstream-facing backhaul interface |
+| Controller | EasyMesh Controller |
+| Agent 1 | Intermediate EasyMesh Agent |
+| Agent 2 | Downstream EasyMesh Agent |
+| Packet Capture | tcpdump running on Agent 1 downstream-facing backhaul interface |
 ---
 ## Pre-Requisites
 1. Agent 1 already has an established backhaul link to the Controller.
-2. Agent 2 is configured to backhaul through Agent 1 (multi-hop topology).
-3. Shell/console access to Agent 1 is available to run `tcpdump`.
-4. Agents 3 and 4 are held powered-off / factory-reset so they do not interfere with this multi-hop test.
+2. Agent 2 is configured to backhaul through Agent 1.
+3. Shell access to Agent 1 and Agent 2 is available.
+4. tcpdump, iw, and bridge utilities are available.
+5. Agents 3 and 4 are powered off or factory reset.
+6. DataElements parameters are unavailable in the current build.
+7. Agent 2 remains powered OFF until Step 5.
+8. Existing packet capture files can be removed before test execution.
 ---
 ## Test Configuration
 | Parameter | Value |
 |-----------|-------|
-| Agents Under Test | Agent 1 (intermediate), Agent 2 (downstream) |
-| Network Topology | Controller <--Backhaul-- Agent 1 <--Backhaul-- Agent 2 |
-| Verification Method | rbuscli DataElements get + local tcpdump on Agent 1 |
+| Agents Under Test | Agent 1 (Intermediate), Agent 2 (Downstream) |
+| Network Topology | Controller ←→ Agent 1 ←→ Agent 2 |
+| Verification Method | Link Status + Bridge FDB + Packet Capture |
 ---
 ## Test Procedure and Expected Results
 | Step Number | Controller/Agent | Expected Result |
 |-------------|------------|-----------------|
-| 1 | On Agent 1, start capture on its downstream-facing interface: `tcpdump -i <downstream_intf> -w /tmp/multihop_check.pcap` (add `ether proto 0x893a` for Ethernet, or `ether proto 0x888e` for Wi-Fi) | tcpdump begins listening on Agent 1's downstream backhaul interface |
-| 2 | Power on Agent 2 and allow it to form backhaul through Agent 1 | Agent 2 begins backhaul association to Agent 1 on the configured medium |
-| 3 | **[Packet Capture]** Stop capture after onboarding; inspect with `tcpdump -r /tmp/multihop_check.pcap -n` | Capture on Agent 1 confirms successful EAPOL handshake (Wi-Fi) or Topology Discovery/Response CMDUs (Ethernet) exchanged between Agent 1 and Agent 2 |
-| 4 | Verify downstream MAC list on Agent 1 using `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.BackhaulDownMACAddress` (Agent 1's Device instance) | rbuscli returns a comma-separated list containing Agent 2's backhaul link MAC address |
-| 5 | Verify Agent 2's upstream reference using `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.BackhaulALID` (Agent 2's Device instance) | rbuscli returns Agent 1's AL MAC address, confirming Agent 2 correctly identifies Agent 1 as its backhaul provider |
-| 6 | Verify overall device count using `rbuscli get Device.WiFi.DataElements.Network.DeviceNumberOfEntries` | rbuscli returns 3 (Controller + Agent 1 + Agent 2), confirming the multi-hop topology is fully reflected |
+| 1 | Verify Agent 1 upstream backhaul using `iw dev wifi1.3 link` | Agent 1 shows active connection with SSID mesh_backhaul. |
+| 2 | Identify downstream backhaul AP interface using `iw dev` | Backhaul AP interface (wifi1.1) is identified with the expected SSID and valid BSSID. |
+| 3 | Check existing downstream topology by searching for dynamically created downstream STA interfaces | Existing downstream STA interface is logged if present; otherwise no downstream STA interface is detected. |
+| 4 | Start packet capture using `tcpdump -i wifi1.1 -w /tmp/multihop_check.pcap` | Packet capture starts successfully on Agent 1 downstream interface. |
+| 5 | Power on Agent 2 and allow onboarding through Agent 1 | Agent 2 associates through Agent 1 and a downstream STA interface (wifi1.1.staXX) is detected on Agent 1. |
+| 6 | Verify Agent 2 backhaul association using `iw dev wifi1.3 link` | Agent 2 is connected to Agent 1's backhaul BSSID and station interface is operational. |
+| 7 | Verify dynamic bridge learning using `bridge fdb show` | Agent 2 MAC address is dynamically learned on the downstream interface or driver-created per-station port. |
+| 8 | Stop packet capture and verify capture file | Packet capture stops successfully and the pcap file is generated with valid content. |
+| 9 | Analyze pcap using `tcpdump -r /tmp/multihop_check.pcap -n` | IEEE1905 traffic (EtherType 0x893a) is observed on the downstream link. |
+| 10 | Verify EAPOL authentication traffic | EAPOL-Key authentication messages associated with Agent 2 are observed in the capture. |
+| 11 | Verify Agent 2 MAC activity in capture | Traffic sourced by Agent 2 backhaul MAC address is observed, confirming active downstream communication through Agent 1. |
+| 12 | Correlate all observations and re-validate topology | Agent 1 remains connected to the Controller, Agent 2 remains connected to Agent 1, downstream STA interface persists, FDB learning remains valid, and the multi-hop topology is successfully verified. |
+
 
 ---
 
-# Test Case 12: EM_Backhaul_Wireless_Formation_Negative_InvalidCredentials
+# Test Case 10: EM_Backhaul_Wireless_Formation_Negative_InvalidCredentials
 ## Objective
-Verify that a Wi-Fi backhaul link fails to form when Agent 4's bSTA presents invalid credentials, and that the data model correctly reflects the absence of a backhaul link (negative test).
+Verify that wireless backhaul onboarding fails when invalid credentials are configured and confirm that the Agent does not establish a wireless backhaul connection, does not complete onboarding, and does not rejoin the active EasyMesh topology.
 ## Test Type
 **Negative**
 ---
 ## Test Environment
 | Component | Description |
 |-----------|-------------|
-| Controller | EasyMesh Controller (rbuscli available) |
-| Agent 4 | EasyMesh Agent intentionally provisioned with an incorrect backhaul passphrase |
-| Packet Capture | `tcpdump` run locally on Agent 4's backhaul radio interface (e.g., `wlan1`) |
+| Controller | EasyMesh Controller |
+| Agent 1 | EasyMesh Agent with invalid backhaul credentials |
+| Packet Capture | tcpdump running on Controller |
 ---
 ## Pre-Requisites
-1. Backhaul BSS is up and advertising normally.
-2. Agent 4's bSTA is deliberately configured with an invalid PSK/passphrase for the backhaul BSS.
-3. Shell/console access to Agent 4 is available to run `tcpdump`.
-4. Agents 1–3 are held powered-off / factory-reset so they do not interfere with this single-Agent test.
+1. Controller and Agent are successfully onboarded.
+2. Wireless backhaul connection is operational.
+3. SSH access to Controller and Agent is available.
+4. Backhaul SSID is available.
+5. Packet capture utilities are available.
+6. Agent backhaul configuration file can be modified through automation.
 ---
 ## Test Configuration
 | Parameter | Value |
 |-----------|-------|
-| Backhaul Variant | Wireless (Wi-Fi), invalid credentials |
-| Agent Under Test | Agent 4 |
-| Verification Method | rbuscli DataElements get + local tcpdump on Agent 4 |
+| Backhaul Variant | Wireless |
+| Agent Under Test | Agent 1 |
+| Verification Method | Ping and IEEE1905 packet capture |
+| Network Topology | Agent 1 → Wi-Fi Backhaul → Controller |
 ---
 ## Test Procedure and Expected Results
 | Step Number | Controller/Agent | Expected Result |
 |-------------|------------|-----------------|
-| 1 | On Agent 4, start capture: `tcpdump -i wlan1 -w /tmp/negative_check.pcap ether proto 0x888e` | tcpdump begins listening for EAPOL frames on Agent 4's backhaul radio interface |
-| 2 | Power on Agent 4 with the invalid backhaul passphrase configured | Agent 4 attempts association to the backhaul BSS |
-| 3 | **[Packet Capture]** Stop capture after the attempt; inspect with `tcpdump -r /tmp/negative_check.pcap -n -v` | Capture shows EAPOL-Key M1 (and possibly M2) exchanged, but no M3/M4 completion — consistent with a MIC failure due to the credential mismatch |
-| 4 | Verify no backhaul MAC is populated using `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.MultiAPDevice.Backhaul.MACAddress` (Agent 4's Device instance) | rbuscli returns an empty/null value, confirming no backhaul link was successfully formed |
-| 5 | Verify Agent 4 is absent from topology using `rbuscli get Device.WiFi.DataElements.Network.DeviceNumberOfEntries` | rbuscli returns the same device count as before Agent 4's onboarding attempt, confirming the topology was not updated for the failed Agent |
-| 6 | Verify BSS backhaul-use flag using `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.Radio.{i}.BSS.{i}.BackhaulUse` (Agent 4's bSTA-facing BSS entry) | rbuscli returns "false" for this entry (or the entry is absent), confirming no active backhaul usage was established for Agent 4 |
+| 1 | Verify Agent is connected to Controller and reachable before test execution | Agent backhaul is operational and Agent is reachable. |
+| 2 | Start packet capture on Controller using IEEE1905 filter | Capture starts successfully. |
+| 3 | Configure invalid backhaul credentials on Agent (`/nvram/EasymeshCfg.json`, backup kept) and reboot the Agent (`sync; reboot`) | Agent boots with only the invalid credentials and attempts to form the backhaul. |
+| 4 | Observe Agent state for the configured timeout period by pinging the Agent from the Controller | Agent does not successfully establish backhaul and remains unreachable from the Controller throughout the observation window. |
+| 5 | Stop packet capture | Capture file is generated successfully. |
+| 6 | Analyze the captured IEEE1905 traffic for the Agent | Onboarding does not complete (no AP Autoconfiguration WSC from the Controller to the Agent) and the Agent does not rejoin the active topology (no topology messages from the Agent). Partial onboarding traffic may be present and is informational only. |
 
 ---
