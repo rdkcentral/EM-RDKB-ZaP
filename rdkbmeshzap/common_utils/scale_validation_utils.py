@@ -16,15 +16,12 @@
 # limitations under the License.
 
 import re
+import time
 import uuid
 
 from rdkbmeshzap.common_utils import device_utils, report_logger
-from rdkbmeshzap.common_utils.link_stability_utils import parse_iperf_throughput
+from rdkbmeshzap.common_utils.link_stability_utils import POLL_INTERVAL_SEC, TEST_DURATION_SEC, parse_iperf_throughput
 
-# Polling interval (seconds) between consecutive stability checks.
-POLL_INTERVAL_SEC = 600
-# Total duration (seconds) for which stability monitoring is performed.
-TEST_DURATION_SEC = 3600
 # Maximum allowed percentage increase from the baseline metric value.
 MAX_BASELINE_INCREASE_PERCENT = 20.0
 # Minimum available memory percentage required for a healthy system.
@@ -37,11 +34,40 @@ MONOTONIC_GROWTH_SAMPLES = 3
 MIN_MONOTONIC_GROWTH_MB = 50.0
 # Maximum allowed increase in used memory percentage from baseline.
 MAX_BASELINE_USED_INCREASE_PERCENT = 20.0
+# Duration in seconds for each iperf throughput sample.
 IPERF_SAMPLE_DURATION_SEC = 10
+# Minimum acceptable throughput ratio compared with the baseline.
 MIN_THROUGHPUT_RATIO = 0.8
+# Remote log path used by the iperf server.
 IPERF_SERVER_LOG = "/tmp/scale_client_traffic_server.log"
+# Identifier used for the Controller device.
 CONTROLLER_DEVICE = "controller"
-
+# Supported SSID and operating-channel configuration parameters.
+CONFIGURATION_PARAMETERS = ("ssid", "channel_2_4", "channel_5", "channel_6")
+# Maximum time allowed for configuration propagation.
+CONFIGURATION_PROPAGATION_TIMEOUT_SEC = 60
+# Time between configuration propagation checks.
+CONFIGURATION_POLL_INTERVAL_SEC = 5
+# Maximum number of configuration propagation checks.
+CONFIGURATION_MAX_POLL_ATTEMPTS = 3
+# Mapping of channel parameters to bands, setters, and candidate channels.
+CONFIGURATION_CHANNEL_BANDS = {
+    "channel_2_4": (
+        "2.4",
+        "set_channel_preference_for_2_4_band",
+        (1, 6),
+    ),
+    "channel_5": (
+        "5",
+        "set_channel_preference_for_5g_band",
+        (42, 58, 106),
+    ),
+    "channel_6": (
+        "6",
+        "set_channel_preference_for_6g_band",
+        (7, 23, 39),
+    ),
+}
 
 def get_enabled_scale_setup(initialize, scale: str | None = None) -> dict:
     """
@@ -299,3 +325,150 @@ def get_client_association_mismatches(baseline: dict, current: dict) -> list:
         if missing_macs:
             mismatches.append(f"{device} client association mismatch")
     return mismatches
+
+def get_configuration_parameter(initialize, device: str, parameter: str):
+    """
+    Syntax : get_configuration_parameter(initialize, device, parameter)
+    Description : Reads a supported SSID or operating-channel configuration parameter.
+    Parameters :
+        initialize - Testbed initialization and database interface.
+        device - Mesh device name, such as `controller` or an extender.
+        parameter - Configuration name from CONFIGURATION_PARAMETERS.
+    Return Value: The current parameter value.
+    """
+    if parameter == "ssid":
+        return initialize.get_ssid(device, "2g_ssid_index", "cli")
+    if parameter in CONFIGURATION_CHANNEL_BANDS:
+        band = CONFIGURATION_CHANNEL_BANDS[parameter][0]
+        return initialize.get_operating_channel(device, band)
+    raise ValueError(f"Unsupported propagation parameter: {parameter}")
+
+def set_controller_configuration_parameter(initialize, parameter: str, current_value):
+    """
+    Syntax : set_controller_configuration_parameter(initialize, parameter, current_value)
+    Description : Changes a supported Controller SSID or operating channel to the next test value.
+    Parameters :
+        initialize - Testbed initialization and database interface.
+        parameter - Configuration name from CONFIGURATION_PARAMETERS.
+        current_value - Current Controller value used to select the next value.
+    Return Value: The target value applied to the Controller.
+    """
+    if parameter == "ssid":
+        target_value = initialize.get_random_ssid()
+        initialize.set_ssid("controller", "mld_iface_index", target_value, "gui")
+        return target_value
+    if parameter in CONFIGURATION_CHANNEL_BANDS:
+        current_channel = int(current_value)
+        band, setter_name, channel_candidates = CONFIGURATION_CHANNEL_BANDS[parameter]
+        if current_channel in channel_candidates:
+            current_index = channel_candidates.index(current_channel)
+            target_value = channel_candidates[(current_index + 1) % len(channel_candidates)]
+        else:
+            target_value = channel_candidates[0]
+        getattr(initialize, setter_name)("controller",uncheck_channel=current_channel,check_channel=target_value,priority=14,)
+        return target_value
+    raise ValueError(f"Unsupported propagation parameter: {parameter}")
+
+def get_configuration_mismatches(initialize, agents: list, parameter: str, expected_value):
+    """
+    Syntax : get_configuration_mismatches(initialize, agents, parameter, expected_value)
+    Description : Compares an expected Controller configuration value with all extenders.
+    Parameters :
+        initialize - Testbed initialization and database interface.
+        agents - Extender device names to check.
+        parameter - Configuration name from CONFIGURATION_PARAMETERS.
+        expected_value - Value expected on every extender.
+    Return Value: A tuple containing mismatch descriptions and observed values.
+    """
+    mismatches = []
+    observed = {}
+    for agent in agents:
+        try:
+            if parameter == "ssid":
+                initialize.check_ssid(agent, "mld_iface_index", str(expected_value), "cli")
+                observed[agent] = expected_value
+            else:
+                current_value = get_configuration_parameter(
+                    initialize, agent, parameter)
+                observed[agent] = current_value
+                if str(current_value) != str(expected_value):
+                    mismatches.append(f"{agent}: expected={expected_value},observed={current_value}")
+        except Exception as error:
+            mismatches.append(f"{agent}: read failed: {error}")
+    return mismatches, observed
+
+def wait_for_configuration_propagation(initialize, agents: list, parameter: str, expected_value):
+    """
+    Syntax : wait_for_configuration_propagation(initialize, agents, parameter, expected_value)
+    Description : Checks whether a configuration value has propagated to all extenders.
+    Parameters :
+        initialize - Testbed initialization and database interface.
+        agents - Extender device names to check.
+        parameter - Configuration name from CONFIGURATION_PARAMETERS.
+        expected_value - Value expected on every extender.
+    Return Value: A tuple containing the propagation status and observed values.
+    """
+    deadline = time.monotonic() + CONFIGURATION_PROPAGATION_TIMEOUT_SEC
+    observed = {}
+    for attempt in range(CONFIGURATION_MAX_POLL_ATTEMPTS):
+        mismatches, observed = get_configuration_mismatches(
+            initialize, agents, parameter, expected_value)
+        if not mismatches:
+            return True, observed
+        if (attempt == CONFIGURATION_MAX_POLL_ATTEMPTS - 1
+            or time.monotonic() >= deadline):
+            return False, observed
+        time.sleep(CONFIGURATION_POLL_INTERVAL_SEC)
+    return False, observed
+
+def wait_for_controller_configuration_update(initialize, parameter: str, expected_value):
+    """
+    Syntax : wait_for_controller_configuration_update(initialize, parameter, expected_value)
+    Description : Checks whether the Controller reports the requested configuration value.
+    Parameters :
+        initialize - Testbed initialization and database interface.
+        parameter - Configuration name from CONFIGURATION_PARAMETERS.
+        expected_value - Value expected on the Controller.
+    Return Value: A tuple containing the update status and observed value.
+    """
+    deadline = time.monotonic() + CONFIGURATION_PROPAGATION_TIMEOUT_SEC
+    observed = None
+    for attempt in range(CONFIGURATION_MAX_POLL_ATTEMPTS):
+        if parameter == "ssid":
+            try:
+                initialize.check_ssid("controller", "mld_iface_index", str(expected_value), "cli")
+                return True, expected_value
+            except Exception as error:
+                observed = f"SSID check failed: {error}"
+        else:
+            observed = get_configuration_parameter(
+                initialize, "controller", parameter)
+        if str(observed) == str(expected_value):
+            return True, observed
+        if (attempt == CONFIGURATION_MAX_POLL_ATTEMPTS - 1
+            or time.monotonic() >= deadline):
+            return False, observed
+        time.sleep(CONFIGURATION_POLL_INTERVAL_SEC)
+    return False, observed
+
+def restore_controller_configuration_parameter(initialize, parameter: str, original_value):
+    """
+    Syntax : restore_controller_configuration_parameter(initialize, parameter, original_value)
+    Description : Restores a Controller SSID or operating channel to its original value.
+    Parameters :
+        initialize - Testbed initialization and database interface.
+        parameter - Configuration name from CONFIGURATION_PARAMETERS.
+        original_value - Original value to restore.
+    Return Value: None.
+    """
+    current_value = get_configuration_parameter(
+        initialize, "controller", parameter)
+    if str(current_value) == str(original_value):
+        return
+    if parameter == "ssid":
+        initialize.set_ssid("controller", "mld_iface_index", original_value, "gui")
+    elif parameter in CONFIGURATION_CHANNEL_BANDS:
+        band, setter_name = (
+            CONFIGURATION_CHANNEL_BANDS[parameter][0],
+            CONFIGURATION_CHANNEL_BANDS[parameter][1],)
+        getattr(initialize, setter_name)("controller",uncheck_channel=current_value,check_channel=original_value,priority=14,)

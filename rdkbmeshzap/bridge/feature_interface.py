@@ -371,6 +371,36 @@ class FeatureInterface(FeatureInterfaceModules):
         iface_obj = self.get_feature_interface_module_object('gui')
         iface_obj.set_channel_preference_for_2_4_band(device, uncheck_channel, check_channel, priority)
 
+    def set_channel_preference_for_5g_band(self, device: str, uncheck_channel: int, check_channel: int, priority: int):
+        """
+        Set the channel preference for the 5 GHz band on a device through the GUI interface.
+
+        Args:
+            device: Device name.
+            uncheck_channel: Channel to remove from the preferred-channel selection.
+            check_channel: Channel to add to the preferred-channel selection.
+            priority: Priority assigned to the selected channel.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object('gui')
+        iface_obj.set_channel_preference_for_5g_band(
+            device, uncheck_channel, check_channel, priority)
+
+    def set_channel_preference_for_6g_band(self, device: str, uncheck_channel: int, check_channel: int, priority: int):
+        """
+        Set the channel preference for the 6 GHz band on a device through the GUI interface.
+
+        Args:
+            device: Device name.
+            uncheck_channel: Channel to remove from the preferred-channel selection.
+            check_channel: Channel to add to the preferred-channel selection.
+            priority: Priority assigned to the selected channel.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object('gui')
+        iface_obj.set_channel_preference_for_6g_band(
+            device, uncheck_channel, check_channel, priority)
+
     def set_fronthaul_network_state(self,
                                device: str,
                                profile_identifier,
