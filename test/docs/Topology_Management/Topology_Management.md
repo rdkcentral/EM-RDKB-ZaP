@@ -1,8 +1,181 @@
-### Topology: 1 Controller + 3 Agents (Agent-1, Agent-2, Agent-3)
+# Test Case 1: EM_Topology_DynamicTopology_Validation
+
+## Objective
+
+Dynamically discover the active Controller-to-Extender topology, validate each Extender's parent and backhaul association, and classify the resulting topology.
+
+## Test Type
+
+**Positive**
 
 ---
 
-# Test Case 1: EM_Topology_Baseline_DeviceCount
+## Test Environment
+
+| Component | Description |
+|-----------|-------------|
+| Controller | EasyMesh Controller |
+| Extenders | 3 EasyMesh Agents |
+| Network Topology Type | Hybrid Topology |
+
+---
+
+## Pre-Requisites
+
+1. Controller and all Extenders are onboarded with active EasyMesh backhaul connections.
+2. The Controller and all Extenders are reachable over SSH.
+
+---
+
+## Test Configuration
+
+| Parameter | Value |
+|-----------|-------|
+| Verification Method | Live wireless-interface, bridge station, and backhaul information |
+| Network Topology | Controller + all enabled Extenders; topology shape is discovered at runtime |
+| Supported Topology Types | Star, daisy-chain, hybrid |
+
+---
+
+## Test Procedure and Expected Results
+
+| Step Number | Controller | Extenders | Expected Result |
+|-------------|------------|-----------|-----------------|
+| 1 | N/A | Discover enabled Extenders from `infra.yaml`. | At least one enabled Extender is found. |
+| 2 | Read wireless-interface details from the Controller. | Read wireless-interface details from all enabled Extenders. | Wireless-interface details are collected for every device. |
+| 3 | N/A | Read each Extender's configured backhaul interface and MAC address. | Each Extender has a configured backhaul interface with a discoverable MAC address; duplicate backhaul MAC addresses fail validation. |
+| 4 | Discover bridge station interfaces on the Controller. | Discover bridge station interfaces on all enabled Extenders. | Bridge station interfaces are collected using each device's configured `bridge_iface`. |
+| 5 | Read associated station MACs from the Controller bridge station interfaces. | Read associated station MACs from the Extender bridge station interfaces. | Associated station MAC addresses are collected successfully for each device. |
+| 6 | N/A | Resolve each Extender's parent using its connected backhaul BSSID. | A valid upstream parent is identified for every Extender. |
+| 7 | N/A | Compare each Extender's backhaul MAC with the station MACs on its identified parent. | Every Extender's backhaul MAC is present in its parent's station table. |
+| 8 | N/A | Validate each Extender's parent chain. | Every chain reaches the Controller and contains no loops. |
+| 9 | Classify the discovered parent graph. | N/A | The graph is classified as star, daisy-chain, or hybrid; unsupported or invalid graphs fail. |
+
+---
+
+# Test Case 2: EM_Topology_AfterExtenderReboots
+
+## Objective
+
+Reboot all  Extenders concurrently, verify their recovery within the configured Agent recovery KPI, and validate the topology after recovery.
+
+## Test Type
+
+**Positive**
+
+---
+
+## Test Environment
+
+| Component | Description |
+|-----------|-------------|
+| Controller | EasyMesh Controller |
+| Extenders | 3 EasyMesh Agents |
+| Network Topology Type | Hybrid Topology |
+
+---
+
+## Pre-Requisites
+
+1. Controller and all Extenders are onboarded with active EasyMesh backhaul connections.
+2. The Controller and all Extenders are reachable over SSH.
+3. `test_parameters.agent_recovery_kpi_seconds` is configured.
+
+---
+
+## Test Configuration
+
+| Parameter | Value |
+|-----------|-------|
+| Verification Method | CLI reboot, concurrent SSH recovery, and live topology validation |
+| Recovery KPI | `test_parameters.agent_recovery_kpi_seconds` (240 seconds by default) |
+| Network Topology | Controller and 3 Extenders in an active EasyMesh Hybrid topology |
+
+---
+
+## Test Procedure and Expected Results
+
+| Step Number | Controller | Extenders | Expected Result |
+|-------------|------------|-----------|-----------------|
+| 1 | N/A | Discover enabled Extenders and start the shared recovery timer. | At least one enabled Extender is found and the recovery window begins before reboot commands are issued. |
+| 2 | N/A | Issue CLI reboot commands to all enabled Extenders concurrently. | Reboot commands are attempted for all Extenders and each command result is recorded. |
+| 3 | N/A | Wait 10 seconds for reboot sessions to close. | The wait completes before recovery attempts begin. |
+| 4 | N/A | Attempt recovery for every Extender concurrently. | Recovery is attempted for every Extender concurrently and measured against the configured Agent recovery KPI. |
+| 5 | N/A | Evaluate reboot-command and recovery results after all recovery attempts complete. | The test fails if any reboot command fails or any Extender fails to recover within the configured KPI. |
+| 6 | Wait 30 seconds for topology updates to propagate. | N/A | The topology propagation wait completes. |
+| 7 | Read wireless-interface details. | Read wireless-interface details. | Interface details are collected for the Controller and every enabled Extender. |
+| 8 | N/A | Read each Extender's configured backhaul interface and MAC address. | Each Extender has a discoverable backhaul MAC; duplicate backhaul MACs fail validation. |
+| 9 | Discover the configured bridge station interfaces. | Discover the configured bridge station interfaces. | Bridge station interfaces are collected for the Controller and every enabled Extender. |
+| 10 | Read associated station MACs from the bridge station interfaces. | Read associated station MACs from the bridge station interfaces. | Station MACs are collected for every discovered bridge station interface. |
+| 11 | N/A | Resolve each Extender's parent using its connected backhaul BSSID. | A valid upstream parent is identified for every Extender. |
+| 12 | N/A | Compare each Extender's backhaul MAC with the station MACs on its identified parent. | Every Extender's backhaul MAC is present in its parent's station table. |
+| 13 | N/A | Validate each Extender's parent chain. | Every parent chain reaches the Controller and contains no loops. |
+| 14 | Classify the discovered parent graph. | N/A | The graph is classified as star, daisy-chain, or hybrid; unsupported or invalid graphs fail. |
+
+---
+
+# Test Case 3: EM_Topology_Controller_UI_Topology_Validation
+
+## Objective
+
+Verify that the Controller's Network Topology UI displays all configured devices and links consistently with the live topology discovered from the devices.
+
+## Test Type
+
+**Positive**
+
+---
+
+## Test Environment
+
+| Component | Description |
+|-----------|-------------|
+| Controller | EasyMesh Controller |
+| Extenders | 3 EasyMesh Agents |
+| Network Topology Type | Hybrid Topology |
+
+---
+
+## Pre-Requisites
+
+1. Controller and all Extenders are onboarded with active EasyMesh backhaul connections.
+2. The Controller and all Extenders are reachable over SSH.
+3. The Controller UI is accessible, and the Network Topology page can be opened.
+
+---
+
+## Test Configuration
+
+| Parameter | Value |
+|-----------|-------|
+| Verification Method | Live topology discovery and Controller Network Topology UI graph comparison |
+| Network Topology | Controller and 3 Extenders in an active EasyMesh Hybrid topology |
+| Device Matching | UI node tooltip radio MAC addresses matched against configured device radio MAC addresses |
+| Link Validation | UI graph links compared against the discovered Controller and Extender parent relationships |
+
+---
+
+## Test Procedure and Expected Results
+
+| Step Number | Controller | Extenders | Expected Result |
+|-------------|------------|-----------|-----------------|
+| 1 | N/A | Discover enabled Extenders. | At least one enabled Extender is found. |
+| 2 | Read wireless-interface details. | Read wireless-interface details. | Interface details are collected for the Controller and every enabled Extender. |
+| 3 | N/A | Read each Extender's configured backhaul interface and MAC address. | Each Extender has a discoverable backhaul MAC; duplicate backhaul MACs fail validation. |
+| 4 | Discover the configured bridge station interfaces. | Discover the configured bridge station interfaces. | Bridge station interfaces are collected for the Controller and every enabled Extender. |
+| 5 | Read associated station MACs from the bridge station interfaces. | Read associated station MACs from the bridge station interfaces. | Station MACs are collected for every discovered bridge station interface. |
+| 6 | N/A | Resolve each Extender's parent using its connected backhaul BSSID. | A valid upstream parent is identified for every Extender. |
+| 7 | N/A | Compare each Extender's backhaul MAC with the station MACs on its identified parent. | Every Extender's backhaul MAC is present in its parent's station table. |
+| 8 | N/A | Validate each Extender's parent chain. | Every parent chain reaches the Controller and contains no loops. |
+| 9 | Classify the live parent graph. | N/A | The live topology is classified as star, daisy-chain, or hybrid. |
+| 10 | Navigate to the Controller Network Topology page and read the rendered graph. | N/A | The page and graph are accessible. |
+| 11 | Match UI nodes to configured devices using the radio MACs shown in tooltips; identify the unique root node. | Provide configured device radio MACs for UI-node matching. | Exactly one root node is identified, and each UI node maps to zero or one configured device; ambiguous or duplicate device mappings fail. |
+| 12 | Verify every configured device maps to a UI node. | N/A | Every configured device maps to exactly one UI node. |
+| 13 | Compare UI links with the discovered parent relationships. | Provide the discovered Extender parent relationships for comparison. | All expected links are present, no unexpected links are present, and the UI topology matches the live topology. |
+
+---
+
+# Test Case 4: EM_Topology_Baseline_DeviceCount
 
 ## Objective
 
@@ -51,7 +224,7 @@ Verify the baseline number of devices maintained in the Controller's topology fo
 
 ---
 
-# Test Case 2: EM_Topology_AgentAddition_NewDeviceEntry
+# Test Case 5: EM_Topology_AgentAddition_NewDeviceEntry
 
 ## Objective
 
@@ -96,7 +269,7 @@ Verify that when Agent-3 joins the EasyMesh network, a corresponding Device.{i} 
 |-------------|------------|-----------------|
 | 1 | Query baseline count using `rbuscli get Device.WiFi.DataElements.Network.DeviceNumberOfEntries` | Returns baseline value **3** (Controller + Agent-1 + Agent-2). |
 | 2 | Start packet capture on Controller: `tcpdump -i eth0_virt_peer ether proto 0x893a -w /tmp/topo_agent3_add.pcap` | Capture starts successfully and runs during onboarding. |
-| 3 | Power on Agent-3 and trigger onboarding (WPS/DPP push button or credentials) | Agent-3 completes onboarding and joins the Multi-AP network. |
+| 3 | Power on Agent-3 and trigger onboarding (WPS/DPP push button or credentials). | Agent-3 completes onboarding and joins the Multi-AP network. |
 | 4 | Wait 5 seconds for topology propagation | Topology update is processed by the Controller. |
 | 5 | Verify updated device count using `rbuscli get Device.WiFi.DataElements.Network.DeviceNumberOfEntries` | Value increments to **4** (Controller + 3 Agents), confirming Agent-3's entry was added. |
 | 6 | Verify new device ID using `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.ID` (Agent-3's new instance) | Returns Agent-3's 1905 AL MAC Address, matching the physically added device. |
@@ -105,7 +278,7 @@ Verify that when Agent-3 joins the EasyMesh network, a corresponding Device.{i} 
 
 ---
 
-# Test Case 3: EM_Topology_AgentBackhaulPopulation
+# Test Case 6: EM_Topology_AgentBackhaulPopulation
 
 ## Objective
 
@@ -160,7 +333,7 @@ Verify that Backhaul link details are correctly populated in the Controller's to
 
 ---
 
-# Test Case 4: EM_Topology_AgentRemoval_GracefulDeregistration
+# Test Case 7: EM_Topology_AgentRemoval_GracefulDeregistration
 
 ## Objective
 
@@ -205,7 +378,7 @@ Verify that when one Agent (Agent-3) is gracefully removed from the network, its
 | 1 | Verify pre-removal device count using `rbuscli get Device.WiFi.DataElements.Network.DeviceNumberOfEntries` | Value is **4** (Controller + Agent-1 + Agent-2 + Agent-3). |
 | 2 | Verify Agent-3's current Backhaul MAC using `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.MultiAPDevice.Backhaul.MACAddress` (Agent-3's instance) | Returns a valid MAC address prior to removal. |
 | 3 | Start packet capture on Controller: `tcpdump -i eth0_virt_peer ether proto 0x893a -w /tmp/topo_agent3_remove.pcap` | Capture starts successfully. |
-| 4 | Trigger removal of Agent-3 (factory reset or administratively de-register from Controller UI/CLI) | Agent-3 is removed from the network; connection is terminated. |
+| 4 | Trigger removal of Agent-3 (factory reset or administrative de-registration from the Controller UI/CLI). | Agent-3 is removed from the network; connection is terminated. |
 | 5 | Wait 5 seconds for topology propagation | Topology update is processed; Controller updates its Device table. |
 | 6 | Verify updated device count using `rbuscli get Device.WiFi.DataElements.Network.DeviceNumberOfEntries` | Value decrements to **3** (Controller + Agent-1 + Agent-2). |
 | 7 | Verify Agent-3's Device instance is removed by querying its previous index | `rbuscli get Device.WiFi.DataElements.Network.Device.{i}.MultiAPDevice.Backhaul.MACAddress` (Agent-3's former index) returns an error (non-existent instance). |
@@ -215,7 +388,7 @@ Verify that when one Agent (Agent-3) is gracefully removed from the network, its
 ---
 
 
-# Test Case 5: EM_Topology_BackhaulRecovery_LinkFailover
+# Test Case 8: EM_Topology_BackhaulRecovery_LinkFailover
 
 ## Objective
 
@@ -271,7 +444,7 @@ Verify that when an Agent's backhaul link is interrupted and recovers, the Contr
 
 ---
 
-# Test Case 6: EM_Topology_Refresh_OnDemandQuery
+# Test Case 9: EM_Topology_Refresh_OnDemandQuery
 
 ## Objective
 
@@ -322,7 +495,7 @@ Verify that an on-demand Topology Refresh accurately updates the Controller's Da
 
 ---
 
-# Test Case 7: EM_Topology_Refresh_RadioAndBSSConsistency
+# Test Case 10: EM_Topology_Refresh_RadioAndBSSConsistency
 
 ## Objective
 
@@ -372,7 +545,7 @@ Verify that Radio and BSS-level identifiers remain consistent and accurate acros
 
 ---
 
-# Test Case 8: EM_Topology_MultipleAgents_SimultaneousPresence
+# Test Case 11: EM_Topology_MultipleAgents_SimultaneousPresence
 
 ## Objective
 
@@ -424,7 +597,7 @@ Verify that when all 3 Agents (Agent-1, Agent-2, and Agent-3) are present and ac
 
 ---
 
-# Test Case 9: EM_Topology_AgentRemoval_QueryNonExistentDevice
+# Test Case 12: EM_Topology_AgentRemoval_QueryNonExistentDevice
 
 ## Objective
 
