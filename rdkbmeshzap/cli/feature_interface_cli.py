@@ -950,3 +950,43 @@ class FeatureInterfaceCLI(DatabaseModule,
                 if candidate.startswith("wifi") and ".sta" in candidate:
                     interfaces.append(candidate)
         return list(dict.fromkeys(interfaces))
+
+    def execute_script(self, device: str, script_path: str) -> str:
+        """
+        Execute a script on the specified device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        command = f"python3 {shlex.quote(script_path)} &"
+        output, error = connection_obj.execute_command(device, command, return_stderr=True)
+        if error:
+            raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
+        return str(output).strip()
+
+    def stop_script_execution(self, device: str, script_path: str) -> str:
+        """
+        Stop the execution of a script on the specified device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        command = f"pkill -f {shlex.quote(script_path)}"
+        output, error = connection_obj.execute_command(device, command, return_stderr=True)
+        if error:
+            raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
+        return str(output).strip()
+    
+    def remove_file(self, device: str, file_path: str) -> str:
+        """
+        Remove a file from the specified device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        command = f"rm -f {shlex.quote(file_path)}"
+        output, error = connection_obj.execute_command(device, command, return_stderr=True)
+        if error:
+            raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
+        return str(output).strip()
+    

@@ -34,7 +34,7 @@ def test_stability_long_duration_validation(initialize, common_setup, resource_u
         pytest.fail("long duration test timeout must be greater than 0. please update the configuration \"Endurance_test_duration_in_seconds\".")
     report_logger.print_info(f"INFO: Retrieved long duration stability test timeout: {timeout} seconds")
     report_logger.print_step("STEP 2: Start monitoring script in controller")
-    initialize.execute_command("controller", "python3 /nvram/monitoring_tool.py &")
+    initialize.execute_script("controller", "/nvram/monitoring_tool.py")
     time.sleep(5)
     report_logger.print_success("PASS: Monitoring script started in controller")
     start_time = time.time()
@@ -66,7 +66,7 @@ def test_stability_long_duration_validation(initialize, common_setup, resource_u
         time.sleep(60)
     step_count += 1
     report_logger.print_step(f"STEP {step_count}: Stopping monitoring script in controller")
-    initialize.execute_command("controller", "pkill -f monitoring_tool.py")
+    initialize.stop_script_execution("controller", "monitoring_tool.py")
     report_logger.print_success("PASS: Monitoring script stopped in controller")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     step_count += 1
@@ -82,7 +82,7 @@ def test_stability_long_duration_validation(initialize, common_setup, resource_u
             report_logger.print_success(f"PASS: Log file found on controller.")
             report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Downloading log file locally and deleting remote file instance.")
             initialize.get_file("controller", log_file, resource_usage_dir)
-            initialize.execute_command("controller", f"rm -f {log_file}")
+            initialize.remove_file("controller", log_file)
             report_logger.print_success(f"PASS: Log file downloaded and deleted the file from controller")
         else:
             report_logger.print_error(f"FAIL: Controller: Log file not found : {log_file}")

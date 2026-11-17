@@ -400,10 +400,6 @@ class FeatureInterface(FeatureInterfaceModules):
                                method: str = 'gui') -> bool:
         """
         Enable or disable a fronthaul network profile on the device.
-
-        - `profile_identifier` can be a profile name or index depending on the UI implementation.
-        - `enable` True to enable, False to disable.
-        Returns boolean success as returned by the underlying interface.
         """
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
@@ -713,3 +709,27 @@ class FeatureInterface(FeatureInterfaceModules):
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.get_bridge_station_interfaces(device, bridge_iface)
+
+    def execute_script(self, device: str, script_path: str, method: str = 'cli') -> str:
+        """
+        Execute a script on the specified device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.execute_script(device, script_path)
+
+    def stop_script_execution(self, device: str, script_path: str, method: str = 'cli') -> str:
+        """
+        Stop the execution of a script on the specified device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.stop_script_execution(device, script_path)
+
+    def remove_file(self, device: str, file_path: str, method: str = 'cli') -> str:
+        """
+        Remove a file from the specified device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.remove_file(device, file_path)
