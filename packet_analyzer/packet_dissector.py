@@ -263,10 +263,12 @@ def verify_tlv_presence_with_type(requested_message_type, tlv_to_verify, payload
     if tlv_presence_flag and not tlv_length_valid_flag:
         report_logger.print_success(f"PASS:{get_tlv_type_name(tlv_to_verify)} present.")
         report_logger.print_error(f"FAIL: framenumber :{frame_number} {get_tlv_type_name(tlv_to_verify)} length is invalid. expected tlv length is {expected_tlv_length} and actual tlv length is {tlv_length}")
-        error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
+        error_message = f"\033[91m FAIL: framenumber :{frame_number} {get_tlv_type_name(tlv_to_verify)} length is invalid. expected tlv length is {expected_tlv_length} and actual tlv length is {tlv_length}"
+        error_list.append(error_message)
     if not tlv_presence_flag:
         report_logger.print_error(f"FAIL: framenumber :{frame_number} {get_tlv_type_name(tlv_to_verify)} not found.")
-        error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
+        error_message = f"\033[91m FAIL: framenumber :{frame_number} {get_tlv_type_name(tlv_to_verify)} not found."
+        error_list.append(error_message)
 
 def verify_no_additional_tlvs(message_type, mandatory_tlvs, optional_tlvs, payload):
     """
@@ -292,7 +294,8 @@ def verify_no_additional_tlvs(message_type, mandatory_tlvs, optional_tlvs, paylo
     if extra_tlvs:
         extra_tlvs_list = [f"{get_tlv_type_name(tlv)} (0x{tlv:02X})" for tlv in sorted(extra_tlvs)]
         report_logger.print_error(f"FAIL: framenumber :{frame_number} Found Extra TLVs (neither mandatory nor optional) in {get_message_type_name(message_type)}: {extra_tlvs_list}")
-        error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
+        error_message = f"\033[91m FAIL: framenumber :{frame_number} Found Extra TLVs (neither mandatory nor optional) in {get_message_type_name(message_type)}: {extra_tlvs_list}"
+        error_list.append(error_message)
     else:
         report_logger.print_success(f"PASS: No extra TLVs found beyond mandatory and optional tlvs in {get_message_type_name(message_type)}.")
 
@@ -355,14 +358,16 @@ def validate_1905_message(tlv_data_from_config, profiletype, message, payload, c
                 verify_tlv_presence_with_type(message, tlv, payload)
             except ValueError as e:
                 report_logger.print_error(f"FAIL: {str(e)}")
-                error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
+                error_message = f"\033[91m FAIL: {str(e)}"
+                error_list.append(error_message)
                 return
     report_logger.print_info(f"INFO: check for any unexpected TLVs that are not defined as mandatory or optional in the profile")
     try:
         verify_no_additional_tlvs(message, mandatory, optional, payload)
     except ValueError as e:
         report_logger.print_error(f"FAIL: {str(e)}")
-        error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
+        error_message = f"\033[91m FAIL: {str(e)}"
+        error_list.append(error_message)
         return
 
 def parse_config(tlv_data_from_config, profiletype, message):
@@ -413,11 +418,13 @@ def packet_analyzer(pcap_local_dir, initialize, al_mac1=None, al_mac2=None):
     for key, value in profile_dict.items():
         if "aa:bb:cc:dd:ee:ff" in key:
             report_logger.print_error(f"FAIL: kindly update the device al mac and profile type in the database.")
-            error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
+            error_message = f"\033[91m FAIL: kindly update the device al mac and profile type in the database."
+            error_list.append(error_message)
             return
         if type(value) is not int or value not in (0x01, 0x02, 0x03):
             report_logger.print_error(f"FAIL: Invalid Multi-AP profile type {value!r} for {key}; expected 0x01, 0x02, or 0x03.")
-            error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
+            error_message = f"\033[91m FAIL: Invalid Multi-AP profile type {value!r} for {key}; expected 0x01, 0x02, or 0x03."
+            error_list.append(error_message)
             return
     reassembled_packets = reassemble_packets(pcap_local_dir)
     message_type_count = {}
@@ -462,7 +469,8 @@ def packet_analyzer(pcap_local_dir, initialize, al_mac1=None, al_mac2=None):
     if not filtered_packets:
         #instead of pytest fail wright alternatives
         report_logger.print_error(f"FAIL: No messages between {al_mac1} and {al_mac2} found in the capture file.")
-        error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
+        error_message = f"\033[91m FAIL: No messages between {al_mac1} and {al_mac2} found in the capture file."
+        error_list.append(error_message)
         return
     tlv_data_from_config = get_tlv_from_config()
     #iterate through the captured packets and validate the messages
@@ -498,7 +506,8 @@ def packet_analyzer(pcap_local_dir, initialize, al_mac1=None, al_mac2=None):
                 src_profiletype = initialize.read_from_database("test_parameters","profile_type", src_al_mac.upper())
             else:
                 report_logger.print_error(f"FAIL: failed to retrieve profile type for source AL MAC {src_al_mac} : {str(e)}")
-                error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
+                error_message = f"\033[91m FAIL: failed to retrieve profile type for source AL MAC {src_al_mac} : {str(e)}"
+                error_list.append(error_message)
                 continue
         if dst_al_mac == "01:80:c2:00:00:13":
             profiletype = src_profiletype
@@ -510,7 +519,8 @@ def packet_analyzer(pcap_local_dir, initialize, al_mac1=None, al_mac2=None):
                     dst_profiletype = initialize.read_from_database("test_parameters","profile_type", dst_al_mac.upper())
                 else:
                     report_logger.print_error(f"FAIL: failed to retrieve profile type for destination AL MAC {dst_al_mac} : {str(e)}")
-                    error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
+                    error_message = f"\033[91m FAIL: failed to retrieve profile type for destination AL MAC {dst_al_mac} : {str(e)}"
+                    error_list.append(error_message)
                     continue
         if profiletype is None:
             #choose profile type which is lower src_profiletype or dst_profiletype
@@ -522,14 +532,16 @@ def packet_analyzer(pcap_local_dir, initialize, al_mac1=None, al_mac2=None):
             found_tlvs, _tlv_length, tlv_values, _, error = parse_tlvs(payload)
             if error or not found_tlvs:
                 report_logger.print_error(f"FAIL: {error or 'Failed to parse WSC message TLVs'}")
-                error_list.append(report_logger.get_error_logs()[-1])
+                error_message = f"\033[91m FAIL: {error or 'Failed to parse WSC message TLVs'}"
+                error_list.append(error_message)
                 continue
             if any(
                 tlv_type == TLV_TYPE_WSC and len(value) < 10
                 for tlv_type, value in zip(found_tlvs, tlv_values)
             ):
                 report_logger.print_error("FAIL: WSC TLV is too short to extract the message type")
-                error_list.append(report_logger.get_error_logs()[-1])
+                error_message = f"\033[91m FAIL: WSC TLV is too short to extract the message type"
+                error_list.append(error_message)
                 continue
             for tlv_type, tlv_length, tlv_value in zip(found_tlvs, _tlv_length, tlv_values):
                 if tlv_type == TLV_TYPE_WSC:
@@ -547,13 +559,15 @@ def packet_analyzer(pcap_local_dir, initialize, al_mac1=None, al_mac2=None):
             found_tlvs, _tlv_length, tlv_values, _, error = parse_tlvs(payload)
             if error or not found_tlvs:
                 report_logger.print_error(f"FAIL: framenumber :{frame_number} {error or 'Failed to parse Link Metric Response TLVs'}")
-                error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
+                error_message = f"\033[91m FAIL: framenumber :{frame_number} {error or 'Failed to parse Link Metric Response TLVs'}"
+                error_list.append(error_message)
                 continue
             for tlv_type, tlv_length, tlv_value in zip(found_tlvs, _tlv_length, tlv_values):
                 report_logger.print_info(f"INFO: Processing {get_tlv_type_name(tlv_type)} with length {tlv_length}")
                 if tlv_type not in link_meteric_response_mandatory_tlvs:
                     report_logger.print_error(f"FAIL: framenumber :{frame_number} Found Extra TLVs in {get_message_type_name(message_type)}: {get_tlv_type_name(tlv_type)}")
-                    error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
+                    error_message = f"\033[91m FAIL: framenumber :{frame_number} Found Extra TLVs in {get_message_type_name(message_type)}: {get_tlv_type_name(tlv_type)}"
+                    error_list.append(error_message)
                 else:
                      expected_tlv_length, tlv_length_valid_flag = validate_tlv_length(tlv_type, tlv_length)
                      if tlv_length_valid_flag:
@@ -561,7 +575,8 @@ def packet_analyzer(pcap_local_dir, initialize, al_mac1=None, al_mac2=None):
                      else: 
                         report_logger.print_success(f"PASS: {get_tlv_type_name(tlv_type)} is expected.")
                         report_logger.print_error(f"FAIL: framenumber :{frame_number} {get_tlv_type_name(tlv_type)} length is invalid. expected tlv length is {expected_tlv_length} and actual tlv length is {tlv_length}")
-                        error_list.append(report_logger._error_logs[-1] if report_logger._error_logs else "")
+                        error_message = f"\033[91m FAIL: framenumber :{frame_number} {get_tlv_type_name(tlv_type)} length is invalid. expected tlv length is {expected_tlv_length} and actual tlv length is {tlv_length}"
+                        error_list.append(error_message)
             continue
         if not message_type_name.startswith("Unknown message type"):
             report_logger.print_title(f"Analyzing the {message_type_name}")
