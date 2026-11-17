@@ -24,6 +24,8 @@ from rdkbmeshzap.common_utils.link_stability_utils import POLL_INTERVAL_SEC, TES
 
 # Time between scale setup stabilization checks.
 STABILIZATION_POLL_INTERVAL_SEC = 30
+# Time between reboot-transition checks.
+REBOOT_TRANSITION_POLL_INTERVAL_SEC = 5
 # Maximum allowed percentage increase from the baseline metric value.
 MAX_BASELINE_INCREASE_PERCENT = 20.0
 # Minimum available memory percentage required for a healthy system.
@@ -98,31 +100,95 @@ def get_enabled_scale_setup(initialize, scale: str | None = None) -> dict:
         raise ValueError("No scale setup is enabled in platform YAML")
     return enabled_setups[0]
 
-def get_extender_presence_snapshot(initialize, agents: list) -> dict:
+def get_extender_presence_snapshot(initialize, agents: list, nonfatal_query_errors: bool = False) -> dict:
     """
-    Syntax : get_extender_presence_snapshot(initialize, agents)
-    Description : Captures extender presence information.
+    Syntax : get_extender_presence_snapshot(initialize, agents, nonfatal_query_errors=False)
+    Description : Captures Controller-side Agent presence and parent relationships.
     Parameters :
         initialize - Testbed initialization and database interface.
         agents - Names of extender devices included in the topology.
-    Return Value: Dictionary containing the connected agents and agent count.
+        nonfatal_query_errors - Suppress transient query errors until stabilization times out.
+    Return Value: Dictionary containing presence, topology, and query error details.
     """
     connected_agents = set()
+    parent_by_agent = {}
+    query_errors = []
+    configuration_errors = []
+    topology_devices = [CONTROLLER_DEVICE, *agents]
     for agent in agents:
         try:
             stored_interface = initialize.read_from_database(agent, "backhaul_interface")
             if not stored_interface:
-                report_logger.print_error(f"FAIL: {agent}: backhaul_interface is missing from platform.yaml")
+                error = f"{agent}: backhaul_interface is missing from platform.yaml"
+                configuration_errors.append(error)
+                report_logger.print_error(f"FAIL: {error}")
                 continue
             if initialize.get_wireless_backhaul_connection_status(agent, stored_interface):
                 connected_agents.add(agent)
+                parent, _ = device_utils.get_extender_parent_device(
+                    initialize, agent, topology_devices)
+                parent_by_agent[agent] = parent
+                if parent:
+                    report_logger.print_info(f"INFO: {agent} is connected to parent {parent}")
+                else:
+                    report_logger.print_error(f"FAIL: {agent}: Controller-side parent relationship is unavailable")
             else:
                 report_logger.print_info(f"INFO: {agent}: no active backhaul connection")
         except Exception as err:
-            report_logger.print_error(f"Backhaul presence check failed on {agent}: {err}")
+            error = f"{agent}: backhaul presence check failed: {err}"
+            query_errors.append(error)
+            if not nonfatal_query_errors:
+                report_logger.print_error(f"FAIL: {error}")
             continue
     report_logger.print_info(f"INFO: Connected agents: {sorted(connected_agents)} (count={len(connected_agents)})")
-    return {"agent_count": len(connected_agents), "agents": connected_agents}
+    return {
+        "agent_count": len(connected_agents),
+        "agents": connected_agents,
+        "parent_by_agent": parent_by_agent,
+        "query_errors": query_errors,
+        "configuration_errors": configuration_errors,
+    }
+
+def wait_for_device_reboot(initialize, device: str, deadline: float) -> bool:
+    """
+    Syntax : wait_for_device_reboot(initialize, device, deadline)
+    Description : Waits for device shutdown and a subsequent connection.
+    Parameters :
+        initialize - Testbed initialization and database interface.
+        device - Device being monitored.
+        deadline - Monotonic deadline for the transition check.
+    Return Value: True when shutdown and reconnection are observed, otherwise False.
+    """
+    shutdown_observed = False
+    while time.monotonic() < deadline:
+        try:
+            if not initialize.is_device_alive(device):
+                shutdown_observed = True
+                break
+        except Exception as error:
+            shutdown_observed = True
+            report_logger.print_info(f"INFO: {device} shutdown transition observed: {error}")
+        remaining = deadline - time.monotonic()
+        if remaining > 0:
+            time.sleep(min(REBOOT_TRANSITION_POLL_INTERVAL_SEC, remaining))
+    if not shutdown_observed:
+        report_logger.print_error(f"FAIL: {device}: shutdown transition was not observed before the recovery deadline")
+        return False
+    while time.monotonic() < deadline:
+        try:
+            initialize.close_connection(device)
+            connected = initialize.connect_with_device(device)
+            if connected is False:
+                raise RuntimeError("device connection API returned False")
+            report_logger.print_info(f"INFO: {device} post-reboot connection was restored")
+            return True
+        except Exception as error:
+            report_logger.print_info(f"INFO: {device} post-reboot connection is waiting: {error}")
+        remaining = deadline - time.monotonic()
+        if remaining > 0:
+            time.sleep(min(REBOOT_TRANSITION_POLL_INTERVAL_SEC, remaining))
+    report_logger.print_error(f"FAIL: {device}: post-reboot connection was not restored before the recovery deadline")
+    return False
 
 def get_extender_presence_mismatches(expected_count: int, baseline: dict, current: dict) -> list:
     """
@@ -137,7 +203,15 @@ def get_extender_presence_mismatches(expected_count: int, baseline: dict, curren
     mismatches = []
     baseline_agents = set(baseline.get("agents", set()))
     current_agents = set(current.get("agents", set()))
+    baseline_parents = baseline.get("parent_by_agent", {})
+    current_parents = current.get("parent_by_agent", {})
     current_agent_count = len(current_agents)
+    current_query_errors = current.get("query_errors", [])
+    current_configuration_errors = current.get("configuration_errors", [])
+    for error in current_configuration_errors:
+        mismatches.append(f"Configuration error: {error}")
+    for error in current_query_errors:
+        mismatches.append(f"Transient presence query error: {error}")
     if current_agent_count < expected_count:
         mismatches.append(f"Agent count below minimum: expected={expected_count} current={current_agent_count}")
     if current_agent_count != len(baseline_agents):
@@ -145,6 +219,17 @@ def get_extender_presence_mismatches(expected_count: int, baseline: dict, curren
     missing_agents = baseline_agents - current_agents
     if missing_agents:
         mismatches.append(f"Missing agents: {sorted(missing_agents)}")
+    for agent in sorted(baseline_agents):
+        baseline_parent = baseline_parents.get(agent)
+        current_parent = current_parents.get(agent)
+        if not baseline_parent:
+            mismatches.append(f"Missing baseline parent relationship for {agent}")
+        if agent in current_agents and not current_parent:
+            mismatches.append(f"Missing Controller-side parent relationship for {agent}")
+        elif current_parent != baseline_parent:
+            mismatches.append(
+                f"Parent relationship changed for {agent}: "
+                f"baseline={baseline_parent} current={current_parent}")
     return mismatches
 
 def collect_client_iperf_samples(initialize, client_targets: dict, sample_duration_sec: int) -> dict:

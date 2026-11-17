@@ -21,7 +21,9 @@ from rdkbmeshzap.common_utils import device_utils, recovery_utils, report_logger
 from rdkbmeshzap.common_utils.scale_validation_utils import *
 
 def test_em_scale_agent_recovery_after_reboot(initialize):
-    """Monitor recovery of the complete scale setup after simultaneous Agent reboots."""
+    """
+    Monitor recovery of the complete scale setup after simultaneous Agent reboots.
+    """
     report_logger.print_test(f"Entering test_em_scale_agent_recovery_after_reboot")
     try:
         agents = device_utils.get_enabled_extenders(initialize)
@@ -29,11 +31,13 @@ def test_em_scale_agent_recovery_after_reboot(initialize):
             report_logger.print_error("No enabled extenders are available for scale validation")
             return
         expected_count = get_enabled_scale_setup(initialize)["expected_agent_count"]
+        # Capture the healthy Agent membership used for every recovery comparison.
         report_logger.print_step("STEP 1: Capture the initial scale setup baseline")
         baseline = get_extender_presence_snapshot(initialize, agents)
         baseline_mismatches = get_extender_presence_mismatches(
             expected_count, baseline, baseline)
         if baseline_mismatches:
+            # Do not start reboot cycles until the initial scale setup is complete.
             report_logger.print_error(f"FAIL: Initial scale setup is incomplete: {baseline_mismatches}")
             return
         recovery_kpi = recovery_utils.get_recovery_kpi(initialize, "agent")
@@ -41,12 +45,14 @@ def test_em_scale_agent_recovery_after_reboot(initialize):
         next_cycle_at = time.monotonic()
         cycle = 0
         while next_cycle_at < test_end:
+            # Keep each reboot cycle aligned with the configured polling schedule.
             wait_time = next_cycle_at - time.monotonic()
             if wait_time > 0:
                 time.sleep(wait_time)
             if time.monotonic() >= test_end:
                 break
             cycle += 1
+            # Reboot every enabled Agent concurrently and retain the shared KPI start time.
             report_logger.print_step(f"STEP {cycle + 1}: Reboot all Agents concurrently (cycle {cycle}, scheduled every {POLL_INTERVAL_SEC} seconds)")
             cycle_started_at = time.monotonic()
             started_at = cycle_started_at
@@ -67,6 +73,23 @@ def test_em_scale_agent_recovery_after_reboot(initialize):
                 for agent, error in reboot_errors.items():
                     report_logger.print_error(f"FAIL: {agent}: cycle {cycle} reboot command failed: {error}")
                 return
+            report_logger.print_step(f"STEP {cycle + 1}.0: Confirm the reboot transition for each Agent")
+            transition_deadline = started_at + recovery_kpi
+            transition_results = {}
+            with ThreadPoolExecutor(max_workers=len(agents)) as executor:
+                transition_futures = {
+                    executor.submit(wait_for_device_reboot, initialize, agent, transition_deadline): agent
+                    for agent in agents}
+                for future in as_completed(transition_futures):
+                    agent = transition_futures[future]
+                    try:
+                        transition_results[agent] = future.result()
+                    except Exception as error:
+                        transition_results[agent] = False
+                        report_logger.print_error(f"FAIL: {agent}: cycle {cycle} reboot transition check failed: {error}")
+            if not all(transition_results.get(agent, False) for agent in agents):
+                return
+            # Confirm each Agent reconnects and meets the recovery KPI.
             report_logger.print_step(f"STEP {cycle + 1}.1: Recover all Agents concurrently")
             recovery_results = {}
             with ThreadPoolExecutor(max_workers=len(agents)) as executor:
@@ -79,29 +102,33 @@ def test_em_scale_agent_recovery_after_reboot(initialize):
                         future.result()
                     except Exception as error:
                         recovery_results[agent] = error
+            recovery_failed = False
             for agent in agents:
                 recovery_time = recovery_results.get(agent)
                 if (not isinstance(recovery_time, (int, float))or isinstance(recovery_time, bool)):
                     report_logger.print_error(f"FAIL: {agent}: cycle {cycle} recovery result is unavailable or failed: {recovery_time}")
-                    return
-                if recovery_time > recovery_kpi:
+                    recovery_failed = True
+                elif recovery_time > recovery_kpi:
                     report_logger.print_error(f"FAIL: {agent}: cycle {cycle} recovery took {recovery_time:.1f}s; limit is {recovery_kpi}s")
-                    return
-                report_logger.print_success(f"PASS: {agent} recovered in {recovery_time:.1f}s during cycle {cycle}")
+                    recovery_failed = True
+                else:
+                    report_logger.print_success(f"PASS: {agent} recovered in {recovery_time:.1f}s during cycle {cycle}")
+            if recovery_failed:
+                # All Agents were checked above; stop this cycle only after reporting every failure.
+                return
+            # Poll until every Agent matches the baseline membership or the stabilization window expires.
             report_logger.print_step(f"STEP {cycle + 1}.2: Wait for the scale setup to stabilize for up to {POLL_INTERVAL_SEC} seconds")
-            baseline_agents = set(baseline["agents"])
             stabilization_deadline = time.monotonic() + POLL_INTERVAL_SEC
             stabilized = False
             current = baseline
             while time.monotonic() < stabilization_deadline:
-                current = get_extender_presence_snapshot(initialize, agents)
+                current = get_extender_presence_snapshot(
+                    initialize, agents, nonfatal_query_errors=True)
+                if current.get("configuration_errors"):
+                    report_logger.print_error(f"FAIL: Scale configuration became invalid: {current['configuration_errors']}")
+                    return
                 mismatches = get_extender_presence_mismatches(
                     expected_count, baseline, current)
-                current_agents = set(current["agents"])
-                if current_agents != baseline_agents:
-                    mismatches.append(f"Agent set changed: baseline={sorted(baseline_agents)} current={sorted(current_agents)}")
-                if current["agent_count"] != expected_count:
-                    mismatches.append(f"Agent count mismatch: expected={expected_count} current={current['agent_count']}")
                 if not mismatches:
                     stabilized = True
                     break
@@ -111,6 +138,7 @@ def test_em_scale_agent_recovery_after_reboot(initialize):
                 report_logger.print_info(f"INFO: Scale setup is still converging; retrying in {STABILIZATION_POLL_INTERVAL_SEC} seconds: {mismatches}")
                 time.sleep(min(STABILIZATION_POLL_INTERVAL_SEC, remaining))
             if not stabilized:
+                # A timeout means the post-reboot scale setup did not return to its baseline state.
                 mismatches = get_extender_presence_mismatches(
                     expected_count, baseline, current)
                 report_logger.print_error(f"FAIL: Initial scale setup did not stabilize after simultaneous cycle {cycle}: {mismatches}")
@@ -118,7 +146,9 @@ def test_em_scale_agent_recovery_after_reboot(initialize):
             report_logger.print_success(f"PASS: All {expected_count} Agents recovered concurrently and the initial scale setup stabilized after cycle {cycle}")
             next_cycle_at = cycle_started_at + POLL_INTERVAL_SEC
             if next_cycle_at < test_end:
+                # The next loop iteration performs the next scheduled recovery cycle.
                 report_logger.print_info(f"INFO: Waiting {POLL_INTERVAL_SEC} seconds for the next scheduled recovery cycle")
+        # Report success only after every scheduled recovery cycle completed successfully.
         report_logger.print_success(f"PASS: Initial scale setup recovery was verified across {cycle} scheduled recovery cycles during {TEST_DURATION_SEC} seconds")
     finally:
         report_logger.print_test(f"Exiting test_em_scale_agent_recovery_after_reboot")
