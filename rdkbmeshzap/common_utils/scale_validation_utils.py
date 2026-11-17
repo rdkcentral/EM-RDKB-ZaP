@@ -395,7 +395,9 @@ def get_scale_configuration_mismatches(initialize, agents: list, parameter: str,
                 if str(current_value) != str(expected_value):
                     mismatches.append(f"{agent}: expected={expected_value},observed={current_value}")
         except Exception as error:
-            mismatches.append(f"{agent}: read failed: {error}")
+            failure = f"{agent}: read failed: {error}"
+            mismatches.append(failure)
+            observed[agent] = failure
     return mismatches, observed
 
 def wait_for_scale_configuration_propagation(initialize, agents: list, parameter: str, expected_value):

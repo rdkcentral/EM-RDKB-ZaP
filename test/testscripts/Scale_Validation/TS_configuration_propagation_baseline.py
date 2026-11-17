@@ -30,7 +30,7 @@ def test_em_scale_configuration_propagation_baseline(initialize):
         expected_agents = scale_setup["expected_agent_count"]
         report_logger.print_info(f"INFO: Scale setup={scale_setup}; discovered {len(agents)} scale extenders; expected={expected_agents}")
         if not agents:
-            report_logger.print_error("No enabled extenders are available for propagation baseline validation")
+            report_logger.print_error("FAIL: No enabled extenders are available for propagation baseline validation")
             return
         if len(agents) != expected_agents:
             report_logger.print_error(f"FAIL: Scale device count mismatch: expected {expected_agents} extenders, discovered {len(agents)}")
@@ -39,12 +39,12 @@ def test_em_scale_configuration_propagation_baseline(initialize):
             report_logger.print_success(f"PASS: Discovered {len(agents)} expected scale extender(s)")
         report_logger.print_step("STEP 2: Capture controller configuration and validate the initial propagation")
         baseline_failures = []
-        for parameter in CONFIGURATION_PARAMETERS:
+        for parameter_index, parameter in enumerate(CONFIGURATION_PARAMETERS, start=1):
             try:
-                report_logger.print_step(f"STEP 2.1: Getting {parameter} from controller")
+                report_logger.print_step(f"STEP 2.{parameter_index}.1: Getting {parameter} from controller")
                 controller_value = get_scale_configuration_parameter(initialize, "controller", parameter)
                 originals[parameter] = controller_value
-                report_logger.print_step(f"STEP 2.2: Checking {parameter} on extenders {sorted(agents)}")
+                report_logger.print_step(f"STEP 2.{parameter_index}.2: Checking {parameter} on extenders {sorted(agents)}")
                 mismatches, observed = get_scale_configuration_mismatches(initialize, agents, parameter, controller_value)
                 if mismatches:
                     baseline_failures.extend(f"Baseline {parameter}: {mismatch}" for mismatch in mismatches)
@@ -55,47 +55,50 @@ def test_em_scale_configuration_propagation_baseline(initialize):
                 baseline_failures.append(f"Unable to capture {parameter} baseline: {error}")
         if baseline_failures:
             for failure in baseline_failures:
-                report_logger.print_error(failure)
+                report_logger.print_error(f"FAIL: {failure}")
             report_logger.print_info("INFO: Baseline mismatches found; continuing with propagation validation")
         else:
             report_logger.print_success("PASS: Extender configuration baseline captured")
         report_logger.print_step("STEP 3: Set and validate one propagation cycle for each parameter")
-        for parameter, original_value in originals.items():
+        for parameter_index, (parameter, original_value) in enumerate(originals.items(), start=1):
             try:
-                report_logger.print_step(f"STEP 3.1: Setting controller {parameter} from {original_value}")
+                report_logger.print_step(f"STEP 3.{parameter_index}.1: Setting controller {parameter} from {original_value}")
                 target_value = set_controller_scale_configuration_parameter(initialize, parameter, original_value)
-                report_logger.print_step(f"STEP 3.2: Checking controller {parameter} update")
+                report_logger.print_step(f"STEP 3.{parameter_index}.2: Checking controller {parameter} update")
                 controller_updated, controller_value = wait_for_controller_scale_configuration_update(initialize, parameter, target_value)
                 if not controller_updated:
-                    report_logger.print_error(f"Controller {parameter} update failed: expected={target_value}, observed={controller_value}")
+                    report_logger.print_error(f"FAIL: Controller {parameter} update failed: expected={target_value}, observed={controller_value}")
                     continue
                 report_logger.print_success(f"PASS: Controller {parameter} updated to {controller_value}")
-                report_logger.print_step(f"STEP 3.3: Checking {parameter} propagation on extenders {sorted(agents)}")
+                report_logger.print_step(f"STEP 3.{parameter_index}.3: Checking {parameter} propagation on extenders {sorted(agents)}")
                 propagated, observed = wait_for_scale_configuration_propagation(initialize, agents, parameter, target_value)
                 if propagated:
                     report_logger.print_success(f"PASS: {parameter} propagated to controller and {len(agents)} extenders")
                 else:
-                    report_logger.print_error(f"{parameter} did not propagate to all extenders: {observed}")
+                    report_logger.print_error(f"FAIL: {parameter} did not propagate to all extenders: {observed}")
             except Exception as error:
-                report_logger.print_error(f"{parameter} propagation validation failed: {error}")
+                report_logger.print_error(f"FAIL: {parameter} propagation validation failed: {error}")
     finally:
         report_logger.print_step("STEP 4: Restore the original configuration")
-        for parameter, original_value in reversed(list(originals.items())):
+        for parameter_index, (parameter, original_value) in enumerate(
+            reversed(list(originals.items())), start=1):
             try:
-                report_logger.print_step(f"STEP 4.1: Restoring controller {parameter} to {original_value}")
+                report_logger.print_step(f"STEP 4.{parameter_index}.1: Restoring controller {parameter} to {original_value}")
                 restore_controller_scale_configuration_parameter(initialize, parameter, original_value)
-                report_logger.print_step(f"STEP 4.2: Checking restored {parameter} on controller")
-                restored_controller_value = get_scale_configuration_parameter(initialize, "controller", parameter)
-                if str(restored_controller_value) == str(original_value):
+                report_logger.print_step(f"STEP 4.{parameter_index}.2: Checking restored {parameter} on controller")
+                controller_restored, restored_controller_value = (
+                    wait_for_controller_scale_configuration_update(
+                        initialize, parameter, original_value))
+                if controller_restored:
                     report_logger.print_success(f"PASS: Controller {parameter} restored to {restored_controller_value}")
                 else:
-                    report_logger.print_error(f"Controller {parameter} restoration mismatch: expected={original_value}, observed={restored_controller_value}")
-                report_logger.print_step(f"STEP 4.3: Checking restored {parameter} propagation on extenders {sorted(agents)}")
+                    report_logger.print_error(f"FAIL: Controller {parameter} restoration mismatch: expected={original_value}, observed={restored_controller_value}")
+                report_logger.print_step(f"STEP 4.{parameter_index}.3: Checking restored {parameter} propagation on extenders {sorted(agents)}")
                 restored, observed = wait_for_scale_configuration_propagation(initialize, agents, parameter, original_value)
                 if restored:
                     report_logger.print_success(f"PASS: Restored {parameter} across all extenders")
                 else:
-                    report_logger.print_error(f"Unable to restore {parameter}: {observed}")
+                    report_logger.print_error(f"FAIL: Unable to restore {parameter}: {observed}")
             except Exception as error:
-                report_logger.print_error(f"Failed to restore {parameter}: {error}")
+                report_logger.print_error(f"FAIL: Failed to restore {parameter}: {error}")
         report_logger.print_test("Exiting test_em_scale_configuration_propagation_baseline")
