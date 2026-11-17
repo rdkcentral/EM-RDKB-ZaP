@@ -22,6 +22,8 @@ import uuid
 from rdkbmeshzap.common_utils import device_utils, report_logger
 from rdkbmeshzap.common_utils.link_stability_utils import POLL_INTERVAL_SEC, TEST_DURATION_SEC, parse_iperf_throughput
 
+# Time between scale setup stabilization checks.
+STABILIZATION_POLL_INTERVAL_SEC = 30
 # Maximum allowed percentage increase from the baseline metric value.
 MAX_BASELINE_INCREASE_PERCENT = 20.0
 # Minimum available memory percentage required for a healthy system.
