@@ -20,7 +20,6 @@ import os
 import subprocess
 import pytest
 import time
-import zaero
 from pathlib import Path
 import csv
 from rdkbmeshzap.common_utils import report_logger
@@ -53,16 +52,15 @@ def common_setup(initialize):
 
     monitoring_tool_path = Path(__file__).with_name("monitoring_tool.py")
     initialize.put_file("controller", str(monitoring_tool_path), "/nvram/")
-    zaero_obj = zaero.zaero()
-    devices = [device for device in zaero_obj.get_testbed_devices() if device == "controller" or (device.startswith("extender") and "_" not in device)]
+    devices = [device for device in initialize.get_testbed_devices() if device == "controller" or (device.startswith("extender") and "_" not in device)]
     report_logger.print_info(f"INFO: Common setup completed. Testbed devices: {devices}")
     yield devices
     # Cleanup code after the test is done
     report_logger.print_step(f"Test Cleanup: Cleaning up after test.")
-    initialize.execute_command("controller", "pkill -f monitoring_tool.py")
+    initialize.stop_script_execution("controller", "monitoring_tool.py")
     for log_file in LOG_PATHS:
         if initialize.get_file_presence_status("controller", log_file):
-            initialize.execute_command("controller", f"rm -f {log_file}")
+            initialize.remove_file("controller", log_file)
     report_logger.print_success(f"Cleanup completed.")
 
 def get_timestamp() -> str:
@@ -176,5 +174,4 @@ def log_analyzer(log_path, step_count, sub_step_count=1):
     elif pid_status:
         report_logger.print_error(f"FAIL: {process_name}: PID Change Detected.")
     else:
-        report_logger.print_success(f"PASS: PID is stable.")  
-
+        report_logger.print_success(f"PASS: PID is stable.")
