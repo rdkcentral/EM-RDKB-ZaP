@@ -359,7 +359,10 @@ def set_controller_scale_configuration_parameter(initialize, parameter: str, cur
         initialize.set_ssid("controller", "mld_iface_index", target_value, "gui")
         return target_value
     if parameter in CONFIGURATION_CHANNEL_BANDS:
-        current_channel = int(current_value)
+        try:
+            current_channel = int(current_value)
+        except (TypeError, ValueError) as error:
+            raise ValueError(f"Invalid current channel for {parameter}: {current_value!r}") from error
         band, setter_name, channel_candidates = CONFIGURATION_CHANNEL_BANDS[parameter]
         if current_channel in channel_candidates:
             current_index = channel_candidates.index(current_channel)
@@ -389,8 +392,7 @@ def get_scale_configuration_mismatches(initialize, agents: list, parameter: str,
                 initialize.check_ssid(agent, "mld_iface_index", str(expected_value), "cli")
                 observed[agent] = expected_value
             else:
-                current_value = get_scale_configuration_parameter(
-                    initialize, agent, parameter)
+                current_value = get_scale_configuration_parameter(initialize, agent, parameter)
                 observed[agent] = current_value
                 if str(current_value) != str(expected_value):
                     mismatches.append(f"{agent}: expected={expected_value},observed={current_value}")
@@ -463,13 +465,18 @@ def restore_controller_scale_configuration_parameter(initialize, parameter: str,
         original_value - Original value to restore.
     Return Value: None.
     """
-    current_value = get_scale_configuration_parameter(
-        initialize, "controller", parameter)
-    if str(current_value) == str(original_value):
-        return
     if parameter == "ssid":
         initialize.set_ssid("controller", "mld_iface_index", original_value, "gui")
-    elif parameter in CONFIGURATION_CHANNEL_BANDS:
+        return
+    try:
+        current_value = get_scale_configuration_parameter(
+            initialize, "controller", parameter)
+    except Exception as error:
+        report_logger.print_error(f"Unable to read current {parameter} before restoration: {error}")
+        return
+    if str(current_value) == str(original_value):
+        return
+    if parameter in CONFIGURATION_CHANNEL_BANDS:
         band, setter_name = (
             CONFIGURATION_CHANNEL_BANDS[parameter][0],
             CONFIGURATION_CHANNEL_BANDS[parameter][1],)
