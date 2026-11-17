@@ -1,137 +1,44 @@
 # Test Case 1: EM_Backhaul_Link_Stability
+
 ## Objective
-Verify the Agent maintains a stable backhaul connection with the Controller throughout the test duration
+
+Verify every enabled Extender remains connected to the same parent BSSID
+throughout the one-hour test duration.
 
 ## Test Type
 
 **Positive**
 
 ---
+
 ## Pre-Requisites
 
-1. All Agents are successfully onboarded and visible in the EasyMesh topology.
-2. EasyMesh services running on both devices.
-3. All Extenders are visible in the Controller topology.
-4. DataElements is accessible via rbuscli.
-5. Backhaul and fronthaul status information can be retrieved using ` iw dev <interface>`
+1. All enabled Extenders are successfully onboarded and visible in the
+   EasyMesh topology.
+2. EasyMesh services are running on the Controller and Extenders.
+3. The `backhaul_interface` value is configured for every enabled Extender.
+4. Backhaul link details can be retrieved through the testbed initialization
+   interface.
+
 ---
 
 ## Test Configuration
 
 | Parameter | Value |
 |-----------|-------|
-| Observation Scope | Backhaul connectivity stability across all Agents |
-| Monitoring Commands | `iw dev <backhaul_interface> link`, `iw dev <backhaul_interface> station dump` |
-| Verification Method | Baseline capture and interval-based connected state/parent BSSID/connected-time validation |
-| Pass Criteria | Backhaul remains connected, parent BSSID unchanged, and connected time continuously increases |
+| Observation Scope | Backhaul connectivity stability across all enabled Extenders |
+| Measured Metrics | Connection state, parent BSSID, and connected time |
+
 ---
 
-# Test Environment
+## Test Environment
 
 | Component | Description |
 |-----------|-------------|
 | Controller | EasyMesh Controller |
-| Agents | 3 EasyMesh Agents |
-| Clients |  Wireless Clients distributed across the Controller and Agents |
-| Topology | Hybrid Topology (Star and Daisy Chain) |
----
-
-## Test Procedure and Expected Results
-
-| Step Number | Controller | Agents | Expected Result |
-|-------------|------------|--------|-----------------|
-| 1 | Verify all Agents are onboarded successfully and visible in the topology | Execute `iw dev` on each Agent and identify the wireless backhaul interface operating in **managed** mode (e.g., `wifi1.3`) | Wireless backhaul interface is identified successfully on all Agents |
-| 2 | N/A | Execute `iw dev <backhaul_interface> link` on all Agents and record the baseline link information | All backhaul interfaces show **Connected** state and backhaul link details are available |
-| 3 | N/A | At defined intervals during the test duration, execute `iw dev <backhaul_interface> link` on all Agents and record the Connection Status and Parent BSSID | All Agents remain in **Connected** state throughout the test duration and Parent BSSID remains unchanged for each Agent |
-| 4 | N/A | Execute `iw dev <backhaul_interface> station dump` on all Agents and monitor the **connected time** value | Connected time continuously increases without resetting for all Agents, indicating stable backhaul connectivity |
-
----
-# Test Case 2: EM_Backhaul_RSSI_Stability
-
-## Objective
-Verify that backhaul RSSI remains stable across all Agents during steady-state traffic.
-
-## Test Type
-**Positive**
-
----
-## Pre-Requisites
-1. All Agents are successfully onboarded and visible in the EasyMesh topology.
-2. EasyMesh services running on both devices.
-3. All Extenders are visible in the Controller topology.
-4. DataElements is accessible via rbuscli.
-5. Backhaul and fronthaul status information can be retrieved using iw dev <interface>
----
-
-## Test Configuration
-
-| Parameter | Value |
-|-----------|-------|
-| Observation Scope | Backhaul RSSI stability across all Agents |
-| Monitoring Command | `iw dev <backhaul_interface> link` |
-| RSSI Threshold | Maintain RSSI above -80 dBm with no sustained degradation |
-| Verification Method | Baseline RSSI capture and interval trend comparison |
-| Pass Criteria | RSSI remains stable and within defined threshold for all Agents |
----
-
-# Test Environment
-
-| Component | Description |
-|-----------|-------------|
-| Controller | EasyMesh Controller |
-| Agents | 3 EasyMesh Agents |
-| Clients |  Wireless Clients distributed across the Controller and Agents |
-| Topology | Hybrid Topology (Star and Daisy Chain) |
----
-
-## Test Procedure and Expected Results
-
-| Step Number | Controller | Agents | Expected Result |
-|-------------|------------|--------|-----------------|
-| 1 | Verify all Agents are onboarded successfully and visible in the topology | Execute `iw dev <backhaul_interface> link` on all Agents and record the baseline **RSSI** values | Baseline RSSI values are available for all Agents |
-| 2 | N/A | At defined intervals during the test duration, execute `iw dev <backhaul_interface> link` on all Agents and record **RSSI** values | RSSI remains above **-80 dBm** and does not show significant deviation from baseline values |
-| 3 | N/A | Compare the collected RSSI values against the baseline for each Agent | No sustained RSSI degradation trend is observed on any Agent |
-| 4 | N/A | Continue monitoring RSSI across all Agents throughout the test duration | Backhaul RSSI remains stable across all Agents without abnormal drops or fluctuations |
-
----
-
-# Test Case 3: EM_Backhaul_PHYRate_Stability
-
-## Objective
-Verify that backhaul Tx and Rx PHY rates remain stable across all Agents during steady-state traffic.
-
-## Test Type
-**Positive**
-
----
-
-## Pre-Requisites
-1. All Agents are successfully onboarded and visible in the EasyMesh topology.
-2. EasyMesh services running on both devices.
-3. All Extenders are visible in the Controller topology.
-4. DataElements is accessible via rbuscli.
-5. Backhaul and fronthaul status information can be retrieved using iw dev <interface>
----
-
-## Test Configuration
-
-| Parameter | Value |
-|-----------|-------|
-| Observation Scope | Backhaul Tx/Rx PHY rate stability across all Agents |
-| Monitoring Command | `iw dev <backhaul_interface> link` |
-| Measured Metrics | Tx Bitrate, Rx Bitrate |
-| Verification Method | Baseline capture and periodic PHY-rate trend comparison |
-| Pass Criteria | No sustained Tx/Rx PHY rate degradation for any Agent |
----
-
-# Test Environment
-
-| Component | Description |
-|-----------|-------------|
-| Controller | EasyMesh Controller |
-| Agents | 3 EasyMesh Agents |
-| Clients |  Wireless Clients distributed across the Controller and Agents |
-| Topology | Hybrid Topology (Star and Daisy Chain) |
+| Agents | All enabled EasyMesh Extenders |
+| Clients | Not required |
+| Topology | Configured EasyMesh topology |
 
 ---
 
@@ -139,268 +46,331 @@ Verify that backhaul Tx and Rx PHY rates remain stable across all Agents during 
 
 | Step Number | Controller | Agents | Expected Result |
 |-------------|------------|--------|-----------------|
-| 1 | Verify all Agents are onboarded successfully and visible in the topology | Execute `iw dev <backhaul_interface> link` on all Agents and record the baseline **Tx Bitrate** and **Rx Bitrate** values | Baseline Tx and Rx PHY rate values are available for all Agents |
-| 2 | N/A | At defined intervals during the test duration, execute `iw dev <backhaul_interface> link` on all Agents and record **Tx Bitrate** and **Rx Bitrate** values | Tx and Rx PHY rates remain within the expected range compared to baseline values |
-| 3 | N/A | Compare the collected PHY rate values against the baseline for each Agent | No sustained degradation trend is observed in Tx Bitrate or Rx Bitrate on any Agent |
-| 4 | N/A | Continue monitoring Tx Bitrate and Rx Bitrate across all Agents throughout the test duration | Backhaul PHY rates remain stable across all Agents without abnormal drops or fluctuations |
+| 1 | Verify the topology is healthy and enabled Extenders are available. | Read the configured `backhaul_interface` for each Extender. | Every required backhaul interface is identified. |
+| 2 | N/A | Capture baseline backhaul state for each interface. | Each baseline link is connected and provides a parent BSSID and connected time. |
+| 3 | N/A | Poll every 10 minutes for 1 hour and validate connection state, parent BSSID, and connected time. | Each link remains connected to the baseline BSSID and connected time is non-decreasing. |
+| 4 | N/A | Capture and validate the final backhaul state. | Every final link satisfies the baseline connectivity, BSSID, and connected-time checks. |
 
 ---
-# Test Case 4: EM_Backhaul_LinkPerformance_Stability
+
+# Test Case 2: EM_Backhaul_PHYRate_Stability
 
 ## Objective
 
-Verify that the backhaul link maintains stable throughput, latency, and packet loss performance throughout the test duration.
+Verify the TX and RX PHY rates of every enabled Extender backhaul link remain
+available and within the allowed drop from baseline.
 
 ## Test Type
 
 **Positive**
 
 ---
+
 ## Pre-Requisites
 
-1. All Agents are successfully onboarded and visible in the EasyMesh topology.
-2. EasyMesh services running on both devices.
-3. All Extenders are visible in the Controller topology.
-4. DataElements is accessible via rbuscli.
-5. Backhaul and fronthaul status information can be retrieved using iw dev <interface>
+1. All enabled Extenders are successfully onboarded and visible in the
+   EasyMesh topology.
+2. EasyMesh services are running on the Controller and Extenders.
+3. The `backhaul_interface` value is configured for every enabled Extender.
+4. Backhaul link details, including TX and RX rates, are available.
+
 ---
 
 ## Test Configuration
 
 | Parameter | Value |
 |-----------|-------|
-| Observation Scope | Backhaul throughput, latency, and packet-loss stability |
-| Traffic Tools | `iperf3`, `ping` |
-| Throughput/Latency/Loss Checks | `iperf3 -c <controller_ip> -t 300`, continuous `ping`, `ping -c 1000` |
+| Observation Scope | Backhaul TX/RX PHY-rate stability across all enabled Extenders |
+| Measured Metrics | TX PHY rate and RX PHY rate in Mbps |
 
 ---
 
-# Test Environment
+## Test Environment
 
 | Component | Description |
 |-----------|-------------|
 | Controller | EasyMesh Controller |
-| Agents | 3 EasyMesh Agents |
-| Clients |  Wireless Clients distributed across the Controller and Agents |
-| Topology | Hybrid Topology (Star and Daisy Chain) |
+| Agents | All enabled EasyMesh Extenders |
+| Clients | Not required |
+| Topology | Configured EasyMesh topology |
+
 ---
 
-# Test Procedure and Expected Results
+## Test Procedure and Expected Results
+
+| Step Number | Controller | Agents | Expected Result |
+|-------------|------------|--------|-----------------|
+| 1 | Verify the topology is healthy and enabled Extenders are available. | Read the configured backhaul interface and capture baseline link details. | A connected link with valid TX and RX rates is accepted as the baseline. |
+| 2 | N/A | Poll each backhaul link every 10 minutes for 1 hour. | The link remains connected and each rate remains within the 50% baseline-drop limit. |
+| 3 | N/A | Capture and validate final TX and RX rates against baseline. | Final TX and RX rates pass the same validation. |
+
+---
+
+# Test Case 3: EM_Backhaul_RSSI_Stability
+
+## Objective
+
+Verify the RSSI of every enabled Extender backhaul link remains above the
+minimum threshold and does not degrade beyond the allowed baseline limit.
+
+## Test Type
+
+**Positive**
+
+---
+
+## Pre-Requisites
+
+1. All enabled Extenders are successfully onboarded and visible in the
+   EasyMesh topology.
+2. EasyMesh services are running on the Controller and Extenders.
+3. The `backhaul_interface` value is configured for every enabled Extender.
+4. Backhaul link details, including RSSI, are available.
+
+---
+
+## Test Configuration
+
+| Parameter | Value |
+|-----------|-------|
+| Observation Scope | Backhaul RSSI stability across all enabled Extenders |
+| Measured Metric | Backhaul RSSI in dBm |
+
+---
+
+## Test Environment
+
+| Component | Description |
+|-----------|-------------|
+| Controller | EasyMesh Controller |
+| Agents | All enabled EasyMesh Extenders |
+| Clients | Not required |
+| Topology | Configured EasyMesh topology |
+
+---
+
+## Test Procedure and Expected Results
+
+| Step Number | Controller | Agents | Expected Result |
+|-------------|------------|--------|-----------------|
+| 1 | Verify the topology is healthy and enabled Extenders are available. | Capture connected baseline RSSI for each configured backhaul interface. | Each accepted baseline RSSI is at least -80 dBm. |
+| 2 | N/A | Poll each backhaul RSSI every 10 minutes for 1 hour. | RSSI remains available, at least -80 dBm, and no more than 10 dB below baseline. |
+| 3 | N/A | Capture and validate final RSSI against baseline and threshold. | Every final RSSI sample passes both checks. |
+
+---
+
+# Test Case 4: EM_Fronthaul_Link_Stability
+
+## Objective
+
+Verify enabled WLAN clients connect to the fronthaul and remain able to reach
+the Controller bridge gateway throughout the test duration.
+
+## Test Type
+
+**Positive**
+
+---
+
+## Pre-Requisites
+
+1. The Controller and all enabled Extenders are successfully onboarded.
+2. EasyMesh services and fronthaul SSIDs are operational.
+3. Enabled WLAN clients are configured in the testbed database.
+4. Controller fronthaul credentials and `bridge_ip` are available.
+
+---
+
+## Test Configuration
+
+| Parameter | Value |
+|-----------|-------|
+| Observation Scope | Fronthaul client connectivity and Controller gateway reachability |
+| Measured Metrics | Client connection state and Controller gateway ping reachability |
+
+---
+
+## Test Environment
+
+| Component | Description |
+|-----------|-------------|
+| Controller | EasyMesh Controller and bridge gateway |
+| Agents | All enabled EasyMesh Extenders |
+| Clients | All enabled WLAN clients that connect successfully |
+| Topology | Configured EasyMesh topology |
+
+---
+
+## Test Procedure and Expected Results
 
 | Step Number | Controller | Agents | Clients | Expected Result |
 |-------------|------------|--------|---------|-----------------|
-| 1 | Verify topology is healthy and all onboarded Agents are visible | Identify the backhaul interface on all Agents using `iw dev` and verify link status using `iw dev <backhaul_interface> link` | Verify client connectivity to the Controller and all Agents | All backhaul links are operational, clients are connected, and the topology is healthy |
-| 2 | Start `iperf3` server (`iperf3 -s`) and monitor topology during the test | Verify all backhaul links remain in **Connected** state and capture baseline link information | N/A | Test environment is ready for performance validation |
-| 3 | Monitor topology during the test | Run `iperf3 -c <controller_ip> -t 300` from all Agents (sequentially or as defined in the test setup) and record throughput results | N/A | Throughput for all Agents remains within the expected baseline range throughout the test duration |
-| 4 | Monitor topology during the test | Execute continuous `ping <controller_ip>` from all Agents and record latency statistics (min/avg/max RTT) | N/A | Latency remains stable without abnormal spikes, excessive delay, or timeouts |
-| 5 | Monitor topology during the test | Execute `ping <controller_ip> -c 1000` from all Agents and record packet loss statistics | N/A | Packet loss remains within acceptable limits and no excessive packet drops are observed on any Agent |
-| 6 | Verify final topology health and device count | Re-verify backhaul link status using `iw dev <backhaul_interface> link` on all Agents and compare throughput, latency, and packet loss results against baseline values | Verify client connectivity to the Controller and all Agents | All backhaul links remain **Connected**, clients remain connected, and throughput, latency, and packet loss remain stable throughout the observation period |
+| 1 | Retrieve the Controller fronthaul credentials and bridge IP. | Verify fronthaul service availability. | Enumerate enabled WLAN clients. | Credentials, target gateway, and configured clients are available. |
+| 2 | N/A | N/A | Remove and reconnect each configured client. | At least one client connects successfully; unavailable clients are reported. |
+| 3 | Monitor Controller gateway availability. | Monitor topology health. | Ping the Controller gateway at baseline and every 10 minutes for 1 hour. | Every connected client reaches the gateway at each successful sample. |
+| 4 | N/A | N/A | Perform the final three-packet ping from each connected client. | Clients remain reachable at the end of the test. |
+
 ---
-# Test Case 5: EM_Fronthaul_LinkPerformance_Stability
+
+# Test Case 5: EM_Fronthaul_PHYRate_Stability
 
 ## Objective
 
-Verify that fronthaul links maintain stable throughput, latency, and packet loss performance for clients connected to both the Controller and Agent(s).
+Verify each successfully connected WLAN client's TX and RX PHY rates remain
+available and within the allowed drop from baseline.
 
 ## Test Type
 
 **Positive**
 
 ---
+
 ## Pre-Requisites
 
-1. All Agents are successfully onboarded and visible in the EasyMesh topology.
-2. EasyMesh services running on both devices.
-3. All Extenders are visible in the Controller topology.
-4. DataElements is accessible via rbuscli.
-5. Backhaul and fronthaul status information can be retrieved using iw dev <interface>
+1. The Controller and all enabled Extenders are successfully onboarded.
+2. EasyMesh services and fronthaul SSIDs are operational.
+3. Enabled WLAN clients, client MAC addresses, and connection information are
+   configured in the testbed database.
+4. Client association status and station TX/RX rate details are available.
+
 ---
 
 ## Test Configuration
 
 | Parameter | Value |
 |-----------|-------|
-| Observation Scope | Fronthaul throughput, latency, and packet-loss stability |
-| Topology Profile | Hybrid (Star and Daisy Chain) |
-| Traffic Tools | `iperf3`, `ping`, `station_dump` |
+| Observation Scope | Client TX/RX PHY-rate stability on fronthaul links |
+| Measured Metrics | Client TX PHY rate and RX PHY rate in Mbps |
+
 ---
 
-# Test Environment
+## Test Environment
 
 | Component | Description |
 |-----------|-------------|
 | Controller | EasyMesh Controller |
-| Agents | 3 EasyMesh Agents |
-| Clients |  Wireless Clients distributed across the Controller and Agents |
-| Topology | Hybrid Topology (Star and Daisy Chain) |
----
+| Agents | All enabled EasyMesh Extenders |
+| Clients | Enabled WLAN clients that connect successfully |
+| Topology | Configured EasyMesh topology |
 
-# Test Procedure and Expected Results
-
-| Step Number | Controller | Agent | Client | Expected Result |
-|-------------|------------|--------|--------|-----------------|
-| 1 | Verify all Agents are onboarded and topology is healthy | Verify fronthaul SSIDs are operational and clients are associated using `station_dump` | Connect clients to Controller and Agent fronthaul SSIDs | Clients are successfully connected across the topology |
-| 2 | Start `iperf3` server on the Controller or test server | Verify associated clients remain connected | Verify client connectivity using ping | Test environment is ready for performance validation |
-| 3 | Monitor topology during the test | Verify client associations remain stable | Execute `iperf3 -c <server_ip> -t 300` from clients connected to Controller and Agent fronthaul SSIDs and record throughput | Throughput remains stable throughout the test duration |
-| 4 | Monitor topology during the test | Verify no client disconnections occur | Execute continuous `ping <server_ip>` and record latency statistics (min/avg/max RTT) | Latency remains stable with no abnormal spikes or timeouts |
-| 5 | Monitor topology during the test | Verify client associations remain intact using `station_dump` | Execute `ping <server_ip> -c 1000` and record packet loss statistics | Packet loss remains within acceptable limits and no excessive packet drops are observed 
----
-# Test Case 6: EM_Fronthaul_ClientConnectivity_Stability
-
-## Objective
-
-Verify that clients connected to Controller and Agent fronthaul SSIDs remain associated and connected throughout the observation period.
-
-## Test Type
-
-**Positive**
-
----
-## Pre-Requisites
-
-1. All Agents are successfully onboarded and visible in the EasyMesh topology.
-2. EasyMesh services running on both devices.
-3. All Extenders are visible in the Controller topology.
-4. DataElements is accessible via rbuscli.
-5. Backhaul and fronthaul status information can be retrieved using iw dev <interface>
----
-
-## Test Configuration
-
-| Parameter | Value |
-|-----------|-------|
-| Topology Profile | Hybrid (Star and Daisy Chain) |
-| Monitoring Commands | `iw dev <fronthaul_interface> station dump`, client ping |
-| Validation Metrics | Authorized/Authenticated/Associated state, Connected Time continuity |
-| Verification Method | Baseline capture and interval-based association/connectivity validation |
-| Pass Criteria | Clients remain continuously associated and reachable without unexpected disconnects |
----
-
-# Test Environment
-
-| Component | Description |
-|-----------|-------------|
-| Controller | EasyMesh Controller |
-| Agents | 3 EasyMesh Agents |
-| Clients |  Wireless Clients distributed across the Controller and Agents |
-| Topology | Hybrid Topology (Star and Daisy Chain) |
 ---
 
 ## Test Procedure and Expected Results
+
 | Step Number | Controller | Agents | Clients | Expected Result |
-|------------|------------|----------|----------|-----------------|
-| 1 | Verify topology health and confirm all onboarded Agents are visible in the topology. | Verify fronthaul interfaces are operational on all Agents. | Connect test clients across the Controller and Agents. | All clients successfully associate to the fronthaul SSIDs and appear in the topology. |
-| 2 | Verify client presence in the topology. | Execute the command 'iw dev <fronthaul_interface> station dump below on all Agents and record baseline client information. | N/A | All clients show Authorized, Authenticated, and Associated status. Connected Time is populated for each client. |
-| 3 | Monitor topology health during the test. | Repeat the station dump command on all Agents at defined intervals and compare the values against the baseline. | Run continuous ping to the gateway/server from all clients. | Clients remain connected and Connected Time continuously increases without resetting. |
-| 4 | Continue monitoring topology stability. | Repeat Step 3 periodically throughout the test duration. | Verify uninterrupted connectivity from all clients. | No unexpected client disconnections, reassociations, authentication failures, or connectivity interruptions are observed. |
-| 5 | Verify final topology health. | Execute the station dump command on all Agents and validate client states against the baseline. | Verify client connectivity. | All clients remain Authorized, Authenticated, Associated, and connected at the end of the test. |
+|-------------|------------|--------|---------|-----------------|
+| 1 | Retrieve Controller fronthaul credentials. | Verify fronthaul service availability. | Remove and reconnect enabled WLAN clients. | Connected clients are available for PHY-rate measurement. |
+| 2 | N/A | Resolve each client's associated BSSID to the advertising mesh device and fronthaul interface. | Capture baseline TX/RX PHY rates. | Clients with valid TX and RX rates are accepted as baselines. |
+| 3 | N/A | Resolve the current station record every 10 minutes for 1 hour. | Validate current TX/RX rates against baseline. | Neither rate drops by more than 50%. |
+| 4 | N/A | Capture the final station record. | Validate final TX/RX rates against baseline. | Final rates pass the same validation. |
 
 ---
 
-
-# Test Case 7: EM_Fronthaul_RSSI_Stability
+# Test Case 6: EM_Fronthaul_RSSI_Stability
 
 ## Objective
 
-Verify that the RSSI of clients connected to Controller and Agent fronthaul SSIDs remains stable throughout the observation period.
+Verify each successfully connected WLAN client's fronthaul RSSI remains
+available and does not degrade beyond the allowed baseline limit.
 
 ## Test Type
 
 **Positive**
 
 ---
+
 ## Pre-Requisites
 
-1. All Agents are successfully onboarded and visible in the EasyMesh topology.
-2. EasyMesh services running on both devices.
-3. All Extenders are visible in the Controller topology.
-4. DataElements is accessible via rbuscli.
-5. Backhaul and fronthaul status information can be retrieved using iw dev <interface>
+1. The Controller and all enabled Extenders are successfully onboarded.
+2. EasyMesh services and fronthaul SSIDs are operational.
+3. Enabled WLAN clients and client MAC addresses are configured in the
+   testbed database.
+4. Client association status and station RSSI details are available.
+
 ---
 
 ## Test Configuration
 
 | Parameter | Value |
 |-----------|-------|
-| Observation Scope | Client RSSI stability on Controller and Agent fronthaul SSIDs |
-| Monitoring Command | `iw dev <fronthaul_interface> station dump | grep "signal:"` |
-| Measured Metric | Client RSSI trend versus baseline |
-| Verification Method | Baseline RSSI capture and periodic interval comparison |
-| Pass Criteria | RSSI remains relatively stable with no significant sustained degradation |
+| Observation Scope | Client RSSI stability on fronthaul links |
+| Measured Metric | Client RSSI in dBm |
+
 ---
 
-# Test Environment
+## Test Environment
 
 | Component | Description |
 |-----------|-------------|
 | Controller | EasyMesh Controller |
-| Agents | 3 EasyMesh Agents |
-| Clients |  Wireless Clients distributed across the Controller and Agents |
-| Topology | Hybrid Topology (Star and Daisy Chain) |
+| Agents | All enabled EasyMesh Extenders |
+| Clients | Enabled WLAN clients that connect successfully |
+| Topology | Configured EasyMesh topology |
+
 ---
 
 ## Test Procedure and Expected Results
 
-| Step Number | Controller | Agent | Client | Expected Result |
-|-------------|------------|--------|--------|-----------------|
-| 1 | Verify topology is healthy | Connect a client to the Controller or Agent fronthaul SSID | Associate to the fronthaul network | Client is successfully connected |
-| 2 | Record baseline RSSI value using the command below:`iw dev <fronthaul_interface> station dump \| grep "signal:"` | N/A | N/A | Initial RSSI value is recorded |
-| 3 | Monitor RSSI at defined intervals throughout the observation period using the same command | Collect RSSI values periodically | Maintain normal traffic activity | RSSI measurements are collected successfully |
-| 4 | Compare RSSI values against baseline measurements | Verify RSSI fluctuations remain within acceptable limits | Verify connectivity remains intact | RSSI remains relatively stable with no significant degradation |
-
+| Step Number | Controller | Agents | Clients | Expected Result |
+|-------------|------------|--------|---------|-----------------|
+| 1 | Retrieve Controller fronthaul credentials. | Verify fronthaul service availability. | Remove and reconnect enabled WLAN clients. | Connected clients are available for RSSI measurement. |
+| 2 | N/A | Resolve each client's associated BSSID to the advertising mesh device and fronthaul interface. | Capture and validate baseline RSSI. | Clients with a valid RSSI sample are accepted as baselines. |
+| 3 | N/A | Resolve the current station record every 10 minutes for 1 hour. | Validate current RSSI against baseline. | Each sample is available and no more than 10 dB below baseline. |
+| 4 | N/A | Capture the final station record. | Validate final RSSI against baseline. | Final RSSI passes the same degradation check. |
 
 ---
 
-# Test Case 8: EM_Fronthaul_PHYRate_Stability
+# Test Case 7: EM_End_To_End_Link_Performance_Stability
 
 ## Objective
 
-Verify that client TX and RX PHY rates remain stable throughout the observation period.
+Verify stable end-to-end latency, packet loss, and, when available, throughput
+between WLAN clients owned by enabled Extenders and the Controller gateway.
 
 ## Test Type
 
 **Positive**
 
 ---
+
 ## Pre-Requisites
 
-1. All Agents are successfully onboarded and visible in the EasyMesh topology.
-2. EasyMesh services running on both devices.
-3. All Extenders are visible in the Controller topology.
-4. DataElements is accessible via rbuscli.
-5. Backhaul and fronthaul status information can be retrieved using iw dev <interface>
+1. The Controller and all enabled Extenders are successfully onboarded.
+2. EasyMesh services and fronthaul SSIDs are operational.
+3. WLAN clients owned by enabled Extenders are configured and available.
+4. Controller fronthaul credentials and bridge IP are available.
+5. The Controller can start an `iperf3` server for throughput validation.
+
 ---
 
 ## Test Configuration
 
 | Parameter | Value |
 |-----------|-------|
-| Observation Scope | Client Tx/Rx PHY rate stability on fronthaul links |
-| Monitoring Commands | `iw dev <fronthaul_interface> station dump | grep "tx bitrate"`, `iw dev <fronthaul_interface> station dump | grep "rx bitrate"` |
-| Measured Metrics | Tx PHY rate, Rx PHY rate |
-| Verification Method | Baseline PHY capture and periodic trend comparison |
-| Pass Criteria | PHY rates remain stable with uninterrupted client communication |
+| Observation Scope | End-to-end client-to-Controller performance |
+| Measured Metrics | Average latency, packet loss, and throughput |
+
 ---
 
-# Test Environment
+## Test Environment
 
 | Component | Description |
 |-----------|-------------|
-| Controller | EasyMesh Controller |
-| Agents | 3 EasyMesh Agents |
-| Clients |  Wireless Clients distributed across the Controller and Agents |
-| Topology | Hybrid Topology (Star and Daisy Chain) |
+| Controller | EasyMesh Controller with bridge gateway and `iperf3` server |
+| Agents | All enabled EasyMesh Extenders |
+| Clients | WLAN clients whose names identify them as owned by enabled Extenders |
+| Topology | Configured EasyMesh topology |
+
 ---
 
 ## Test Procedure and Expected Results
 
-| Step Number | Controller | Agent | Client | Expected Result |
-|-------------|------------|--------|--------|-----------------|
-| 1 | Verify topology is healthy | Connect a client to the Controller or Agent fronthaul SSID | Associate to the fronthaul network | Client is successfully connected |
-| 2 | Record baseline PHY rates using the commands below:`iw dev <fronthaul_interface> station dump \| grep "tx bitrate"``iw dev <fronthaul_interface> station dump \| grep "rx bitrate"` | N/A | N/A | Initial TX and RX PHY rates are recorded |
-| 3 | Monitor PHY rates at defined intervals using the same commands | Record TX and RX PHY rates throughout the observation period | Maintain normal traffic activity | PHY rate measurements are collected successfully |
-| 4 | Compare PHY rates against baseline values and verify connectivity | Verify no abnormal PHY rate degradation is observed | Verify traffic flow remains uninterrupted | PHY rates remain stable and client communication is unaffected |
+| Step Number | Controller | Agents | Clients | Expected Result |
+|-------------|------------|--------|---------|-----------------|
+| 1 | Retrieve Controller fronthaul credentials and bridge IP. | Verify enabled Extenders are available. | Select enabled-Extender-owned clients and reconnect them. | At least one eligible client connects successfully. |
+| 2 | Start the Controller `iperf3` server. | N/A | Capture a 10-packet ping baseline and, when the server starts, a throughput baseline. | Clients with packet loss within 5% and valid measurements are accepted. If `iperf3` cannot start, throughput validation is reported as unavailable. |
+| 3 | Keep the Controller `iperf3` server running. | Monitor topology health. | Every 10 minutes for 1 hour, capture ping and applicable throughput samples. | Packet loss is at most 5%, average latency is at most 2x baseline, and throughput is at least 80% of baseline. |
+| 4 | N/A | N/A | Capture the final 100-packet ping and applicable throughput sample. | Final metrics pass the same validation limits. |
+| 5 | Stop the Controller `iperf3` server during cleanup. | N/A | N/A | The temporary performance server is stopped and cleanup failures are reported. |
 
 ---
-
-
