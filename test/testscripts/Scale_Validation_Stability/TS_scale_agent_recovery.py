@@ -72,30 +72,30 @@ def test_em_scale_agent_recovery_after_reboot(initialize):
             if reboot_errors:
                 for agent, error in reboot_errors.items():
                     report_logger.print_error(f"FAIL: {agent}: cycle {cycle} reboot command failed: {error}")
+            recovery_agents = [agent for agent in agents if agent not in reboot_errors]
+            if not recovery_agents:
                 return
-            report_logger.print_step(f"STEP {cycle + 1}.0: Confirm the reboot transition for each Agent")
+            report_logger.print_step(f"STEP {cycle + 1}.0: Confirm transitions and recover eligible Agents concurrently")
             transition_deadline = started_at + recovery_kpi
-            transition_results = {}
-            with ThreadPoolExecutor(max_workers=len(agents)) as executor:
+            recovery_results = {}
+            for agent in reboot_errors:
+                recovery_results[agent] = reboot_errors[agent]
+            with ThreadPoolExecutor(max_workers=len(recovery_agents)) as executor:
                 transition_futures = {
                     executor.submit(wait_for_device_reboot, initialize, agent, transition_deadline): agent
-                    for agent in agents}
+                    for agent in recovery_agents}
+                recovery_futures = {}
                 for future in as_completed(transition_futures):
                     agent = transition_futures[future]
                     try:
-                        transition_results[agent] = future.result()
+                        transitioned = future.result()
                     except Exception as error:
-                        transition_results[agent] = False
+                        transitioned = False
                         report_logger.print_error(f"FAIL: {agent}: cycle {cycle} reboot transition check failed: {error}")
-            if not all(transition_results.get(agent, False) for agent in agents):
-                return
-            # Confirm each Agent reconnects and meets the recovery KPI.
-            report_logger.print_step(f"STEP {cycle + 1}.1: Recover all Agents concurrently")
-            recovery_results = {}
-            with ThreadPoolExecutor(max_workers=len(agents)) as executor:
-                recovery_futures = {
-                    executor.submit(recovery_utils.recover_device, initialize, agent, started_at, recovery_results, recovery_type="agent"): agent
-                    for agent in agents}
+                    if not transitioned:
+                        recovery_results[agent] = False
+                        continue
+                    recovery_futures[executor.submit(recovery_utils.recover_device, initialize, agent, started_at, recovery_results, recovery_type="agent")] = agent
                 for future in as_completed(recovery_futures):
                     agent = recovery_futures[future]
                     try:
@@ -144,9 +144,9 @@ def test_em_scale_agent_recovery_after_reboot(initialize):
                 report_logger.print_error(f"FAIL: Initial scale setup did not stabilize after simultaneous cycle {cycle}: {mismatches}")
                 return
             report_logger.print_success(f"PASS: All {expected_count} Agents recovered concurrently and the initial scale setup stabilized after cycle {cycle}")
-            next_cycle_at = cycle_started_at + POLL_INTERVAL_SEC
+            next_cycle_at = time.monotonic() + POLL_INTERVAL_SEC
             if next_cycle_at < test_end:
-                # The next loop iteration performs the next scheduled recovery cycle.
+                # Schedule from cycle completion so the duration controls the actual cycle count.
                 report_logger.print_info(f"INFO: Waiting {POLL_INTERVAL_SEC} seconds for the next scheduled recovery cycle")
         # Report success only after every scheduled recovery cycle completed successfully.
         report_logger.print_success(f"PASS: Initial scale setup recovery was verified across {cycle} scheduled recovery cycles during {TEST_DURATION_SEC} seconds")

@@ -19,13 +19,11 @@ import re
 import time
 import uuid
 
-from rdkbmeshzap.common_utils import device_utils, report_logger
+from rdkbmeshzap.common_utils import device_utils, recovery_utils, report_logger
 from rdkbmeshzap.common_utils.link_stability_utils import POLL_INTERVAL_SEC, TEST_DURATION_SEC, parse_iperf_throughput
 
 # Time between scale setup stabilization checks.
 STABILIZATION_POLL_INTERVAL_SEC = 30
-# Time between reboot-transition checks.
-REBOOT_TRANSITION_POLL_INTERVAL_SEC = 5
 # Maximum allowed percentage increase from the baseline metric value.
 MAX_BASELINE_INCREASE_PERCENT = 20.0
 # Minimum available memory percentage required for a healthy system.
@@ -125,13 +123,15 @@ def get_extender_presence_snapshot(initialize, agents: list, nonfatal_query_erro
                 continue
             if initialize.get_wireless_backhaul_connection_status(agent, stored_interface):
                 connected_agents.add(agent)
-                parent, _ = device_utils.get_extender_parent_device(
-                    initialize, agent, topology_devices)
+                parent, _ = device_utils.get_extender_parent_device(initialize, agent, topology_devices, report_errors=not nonfatal_query_errors)
                 parent_by_agent[agent] = parent
                 if parent:
                     report_logger.print_info(f"INFO: {agent} is connected to parent {parent}")
                 else:
-                    report_logger.print_error(f"FAIL: {agent}: Controller-side parent relationship is unavailable")
+                    error = f"{agent}: Controller-side parent relationship is unavailable"
+                    query_errors.append(error)
+                    if not nonfatal_query_errors:
+                        report_logger.print_error(f"FAIL: {error}")
             else:
                 report_logger.print_info(f"INFO: {agent}: no active backhaul connection")
         except Exception as err:
@@ -140,14 +140,67 @@ def get_extender_presence_snapshot(initialize, agents: list, nonfatal_query_erro
             if not nonfatal_query_errors:
                 report_logger.print_error(f"FAIL: {error}")
             continue
+    controller_members, membership_query_errors, membership_configuration_errors = get_controller_agent_membership(
+        initialize, agents, nonfatal_query_errors)
+    query_errors.extend(membership_query_errors)
+    configuration_errors.extend(membership_configuration_errors)
     report_logger.print_info(f"INFO: Connected agents: {sorted(connected_agents)} (count={len(connected_agents)})")
     return {
         "agent_count": len(connected_agents),
         "agents": connected_agents,
         "parent_by_agent": parent_by_agent,
+        "controller_members": controller_members,
         "query_errors": query_errors,
         "configuration_errors": configuration_errors,
     }
+
+def get_controller_agent_membership(initialize, agents: list, nonfatal_query_errors: bool = False) -> tuple:
+    """
+    Syntax : get_controller_agent_membership(initialize, agents, nonfatal_query_errors=False)
+    Description : Maps Agent backhaul MACs to the Controller station table.
+    Parameters :
+        initialize - Testbed initialization and database interface.
+        agents - Names of extender devices included in the topology.
+        nonfatal_query_errors - Suppress transient query errors during stabilization.
+    Return Value: A tuple containing Controller members, query errors, and configuration errors.
+    """
+    controller_members = set()
+    query_errors = []
+    configuration_errors = []
+    try:
+        bridge_iface = initialize.read_from_database(CONTROLLER_DEVICE, "bridge_iface")
+        if not bridge_iface:
+            configuration_errors.append("controller: bridge_iface is missing from platform.yaml")
+            return controller_members, query_errors, configuration_errors
+        station_interfaces = initialize.get_bridge_station_interfaces(
+            CONTROLLER_DEVICE, bridge_iface)
+        station_macs = set()
+        for station_iface in station_interfaces:
+            station_macs.update(
+                str(mac).lower()
+                for mac in initialize.get_iw_station_details(
+                    CONTROLLER_DEVICE, station_iface, "macs"))
+    except Exception as error:
+        query_errors.append(f"controller membership query failed: {error}")
+        if not nonfatal_query_errors:
+            report_logger.print_error(f"FAIL: {query_errors[-1]}")
+        return controller_members, query_errors, configuration_errors
+    for agent in agents:
+        try:
+            backhaul_interface = initialize.read_from_database(agent, "backhaul_interface")
+            if not backhaul_interface:
+                configuration_errors.append(f"{agent}: backhaul_interface is missing from platform.yaml")
+                continue
+            interface_details = initialize.get_iw_interface_details(
+                agent, backhaul_interface)
+            backhaul_mac = str(interface_details.get("addr", "")).lower()
+            if backhaul_mac and backhaul_mac in station_macs:
+                controller_members.add(agent)
+        except Exception as error:
+            query_errors.append(f"{agent}: Controller membership lookup failed: {error}")
+            if not nonfatal_query_errors:
+                report_logger.print_error(f"FAIL: {query_errors[-1]}")
+    return controller_members, query_errors, configuration_errors
 
 def wait_for_device_reboot(initialize, device: str, deadline: float) -> bool:
     """
@@ -168,9 +221,10 @@ def wait_for_device_reboot(initialize, device: str, deadline: float) -> bool:
         except Exception as error:
             shutdown_observed = True
             report_logger.print_info(f"INFO: {device} shutdown transition observed: {error}")
+            break
         remaining = deadline - time.monotonic()
         if remaining > 0:
-            time.sleep(min(REBOOT_TRANSITION_POLL_INTERVAL_SEC, remaining))
+            time.sleep(min(recovery_utils.RETRY_INTERVAL_SECONDS, remaining))
     if not shutdown_observed:
         report_logger.print_error(f"FAIL: {device}: shutdown transition was not observed before the recovery deadline")
         return False
@@ -186,7 +240,7 @@ def wait_for_device_reboot(initialize, device: str, deadline: float) -> bool:
             report_logger.print_info(f"INFO: {device} post-reboot connection is waiting: {error}")
         remaining = deadline - time.monotonic()
         if remaining > 0:
-            time.sleep(min(REBOOT_TRANSITION_POLL_INTERVAL_SEC, remaining))
+            time.sleep(min(recovery_utils.RETRY_INTERVAL_SECONDS, remaining))
     report_logger.print_error(f"FAIL: {device}: post-reboot connection was not restored before the recovery deadline")
     return False
 
@@ -205,6 +259,8 @@ def get_extender_presence_mismatches(expected_count: int, baseline: dict, curren
     current_agents = set(current.get("agents", set()))
     baseline_parents = baseline.get("parent_by_agent", {})
     current_parents = current.get("parent_by_agent", {})
+    baseline_controller_members = set(baseline.get("controller_members", set()))
+    current_controller_members = set(current.get("controller_members", set()))
     current_agent_count = len(current_agents)
     current_query_errors = current.get("query_errors", [])
     current_configuration_errors = current.get("configuration_errors", [])
@@ -219,6 +275,19 @@ def get_extender_presence_mismatches(expected_count: int, baseline: dict, curren
     missing_agents = baseline_agents - current_agents
     if missing_agents:
         mismatches.append(f"Missing agents: {sorted(missing_agents)}")
+    expected_controller_members = {
+        agent for agent, parent in baseline_parents.items()
+        if parent == CONTROLLER_DEVICE
+    }
+    missing_controller_members = expected_controller_members - current_controller_members
+    if missing_controller_members:
+        mismatches.append(
+            f"Missing Controller-side Agent membership: {sorted(missing_controller_members)}")
+    if current_controller_members != baseline_controller_members:
+        mismatches.append(
+            f"Controller-side Agent membership changed: "
+            f"baseline={sorted(baseline_controller_members)} "
+            f"current={sorted(current_controller_members)}")
     for agent in sorted(baseline_agents):
         baseline_parent = baseline_parents.get(agent)
         current_parent = current_parents.get(agent)

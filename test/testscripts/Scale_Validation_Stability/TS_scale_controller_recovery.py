@@ -88,9 +88,7 @@ def test_em_scale_controller_recovery_after_reboot(initialize):
                 current = get_extender_presence_snapshot(
                     initialize, agents, nonfatal_query_errors=True)
                 if current.get("configuration_errors"):
-                    report_logger.print_error(
-                        f"FAIL: Scale configuration became invalid: "
-                        f"{current['configuration_errors']}")
+                    report_logger.print_error(f"FAIL: Scale configuration became invalid: {current['configuration_errors']}")
                     return
                 mismatches = get_extender_presence_mismatches(
                     expected_count, baseline, current)
@@ -109,9 +107,9 @@ def test_em_scale_controller_recovery_after_reboot(initialize):
                 report_logger.print_error(f"FAIL: Initial scale setup did not stabilize after controller cycle {cycle}: {mismatches}")
                 return
             report_logger.print_success(f"PASS: Initial scale setup recovered with {current['agent_count']} connected agents after cycle {cycle}")
-            next_cycle_at = cycle_started_at + POLL_INTERVAL_SEC
+            next_cycle_at = time.monotonic() + POLL_INTERVAL_SEC
             if next_cycle_at < test_end:
-                # The next loop iteration performs the next scheduled recovery cycle.
+                # Schedule from cycle completion so the duration controls the actual cycle count.
                 report_logger.print_info(f"INFO: Waiting for the next recovery cycle at the {POLL_INTERVAL_SEC}-second interval")
         # Report success only after every scheduled recovery cycle completed successfully.
         report_logger.print_success(f"PASS: Initial scale setup recovery was verified across {cycle} scheduled controller recovery cycles during {TEST_DURATION_SEC} seconds")
