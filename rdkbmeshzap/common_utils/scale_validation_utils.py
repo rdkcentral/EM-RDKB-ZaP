@@ -145,7 +145,6 @@ def get_extender_presence_mismatches(expected_count: int, baseline: dict, curren
         mismatches.append(f"Missing agents: {sorted(missing_agents)}")
     return mismatches
 
-
 def collect_client_iperf_samples(initialize, client_targets: dict, sample_duration_sec: int) -> dict:
     """
     Syntax : collect_client_iperf_samples(initialize, client_targets, sample_duration_sec)
@@ -195,7 +194,6 @@ def collect_client_iperf_samples(initialize, client_targets: dict, sample_durati
                 except Exception:
                     pass
     return results
-
 
 def validate_client_associations(initialize, devices: list, clients: list, baseline: dict) -> list:
     """
@@ -414,8 +412,7 @@ def wait_for_scale_configuration_propagation(initialize, agents: list, parameter
     deadline = time.monotonic() + CONFIGURATION_PROPAGATION_TIMEOUT_SEC
     observed = {}
     while True:
-        mismatches, observed = get_scale_configuration_mismatches(
-            initialize, agents, parameter, expected_value)
+        mismatches, observed = get_scale_configuration_mismatches(initialize, agents, parameter, expected_value)
         if not mismatches:
             return True, observed
         remaining = deadline - time.monotonic()
@@ -444,8 +441,7 @@ def wait_for_controller_scale_configuration_update(initialize, parameter: str, e
                 observed = f"SSID check failed: {error}"
         else:
             try:
-                observed = get_scale_configuration_parameter(
-                    initialize, "controller", parameter)
+                observed = get_scale_configuration_parameter(initialize, "controller", parameter)
             except Exception as error:
                 observed = f"Channel read failed: {error}"
         if str(observed) == str(expected_value):
@@ -469,8 +465,7 @@ def restore_controller_scale_configuration_parameter(initialize, parameter: str,
         initialize.set_ssid("controller", "mld_iface_index", original_value, "gui")
         return
     try:
-        current_value = get_scale_configuration_parameter(
-            initialize, "controller", parameter)
+        current_value = get_scale_configuration_parameter(initialize, "controller", parameter)
     except Exception as error:
         report_logger.print_error(f"Unable to read current {parameter} before restoration: {error}")
         return
