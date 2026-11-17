@@ -147,17 +147,17 @@ class FeatureUi(DatabaseModule):
 
     def ui_navigate_to_home_page(self, device):
         zi_logger.print_context()
-        ip = self.db_obj.read_from_database(device, 'login_ip')
-        port = self.db_obj.read_from_database(device, 'ui_port')
-        title = self.db_obj.read_from_database(device, 'ui_home_page_title')
-        url = f"http://{ip}:{port}/"
-        # Bound navigation time so an unavailable UI does not stall the test.
-        self._page.goto(
-            url,
-            wait_until="domcontentloaded",
-            timeout=10000,
-        )
-        expect(self._page).to_have_title(title)
+        try:
+            ip = self.db_obj.read_from_database(device, 'login_ip')
+            port = self.db_obj.read_from_database(device, 'ui_port')
+            title = self.db_obj.read_from_database(device, 'ui_home_page_title')
+            self._page.goto(f"http://{ip}:{port}/", wait_until="domcontentloaded")
+            expect(self._page).to_have_title(title)
+        except PlaywrightTimeoutError as e:
+            raise Exception(f"Timeout while navigating to home page: {e}")
+        except Exception as ERR:
+            zi_logger.log(f"Could not open page {ip}:{port}")
+            raise Exception(f"ERROR : {ERR}")
 
     def ui_navigate_to_required_page(self, page):
         zi_logger.print_context()
@@ -226,35 +226,94 @@ class FeatureUi(DatabaseModule):
             zi_logger.log(f"Failed to reset WiFi")
             raise Exception(f"ERROR : {ERR}")
 
-    def set_channel_preference_for_2_4_band(self, uncheck_channel: int, check_channel: int, priority: int):
+    def click_visible_control(self, control):
+        for index in range(control.count()):
+            candidate = control.nth(index)
+            if candidate.is_visible() and candidate.is_enabled():
+                candidate.click()
+                self._page.wait_for_timeout(500)
+                return True
+        return False
+
+    def find_visible_channel_row(self, channel):
+        rows = self._page.locator(f"div.list-row[data-channel=\"{channel}\"]")
+        for index in range(rows.count()):
+            row = rows.nth(index)
+            if row.is_visible():
+                return row
+        return None
+
+    def select_channel_band(self, band: str):
+        band_labels = {
+            "2.4": ("2.4 GHz", "2.4G", "2G"),
+            "5": ("5 GHz", "5G"),
+            "6": ("6 GHz", "6G"),
+        }
+        if band not in band_labels:
+            raise ValueError(f"Unsupported channel band: {band}")
+
+        for value in (band, *band_labels[band]):
+            selectors = (
+                f"[data-band=\"{value}\"]",
+                f"[data-radio-band=\"{value}\"]",
+                f"[data-frequency-band=\"{value}\"]",
+            )
+            for selector in selectors:
+                control = self._page.locator(selector)
+                if self.click_visible_control(control):
+                    return
+
+        for label in band_labels[band]:
+            control = self._page.get_by_role("tab", name=label, exact=False)
+            if self.click_visible_control(control):
+                return
+
+        for label in band_labels[band]:
+            selectors = (
+                f"button:has-text('{label}')",
+                f"a:has-text('{label}')",
+                f"label:has-text('{label}')",
+                f"[role='button']:has-text('{label}')",
+                f"li:has-text('{label}')",
+            )
+            for selector in selectors:
+                control = self._page.locator(selector)
+                if self.click_visible_control(control):
+                    return
+
+        raise Exception(f"Unable to select {band} GHz radio band in Wireless Settings")
+
+    def apply_channel_preference(self, band: str, uncheck_channel: int, check_channel: int, priority: int):
         zi_logger.print_context()
         try:
+            if band != "2.4":
+                self.select_channel_band(band)
+
             # uncheck previous channel if checked
-            uncheck_sel = f"div.list-row[data-channel=\"{uncheck_channel}\"] input.ch-check"
-            if self._page.locator(uncheck_sel).count() > 0:
-                if self._page.locator(uncheck_sel).is_checked():
-                    self._page.locator(uncheck_sel).click()
+            uncheck_row = self.find_visible_channel_row(uncheck_channel)
+            if uncheck_row is not None:
+                uncheck_checkbox = uncheck_row.locator("input.ch-check").first
+                if uncheck_checkbox.is_checked():
+                    uncheck_checkbox.evaluate("(element) => element.click()")
 
             # check desired channel
-            check_sel = f"div.list-row[data-channel=\"{check_channel}\"] input.ch-check"
-            if self._page.locator(check_sel).count() == 0:
-                raise Exception(f"Channel not found: {check_channel}")
-            if not self._page.locator(check_sel).is_checked():
-                self._page.locator(check_sel).click()
+            check_row = self.find_visible_channel_row(check_channel)
+            if check_row is None:
+                raise Exception(f"Channel row not visible for channel: {check_channel}")
+            check_checkbox = check_row.locator("input.ch-check").first
+            if not check_checkbox.is_checked():
+                check_checkbox.evaluate("(element) => element.click()")
             # set preference dropdown for checked channel
             # the select is inside the same row with class pref-inline-dd
-            pref_select = f"div.list-row[data-channel=\"{check_channel}\"] select.pref-inline-dd"
+            pref_select = check_row.locator("select.pref-inline-dd").first
             # if the pref-choose button needs to be clicked to enable the select, click it
-            pref_btn = f"div.list-row[data-channel=\"{check_channel}\"] button.pref-choose"
-            if self._page.locator(pref_btn).count() > 0 and self._page.locator(pref_btn).is_enabled():
-                try:
-                    self._page.locator(pref_btn).click()
-                except Exception:
-                    pass
-            if self._page.locator(pref_select).count() > 0:
+            pref_btn = check_row.locator("button.pref-choose").first
+            if pref_btn.count() > 0 and pref_btn.is_enabled():
+                pref_btn.click()
+            if pref_select.count() > 0:
                 # ensure select is visible/enabled
-                self._page.locator(pref_select).evaluate("el => el.removeAttribute('hidden')")
-                self._page.locator(pref_select).select_option(str(priority))
+                pref_select.evaluate("el => el.removeAttribute('hidden')")
+                pref_select.select_option(str(priority))
 
             # click save Apply Radio Settings save-radio-settings
             if self._page.locator("#save-radio-settings").count() > 0:

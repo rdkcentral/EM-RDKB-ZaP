@@ -357,13 +357,41 @@ class FeatureInterface(FeatureInterfaceModules):
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.stop_service(device, service_name)
 
-    def set_channel_preference_for_2_4_band(self, device: str, uncheck_channel: int, check_channel: int, priority: int):
+    def set_channel_preference_for_band(
+            self,
+            device: str,
+            band: str,
+            uncheck_channel: int,
+            check_channel: int,
+            priority: int):
         """
-        Set the channel preference on the device for the 2.4 GHz band.
+        Set the channel preference for a radio band on the device.
         """
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object('gui')
-        iface_obj.set_channel_preference_for_2_4_band(device, uncheck_channel, check_channel, priority)
+        iface_obj.set_channel_preference_for_band(
+            device, band, uncheck_channel, check_channel, priority)
+
+    def set_channel_preference_for_2_4_band(self, device: str, uncheck_channel: int, check_channel: int, priority: int):
+        """
+        Set the channel preference for the 2.4 GHz band on the device.
+        """
+        return self.set_channel_preference_for_band(
+            device, "2.4", uncheck_channel, check_channel, priority)
+
+    def set_channel_preference_for_5g_band(self, device: str, uncheck_channel: int, check_channel: int, priority: int):
+        """
+        Set the channel preference for the 5 GHz band on the device.
+        """
+        return self.set_channel_preference_for_band(
+            device, "5", uncheck_channel, check_channel, priority)
+
+    def set_channel_preference_for_6g_band(self, device: str, uncheck_channel: int, check_channel: int, priority: int):
+        """
+        Set the channel preference for the 6 GHz band on the device.
+        """
+        return self.set_channel_preference_for_band(
+            device, "6", uncheck_channel, check_channel, priority)
 
     def set_fronthaul_network_state(self,
                                device: str,
