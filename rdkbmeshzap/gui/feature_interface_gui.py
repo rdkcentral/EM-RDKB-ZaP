@@ -153,19 +153,40 @@ class FeatureInterfaceGUI(DatabaseModule,
                 f"Could not read AP Metrics reporting interval: {error}"
             ) from error
 
-    def set_channel_preference_for_2_4_band(self, device: str, uncheck_channel: int, check_channel: int, priority: int):
+    def set_channel_preference_for_band(
+            self,
+            device: str,
+            band: str,
+            uncheck_channel: int,
+            check_channel: int,
+            priority: int):
         """
-        Set the channel preference on the device via the GUI.
+        Set the channel preference for a radio band on the device via the GUI.
         """
-        zi_logger.print_context()
         zi_logger.print_context()
         self._create_ui_obj(device)
         self.ui_obj.ui_navigate_to_home_page(device)
         time.sleep(3)
-        self.ui_obj.ui_navigate_to_required_page( "Wireless Settings")
+        self.ui_obj.ui_navigate_to_required_page("Wireless Settings")
         time.sleep(3)
-        self.ui_obj.set_channel_preference_for_2_4_band(uncheck_channel, check_channel, priority)
+        self.ui_obj.apply_channel_preference(
+            band, uncheck_channel, check_channel, priority)
         time.sleep(3)
+
+    def set_channel_preference_for_2_4_band(self, device: str, uncheck_channel: int, check_channel: int, priority: int):
+        """Set the channel preference for the 2.4 GHz band via the GUI."""
+        return self.set_channel_preference_for_band(
+            device, "2.4", uncheck_channel, check_channel, priority)
+
+    def set_channel_preference_for_5g_band(self, device: str, uncheck_channel: int, check_channel: int, priority: int):
+        """Set the channel preference for the 5 GHz band via the GUI."""
+        return self.set_channel_preference_for_band(
+            device, "5", uncheck_channel, check_channel, priority)
+
+    def set_channel_preference_for_6g_band(self, device: str, uncheck_channel: int, check_channel: int, priority: int):
+        """Set the channel preference for the 6 GHz band via the GUI."""
+        return self.set_channel_preference_for_band(
+            device, "6", uncheck_channel, check_channel, priority)
 
     def set_fronthaul_network_state(self,
                                     device: str,
