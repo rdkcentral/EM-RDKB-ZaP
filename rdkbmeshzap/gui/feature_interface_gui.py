@@ -164,7 +164,7 @@ class FeatureInterfaceGUI(DatabaseModule,
         time.sleep(3)
         self.ui_obj.ui_navigate_to_required_page( "Wireless Settings")
         time.sleep(3)
-        self.ui_obj.set_channel_preference_for_2_4_band(uncheck_channel, check_channel, priority)
+        self.ui_obj.apply_channel_preference("2.4", uncheck_channel, check_channel, priority)
         time.sleep(3)
 
     def set_channel_preference_for_5g_band(self, device: str, uncheck_channel: int, check_channel: int, priority: int):
@@ -175,8 +175,7 @@ class FeatureInterfaceGUI(DatabaseModule,
         time.sleep(3)
         self.ui_obj.ui_navigate_to_required_page("Wireless Settings")
         time.sleep(3)
-        self.ui_obj.set_channel_preference_for_5g_band(
-            uncheck_channel, check_channel, priority)
+        self.ui_obj.apply_channel_preference("5", uncheck_channel, check_channel, priority)
         time.sleep(3)
 
     def set_channel_preference_for_6g_band(self, device: str, uncheck_channel: int, check_channel: int, priority: int):
@@ -187,8 +186,7 @@ class FeatureInterfaceGUI(DatabaseModule,
         time.sleep(3)
         self.ui_obj.ui_navigate_to_required_page("Wireless Settings")
         time.sleep(3)
-        self.ui_obj.set_channel_preference_for_6g_band(
-            uncheck_channel, check_channel, priority)
+        self.ui_obj.apply_channel_preference("6", uncheck_channel, check_channel, priority)
         time.sleep(3)
 
     def set_fronthaul_network_state(self,

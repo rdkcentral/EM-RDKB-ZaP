@@ -226,6 +226,23 @@ class FeatureUi(DatabaseModule):
             zi_logger.log(f"Failed to reset WiFi")
             raise Exception(f"ERROR : {ERR}")
 
+    def click_visible_control(self, control):
+        for index in range(control.count()):
+            candidate = control.nth(index)
+            if candidate.is_visible() and candidate.is_enabled():
+                candidate.click()
+                self._page.wait_for_timeout(500)
+                return True
+        return False
+
+    def find_visible_channel_row(self, channel):
+        rows = self._page.locator(f"div.list-row[data-channel=\"{channel}\"]")
+        for index in range(rows.count()):
+            row = rows.nth(index)
+            if row.is_visible():
+                return row
+        return None
+
     def select_channel_band(self, band: str):
         band_labels = {
             "2.4": ("2.4 GHz", "2.4G", "2G"),
@@ -235,15 +252,6 @@ class FeatureUi(DatabaseModule):
         if band not in band_labels:
             raise ValueError(f"Unsupported channel band: {band}")
 
-        def click_visible(control):
-            for index in range(control.count()):
-                candidate = control.nth(index)
-                if candidate.is_visible() and candidate.is_enabled():
-                    candidate.click()
-                    self._page.wait_for_timeout(500)
-                    return True
-            return False
-
         for value in (band, *band_labels[band]):
             selectors = (
                 f"[data-band=\"{value}\"]",
@@ -252,12 +260,12 @@ class FeatureUi(DatabaseModule):
             )
             for selector in selectors:
                 control = self._page.locator(selector)
-                if click_visible(control):
+                if self.click_visible_control(control):
                     return
 
         for label in band_labels[band]:
             control = self._page.get_by_role("tab", name=label, exact=False)
-            if click_visible(control):
+            if self.click_visible_control(control):
                 return
 
         for label in band_labels[band]:
@@ -270,33 +278,26 @@ class FeatureUi(DatabaseModule):
             )
             for selector in selectors:
                 control = self._page.locator(selector)
-                if click_visible(control):
+                if self.click_visible_control(control):
                     return
 
         raise Exception(f"Unable to select {band} GHz radio band in Wireless Settings")
 
-    def set_channel_preference_for_band(self, band: str, uncheck_channel: int, check_channel: int, priority: int):
+    def apply_channel_preference(self, band: str, uncheck_channel: int, check_channel: int, priority: int):
         zi_logger.print_context()
         try:
             if band != "2.4":
                 self.select_channel_band(band)
-            def find_visible_channel_row(channel):
-                rows = self._page.locator(f"div.list-row[data-channel=\"{channel}\"]")
-                for index in range(rows.count()):
-                    row = rows.nth(index)
-                    if row.is_visible():
-                        return row
-                return None
 
             # uncheck previous channel if checked
-            uncheck_row = find_visible_channel_row(uncheck_channel)
+            uncheck_row = self.find_visible_channel_row(uncheck_channel)
             if uncheck_row is not None:
                 uncheck_checkbox = uncheck_row.locator("input.ch-check").first
                 if uncheck_checkbox.is_checked():
                     uncheck_checkbox.evaluate("(element) => element.click()")
 
             # check desired channel
-            check_row = find_visible_channel_row(check_channel)
+            check_row = self.find_visible_channel_row(check_channel)
             if check_row is None:
                 raise Exception(f"Channel row not visible for channel: {check_channel}")
             check_checkbox = check_row.locator("input.ch-check").first
@@ -327,15 +328,6 @@ class FeatureUi(DatabaseModule):
         except Exception as ERR:
             zi_logger.log(f"Failed to set channel preference: {ERR}")
             raise Exception(f"ERROR : {ERR}")
-
-    def set_channel_preference_for_2_4_band(self, uncheck_channel: int, check_channel: int, priority: int):
-        self.set_channel_preference_for_band("2.4", uncheck_channel, check_channel, priority)
-
-    def set_channel_preference_for_5g_band(self, uncheck_channel: int, check_channel: int, priority: int):
-        self.set_channel_preference_for_band("5", uncheck_channel, check_channel, priority)
-
-    def set_channel_preference_for_6g_band(self, uncheck_channel: int, check_channel: int, priority: int):
-        self.set_channel_preference_for_band("6", uncheck_channel, check_channel, priority)
 
     def set_fronthaul_network_state(self, profile, enable: bool):
         """

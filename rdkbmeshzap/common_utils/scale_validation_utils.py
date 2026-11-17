@@ -48,8 +48,6 @@ CONFIGURATION_PARAMETERS = ("ssid", "channel_2_4", "channel_5", "channel_6")
 CONFIGURATION_PROPAGATION_TIMEOUT_SEC = 60
 # Time between configuration propagation checks.
 CONFIGURATION_POLL_INTERVAL_SEC = 5
-# Maximum number of configuration propagation checks.
-CONFIGURATION_MAX_POLL_ATTEMPTS = 3
 # Mapping of channel parameters to bands, setters, and candidate channels.
 CONFIGURATION_CHANNEL_BANDS = {
     "channel_2_4": (
@@ -326,9 +324,9 @@ def get_client_association_mismatches(baseline: dict, current: dict) -> list:
             mismatches.append(f"{device} client association mismatch")
     return mismatches
 
-def get_configuration_parameter(initialize, device: str, parameter: str):
+def get_scale_configuration_parameter(initialize, device: str, parameter: str):
     """
-    Syntax : get_configuration_parameter(initialize, device, parameter)
+    Syntax : get_scale_configuration_parameter(initialize, device, parameter)
     Description : Reads a supported SSID or operating-channel configuration parameter.
     Parameters :
         initialize - Testbed initialization and database interface.
@@ -337,15 +335,18 @@ def get_configuration_parameter(initialize, device: str, parameter: str):
     Return Value: The current parameter value.
     """
     if parameter == "ssid":
-        return initialize.get_ssid(device, "2g_ssid_index", "cli")
+        ssid = initialize.get_ssid(device, "2g_ssid_index", "cli")
+        if ssid is None or not str(ssid).strip():
+            raise ValueError(f"Unable to capture a non-empty SSID for {device}")
+        return ssid
     if parameter in CONFIGURATION_CHANNEL_BANDS:
         band = CONFIGURATION_CHANNEL_BANDS[parameter][0]
         return initialize.get_operating_channel(device, band)
     raise ValueError(f"Unsupported propagation parameter: {parameter}")
 
-def set_controller_configuration_parameter(initialize, parameter: str, current_value):
+def set_controller_scale_configuration_parameter(initialize, parameter: str, current_value):
     """
-    Syntax : set_controller_configuration_parameter(initialize, parameter, current_value)
+    Syntax : set_controller_scale_configuration_parameter(initialize, parameter, current_value)
     Description : Changes a supported Controller SSID or operating channel to the next test value.
     Parameters :
         initialize - Testbed initialization and database interface.
@@ -369,9 +370,9 @@ def set_controller_configuration_parameter(initialize, parameter: str, current_v
         return target_value
     raise ValueError(f"Unsupported propagation parameter: {parameter}")
 
-def get_configuration_mismatches(initialize, agents: list, parameter: str, expected_value):
+def get_scale_configuration_mismatches(initialize, agents: list, parameter: str, expected_value):
     """
-    Syntax : get_configuration_mismatches(initialize, agents, parameter, expected_value)
+    Syntax : get_scale_configuration_mismatches(initialize, agents, parameter, expected_value)
     Description : Compares an expected Controller configuration value with all extenders.
     Parameters :
         initialize - Testbed initialization and database interface.
@@ -388,7 +389,7 @@ def get_configuration_mismatches(initialize, agents: list, parameter: str, expec
                 initialize.check_ssid(agent, "mld_iface_index", str(expected_value), "cli")
                 observed[agent] = expected_value
             else:
-                current_value = get_configuration_parameter(
+                current_value = get_scale_configuration_parameter(
                     initialize, agent, parameter)
                 observed[agent] = current_value
                 if str(current_value) != str(expected_value):
@@ -397,9 +398,9 @@ def get_configuration_mismatches(initialize, agents: list, parameter: str, expec
             mismatches.append(f"{agent}: read failed: {error}")
     return mismatches, observed
 
-def wait_for_configuration_propagation(initialize, agents: list, parameter: str, expected_value):
+def wait_for_scale_configuration_propagation(initialize, agents: list, parameter: str, expected_value):
     """
-    Syntax : wait_for_configuration_propagation(initialize, agents, parameter, expected_value)
+    Syntax : wait_for_scale_configuration_propagation(initialize, agents, parameter, expected_value)
     Description : Checks whether a configuration value has propagated to all extenders.
     Parameters :
         initialize - Testbed initialization and database interface.
@@ -410,20 +411,19 @@ def wait_for_configuration_propagation(initialize, agents: list, parameter: str,
     """
     deadline = time.monotonic() + CONFIGURATION_PROPAGATION_TIMEOUT_SEC
     observed = {}
-    for attempt in range(CONFIGURATION_MAX_POLL_ATTEMPTS):
-        mismatches, observed = get_configuration_mismatches(
+    while True:
+        mismatches, observed = get_scale_configuration_mismatches(
             initialize, agents, parameter, expected_value)
         if not mismatches:
             return True, observed
-        if (attempt == CONFIGURATION_MAX_POLL_ATTEMPTS - 1
-            or time.monotonic() >= deadline):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
             return False, observed
-        time.sleep(CONFIGURATION_POLL_INTERVAL_SEC)
-    return False, observed
+        time.sleep(min(CONFIGURATION_POLL_INTERVAL_SEC, remaining))
 
-def wait_for_controller_configuration_update(initialize, parameter: str, expected_value):
+def wait_for_controller_scale_configuration_update(initialize, parameter: str, expected_value):
     """
-    Syntax : wait_for_controller_configuration_update(initialize, parameter, expected_value)
+    Syntax : wait_for_controller_scale_configuration_update(initialize, parameter, expected_value)
     Description : Checks whether the Controller reports the requested configuration value.
     Parameters :
         initialize - Testbed initialization and database interface.
@@ -433,7 +433,7 @@ def wait_for_controller_configuration_update(initialize, parameter: str, expecte
     """
     deadline = time.monotonic() + CONFIGURATION_PROPAGATION_TIMEOUT_SEC
     observed = None
-    for attempt in range(CONFIGURATION_MAX_POLL_ATTEMPTS):
+    while True:
         if parameter == "ssid":
             try:
                 initialize.check_ssid("controller", "mld_iface_index", str(expected_value), "cli")
@@ -441,19 +441,21 @@ def wait_for_controller_configuration_update(initialize, parameter: str, expecte
             except Exception as error:
                 observed = f"SSID check failed: {error}"
         else:
-            observed = get_configuration_parameter(
-                initialize, "controller", parameter)
+            try:
+                observed = get_scale_configuration_parameter(
+                    initialize, "controller", parameter)
+            except Exception as error:
+                observed = f"Channel read failed: {error}"
         if str(observed) == str(expected_value):
             return True, observed
-        if (attempt == CONFIGURATION_MAX_POLL_ATTEMPTS - 1
-            or time.monotonic() >= deadline):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
             return False, observed
-        time.sleep(CONFIGURATION_POLL_INTERVAL_SEC)
-    return False, observed
+        time.sleep(min(CONFIGURATION_POLL_INTERVAL_SEC, remaining))
 
-def restore_controller_configuration_parameter(initialize, parameter: str, original_value):
+def restore_controller_scale_configuration_parameter(initialize, parameter: str, original_value):
     """
-    Syntax : restore_controller_configuration_parameter(initialize, parameter, original_value)
+    Syntax : restore_controller_scale_configuration_parameter(initialize, parameter, original_value)
     Description : Restores a Controller SSID or operating channel to its original value.
     Parameters :
         initialize - Testbed initialization and database interface.
@@ -461,7 +463,7 @@ def restore_controller_configuration_parameter(initialize, parameter: str, origi
         original_value - Original value to restore.
     Return Value: None.
     """
-    current_value = get_configuration_parameter(
+    current_value = get_scale_configuration_parameter(
         initialize, "controller", parameter)
     if str(current_value) == str(original_value):
         return
