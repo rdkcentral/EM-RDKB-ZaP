@@ -27,6 +27,8 @@ throughout the one-hour test duration.
 | Parameter | Value |
 |-----------|-------|
 | Observation Scope | Backhaul connectivity stability across all enabled Extenders |
+| Test Duration | 1 hour |
+| Poll Interval | 10 minutes |
 | Measured Metrics | Connection state, parent BSSID, and connected time |
 
 ---
@@ -38,7 +40,7 @@ throughout the one-hour test duration.
 | Controller | EasyMesh Controller |
 | Agents | All enabled EasyMesh Extenders |
 | Clients | Not required |
-| Topology | Configured EasyMesh topology |
+| Topology | Controller and 3 Extenders in an active EasyMesh Hybrid topology |
 
 ---
 
@@ -81,6 +83,8 @@ available and within the allowed drop from baseline.
 | Parameter | Value |
 |-----------|-------|
 | Observation Scope | Backhaul TX/RX PHY-rate stability across all enabled Extenders |
+| Test Duration | 1 hour |
+| Poll Interval | 10 minutes |
 | Measured Metrics | TX PHY rate and RX PHY rate in Mbps |
 
 ---
@@ -92,7 +96,7 @@ available and within the allowed drop from baseline.
 | Controller | EasyMesh Controller |
 | Agents | All enabled EasyMesh Extenders |
 | Clients | Not required |
-| Topology | Configured EasyMesh topology |
+| Topology | Controller and 3 Extenders in an active EasyMesh Hybrid topology |
 
 ---
 
@@ -134,6 +138,8 @@ minimum threshold and does not degrade beyond the allowed baseline limit.
 | Parameter | Value |
 |-----------|-------|
 | Observation Scope | Backhaul RSSI stability across all enabled Extenders |
+| Test Duration | 1 hour |
+| Poll Interval | 10 minutes |
 | Measured Metric | Backhaul RSSI in dBm |
 
 ---
@@ -145,7 +151,7 @@ minimum threshold and does not degrade beyond the allowed baseline limit.
 | Controller | EasyMesh Controller |
 | Agents | All enabled EasyMesh Extenders |
 | Clients | Not required |
-| Topology | Configured EasyMesh topology |
+| Topology | Controller and 3 Extenders in an active EasyMesh Hybrid topology |
 
 ---
 
@@ -186,6 +192,8 @@ the Controller bridge gateway throughout the test duration.
 | Parameter | Value |
 |-----------|-------|
 | Observation Scope | Fronthaul client connectivity and Controller gateway reachability |
+| Test Duration | 1 hour |
+| Poll Interval | 10 minutes |
 | Measured Metrics | Client connection state and Controller gateway ping reachability |
 
 ---
@@ -197,7 +205,7 @@ the Controller bridge gateway throughout the test duration.
 | Controller | EasyMesh Controller and bridge gateway |
 | Agents | All enabled EasyMesh Extenders |
 | Clients | All enabled WLAN clients that connect successfully |
-| Topology | Configured EasyMesh topology |
+| Topology | Controller and 3 Extenders in an active EasyMesh Hybrid topology |
 
 ---
 
@@ -240,6 +248,8 @@ available and within the allowed drop from baseline.
 | Parameter | Value |
 |-----------|-------|
 | Observation Scope | Client TX/RX PHY-rate stability on fronthaul links |
+| Test Duration | 1 hour |
+| Poll Interval | 10 minutes |
 | Measured Metrics | Client TX PHY rate and RX PHY rate in Mbps |
 
 ---
@@ -251,7 +261,7 @@ available and within the allowed drop from baseline.
 | Controller | EasyMesh Controller |
 | Agents | All enabled EasyMesh Extenders |
 | Clients | Enabled WLAN clients that connect successfully |
-| Topology | Configured EasyMesh topology |
+| Topology | Controller and 3 Extenders in an active EasyMesh Hybrid topology |
 
 ---
 
@@ -294,6 +304,8 @@ available and does not degrade beyond the allowed baseline limit.
 | Parameter | Value |
 |-----------|-------|
 | Observation Scope | Client RSSI stability on fronthaul links |
+| Test Duration | 1 hour |
+| Poll Interval | 10 minutes |
 | Measured Metric | Client RSSI in dBm |
 
 ---
@@ -305,7 +317,7 @@ available and does not degrade beyond the allowed baseline limit.
 | Controller | EasyMesh Controller |
 | Agents | All enabled EasyMesh Extenders |
 | Clients | Enabled WLAN clients that connect successfully |
-| Topology | Configured EasyMesh topology |
+| Topology | Controller and 3 Extenders in an active EasyMesh Hybrid topology |
 
 ---
 
@@ -324,8 +336,9 @@ available and does not degrade beyond the allowed baseline limit.
 
 ## Objective
 
-Verify stable end-to-end latency, packet loss, and, when available, throughput
-between WLAN clients owned by enabled Extenders and the Controller gateway.
+Verify stable end-to-end latency, packet loss, and throughput between WLAN
+clients owned by the Controller or enabled Extenders and the Controller
+gateway.
 
 ## Test Type
 
@@ -337,7 +350,8 @@ between WLAN clients owned by enabled Extenders and the Controller gateway.
 
 1. The Controller and all enabled Extenders are successfully onboarded.
 2. EasyMesh services and fronthaul SSIDs are operational.
-3. WLAN clients owned by enabled Extenders are configured and available.
+3. WLAN clients owned by the Controller or enabled Extenders are configured
+   and available.
 4. Controller fronthaul credentials and bridge IP are available.
 5. The Controller can start an `iperf3` server for throughput validation.
 
@@ -348,6 +362,8 @@ between WLAN clients owned by enabled Extenders and the Controller gateway.
 | Parameter | Value |
 |-----------|-------|
 | Observation Scope | End-to-end client-to-Controller performance |
+| Test Duration | 1 hour |
+| Poll Interval | 10 minutes |
 | Measured Metrics | Average latency, packet loss, and throughput |
 
 ---
@@ -358,8 +374,8 @@ between WLAN clients owned by enabled Extenders and the Controller gateway.
 |-----------|-------------|
 | Controller | EasyMesh Controller with bridge gateway and `iperf3` server |
 | Agents | All enabled EasyMesh Extenders |
-| Clients | WLAN clients whose names identify them as owned by enabled Extenders |
-| Topology | Configured EasyMesh topology |
+| Clients | WLAN clients owned by the Controller or enabled Extenders |
+| Topology | Controller and 3 Extenders in an active EasyMesh Hybrid topology |
 
 ---
 
@@ -367,10 +383,10 @@ between WLAN clients owned by enabled Extenders and the Controller gateway.
 
 | Step Number | Controller | Agents | Clients | Expected Result |
 |-------------|------------|--------|---------|-----------------|
-| 1 | Retrieve Controller fronthaul credentials and bridge IP. | Verify enabled Extenders are available. | Select enabled-Extender-owned clients and reconnect them. | At least one eligible client connects successfully. |
-| 2 | Start the Controller `iperf3` server. | N/A | Capture a 10-packet ping baseline and, when the server starts, a throughput baseline. | Clients with packet loss within 5% and valid measurements are accepted. If `iperf3` cannot start, throughput validation is reported as unavailable. |
+| 1 | Retrieve Controller fronthaul credentials and bridge IP. | Verify enabled Extenders are available. | Select Controller-owned and enabled-Extender-owned clients and reconnect them. | At least one eligible client connects successfully. |
+| 2 | Start the Controller `iperf3` server. | N/A | Capture a 10-packet ping baseline and a throughput baseline. | Clients with packet loss within 5% and valid measurements are accepted. If `iperf3` cannot start, the test fails. |
 | 3 | Keep the Controller `iperf3` server running. | Monitor topology health. | Every 10 minutes for 1 hour, capture ping and applicable throughput samples. | Packet loss is at most 5%, average latency is at most 2x baseline, and throughput is at least 80% of baseline. |
 | 4 | N/A | N/A | Capture the final 100-packet ping and applicable throughput sample. | Final metrics pass the same validation limits. |
-| 5 | Stop the Controller `iperf3` server during cleanup. | N/A | N/A | The temporary performance server is stopped and cleanup failures are reported. |
+| 5 | In a `finally` cleanup block, stop the Controller `iperf3` server whether sampling succeeds or fails. | N/A | N/A | The temporary performance server is stopped and cleanup failures are reported. |
 
 ---

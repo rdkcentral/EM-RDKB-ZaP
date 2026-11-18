@@ -1,3 +1,17 @@
+# Scale Profile Definitions
+
+The scale profile counts are taken from the test platform configuration:
+
+| Scale Profile | Expected Agents | Expected WLAN Clients |
+|---------------|-----------------|-----------------------|
+| Small | 2 | 5 |
+| Medium | 5 | 25 |
+| Large | 10 | 50 |
+
+Stability test duration is **1 hour** with a **10-minute polling interval**.
+Baseline tests are one-time measurements. Agent and Controller recovery tests
+reboot the target at every polling interval and validate recovery at every poll.
+
 # Test Case 1: EM_Scale_ControllerAgent_Connectivity_Baseline
 
 ## Objective
@@ -75,6 +89,8 @@ duration.
 | Parameter | Value |
 |-----------|-------|
 | Observation Scope | Active Extender presence stability |
+| Test Duration | 1 hour |
+| Poll Interval | 10 minutes |
 | Measured Metrics | Connected Extender count and Extender membership compared with baseline |
 
 ---
@@ -178,6 +194,8 @@ duration.
 | Parameter | Value |
 |-----------|-------|
 | Observation Scope | WLAN client association stability across all mesh devices |
+| Test Duration | 1 hour |
+| Poll Interval | 10 minutes |
 | Measured Metrics | Client count, station MAC membership, and association mapping compared with baseline |
 
 ---
@@ -220,7 +238,7 @@ WLAN client.
 
 1. The selected scale profile is enabled.
 2. The Controller and configured Extenders are onboarded.
-3. Enabled Extender-owned WLAN clients are configured.
+3. Enabled Controller-owned and Extender-owned WLAN clients are configured.
 4. Controller fronthaul credentials, bridge IP, and `iperf3` are available.
 
 ---
@@ -240,7 +258,7 @@ WLAN client.
 |-----------|-------------|
 | Controller | EasyMesh Controller with `iperf3` server |
 | Agents | Enabled EasyMesh Extenders |
-| Clients | WLAN clients owned by the selected mesh devices |
+| Clients | WLAN clients owned by the Controller or selected Extenders |
 | Topology | Selected Small, Medium, or Large scale profile |
 
 ---
@@ -249,9 +267,10 @@ WLAN client.
 
 | Step Number | Controller | Agents | Clients | Expected Result |
 |-------------|------------|--------|---------|-----------------|
-| 1 | Retrieve the Controller fronthaul credentials and start the Controller `iperf3` server. | Verify the expected Extender count and presence. | Reconnect eligible Extender-owned WLAN clients. | The selected scale topology and connected clients are ready for traffic testing. |
+| 1 | Retrieve the Controller fronthaul credentials and start the Controller `iperf3` server. | Verify the expected Extender count and presence. | Reconnect eligible Controller-owned and Extender-owned WLAN clients. | The selected scale topology and connected clients are ready for traffic testing. If `iperf3` cannot start, the test fails. |
 | 2 | Validate baseline client associations and Extender presence. | Report station associations. | Remain associated. | Baseline topology and associations meet the selected scale profile. |
 | 3 | Receive `iperf3` traffic from each client and collect one sample. | Remain operational. | Send traffic to the Controller bridge IP. | A positive throughput sample is collected for every eligible client. |
+| 4 | In a `finally` cleanup block, stop the Controller `iperf3` server whether sampling succeeds or fails. | N/A | N/A | Temporary traffic service is stopped and cleanup errors are reported. |
 
 ---
 
@@ -272,7 +291,7 @@ the configured stability duration.
 
 1. The selected scale profile is enabled.
 2. The Controller and configured Extenders are onboarded.
-3. Enabled Extender-owned WLAN clients are configured.
+3. Enabled Controller-owned and Extender-owned WLAN clients are configured.
 4. Controller fronthaul credentials, bridge IP, and `iperf3` are available.
 
 ---
@@ -282,6 +301,8 @@ the configured stability duration.
 | Parameter | Value |
 |-----------|-------|
 | Observation Scope | Client traffic, association, and scale-topology stability |
+| Test Duration | 1 hour |
+| Poll Interval | 10 minutes |
 | Measured Metrics | Extender presence, client association, and throughput compared with baseline |
 
 ---
@@ -292,7 +313,7 @@ the configured stability duration.
 |-----------|-------------|
 | Controller | EasyMesh Controller with `iperf3` server |
 | Agents | Enabled EasyMesh Extenders |
-| Clients | WLAN clients owned by the selected mesh devices |
+| Clients | WLAN clients owned by the Controller or selected Extenders |
 | Topology | Selected Small, Medium, or Large scale profile |
 
 ---
@@ -301,10 +322,10 @@ the configured stability duration.
 
 | Step Number | Controller | Agents | Clients | Expected Result |
 |-------------|------------|--------|---------|-----------------|
-| 1 | Start the Controller `iperf3` server and capture the baseline. | Validate baseline Extender presence. | Reconnect clients and capture baseline associations and throughput. | Baseline topology, associations, and throughput are valid. |
+| 1 | Start the Controller `iperf3` server and capture the baseline. | Validate baseline Extender presence. | Reconnect Controller-owned and Extender-owned clients and capture baseline associations and throughput. | Baseline topology, associations, and throughput are valid. If `iperf3` cannot start, the test fails. |
 | 2 | Monitor the topology and traffic at the configured polling interval until the configured duration ends. | Report Extender presence and station associations. | Send periodic `iperf3` traffic samples. | Extender presence and associations match baseline; each throughput sample remains above the implemented baseline floor. |
 | 3 | Capture final topology, associations, and throughput. | Report final presence and station associations. | Complete the final throughput sample. | Final topology and associations match baseline and final throughput passes validation. |
-| 4 | Stop the Controller `iperf3` server. | N/A | N/A | Temporary traffic service is stopped and cleanup errors are reported. |
+| 4 | In a `finally` cleanup block, stop the Controller `iperf3` server whether sampling succeeds or fails. | N/A | N/A | Temporary traffic service is stopped and cleanup errors are reported. |
 
 ---
 
@@ -384,6 +405,8 @@ for the configured stability duration.
 | Parameter | Value |
 |-----------|-------|
 | Observation Scope | CPU utilization stability across the Controller and Extenders |
+| Test Duration | 1 hour |
+| Poll Interval | 10 minutes |
 | Measured Metrics | CPU idle percentage, CPU utilization percentage, high-CPU process history, and change from baseline |
 
 ---
@@ -485,6 +508,8 @@ the configured stability duration.
 | Parameter | Value |
 |-----------|-------|
 | Observation Scope | Memory utilization stability across the Controller and Extenders |
+| Test Duration | 1 hour |
+| Poll Interval | 10 minutes |
 | Measured Metrics | Available memory, used memory, baseline change, and used-memory growth history |
 
 ---
@@ -591,6 +616,8 @@ Extenders for the configured stability duration.
 | Parameter | Value |
 |-----------|-------|
 | Observation Scope | Repeated Controller-to-Extender configuration propagation stability |
+| Test Duration | 1 hour |
+| Poll Interval | 10 minutes |
 | Measured Metrics | Controller update result, Extender propagation result, parameter consistency, and restoration result |
 
 ---
@@ -622,7 +649,8 @@ Extenders for the configured stability duration.
 ## Objective
 
 Verify all enabled Extenders recover within their configured KPI and the scale
-topology is restored after scheduled Extender reboots.
+topology is restored after each scheduled Extender reboot throughout the
+stability test duration.
 
 ## Test Type
 
@@ -644,6 +672,8 @@ topology is restored after scheduled Extender reboots.
 | Parameter | Value |
 |-----------|-------|
 | Observation Scope | Scheduled simultaneous Extender reboot and scale-topology recovery |
+| Test Duration | 1 hour |
+| Poll Interval | 10 minutes |
 | Measured Metrics | Extender recovery time, connected Extender count, Extender membership, and topology stabilization |
 
 ---
@@ -664,9 +694,8 @@ topology is restored after scheduled Extender reboots.
 | Step Number | Controller | Agents | Expected Result |
 |-------------|------------|--------|-----------------|
 | 1 | Capture the initial Extender presence baseline. | Verify all enabled Extenders are connected. | Baseline count and membership meet the selected scale profile. |
-| 2 | Monitor the configured recovery duration and schedule each recovery cycle using the configured polling interval. | Reboot all enabled Extenders concurrently and reconnect them. | Each Extender recovers within the configured Agent recovery KPI. |
-| 3 | Poll the scale setup until it stabilizes after each reboot cycle. | Report recovered presence. | Extender count and membership return to baseline. |
-| 4 | Continue scheduled recovery cycles until the configured duration ends. | Remain operational between cycles. | Every completed cycle passes recovery and topology validation. |
+| 2 | At every 10-minute poll interval during the 1-hour test, schedule the next recovery check. | Reboot all enabled Extenders concurrently and reconnect them. | Each Extender recovers within the configured Agent recovery KPI at every poll. |
+| 3 | Validate the scale setup after each reboot recovery. | Report recovered presence at every poll. | Extender count and membership return to baseline at every poll. |
 
 ---
 
@@ -675,7 +704,8 @@ topology is restored after scheduled Extender reboots.
 ## Objective
 
 Verify the Controller recovers within its configured KPI and the scale topology
-is restored after scheduled Controller reboots.
+is restored after each scheduled Controller reboot throughout the stability
+test duration.
 
 ## Test Type
 
@@ -697,6 +727,8 @@ is restored after scheduled Controller reboots.
 | Parameter | Value |
 |-----------|-------|
 | Observation Scope | Scheduled Controller reboot and scale-topology recovery |
+| Test Duration | 1 hour |
+| Poll Interval | 10 minutes |
 | Measured Metrics | Controller recovery time, connected Extender count, Extender membership, and topology stabilization |
 
 ---
@@ -717,8 +749,7 @@ is restored after scheduled Controller reboots.
 | Step Number | Controller | Agents | Expected Result |
 |-------------|------------|--------|-----------------|
 | 1 | Capture the initial scale-topology baseline. | Verify all enabled Extenders are connected. | Baseline count and membership meet the selected scale profile. |
-| 2 | Reboot and recover the Controller using the configured polling interval and test duration. | Monitor reconnection and topology synchronization. | The Controller recovers within the configured Controller recovery KPI. |
-| 3 | Poll the scale setup until it stabilizes after each Controller reboot. | Report current Extender presence. | Extender count and membership return to baseline. |
-| 4 | Continue scheduled Controller recovery cycles until the configured duration ends. | Remain operational between cycles. | Every completed cycle passes recovery and topology validation. |
+| 2 | At every 10-minute poll interval during the 1-hour test, schedule the next recovery check. | Reboot and recover the Controller, then monitor reconnection and topology synchronization. | The Controller recovers within the configured Controller recovery KPI at every poll. |
+| 3 | Validate the scale setup after each Controller reboot recovery. | Report current Extender presence at every poll. | Extender count and membership return to baseline at every poll. |
 
 ---
