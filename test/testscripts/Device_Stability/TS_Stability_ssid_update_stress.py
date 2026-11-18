@@ -35,7 +35,7 @@ def test_stability_ssid_update_stress(initialize, common_setup, resource_usage_d
         pytest.fail("ssid_update_max_count must be greater than 0. please update the configuration \"ssid_update_max_count\".")
     report_logger.print_info(f"INFO: Retrieved ssid_update_max_count: {ssid_update_max_count}")
     report_logger.print_step("STEP 2: Start monitor_service in controller")
-    initialize.execute_command("controller", "python3 /nvram/monitoring_tool.py &")
+    initialize.execute_script("controller", "/nvram/monitoring_tool.py")
     report_logger.print_success("PASS: Monitoring script started in controller")
     ssid_update_current_count = 0
     report_logger.print_step("STEP 3: Fetching initial SSID from controller")
@@ -74,7 +74,7 @@ def test_stability_ssid_update_stress(initialize, common_setup, resource_usage_d
             break
     step_count += 1
     report_logger.print_step(f"STEP {step_count}: Stopping monitoring script in controller")
-    initialize.execute_command("controller", "pkill -f monitoring_tool.py")
+    initialize.stop_script_execution("controller", "monitoring_tool.py")
     report_logger.print_success("PASS: Monitoring script stopped in controller")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     step_count += 1
@@ -91,7 +91,7 @@ def test_stability_ssid_update_stress(initialize, common_setup, resource_usage_d
             sub_step_count += 1
             report_logger.print_step(f"STEP {step_count}.{sub_step_count}: Downloading log file locally and deleting remote file instance.")
             initialize.get_file("controller", log_file, resource_usage_dir)
-            initialize.execute_command("controller", f"rm -f {log_file}")
+            initialize.remove_file("controller", log_file)
             report_logger.print_success(f"PASS: Log file downloaded and deleted the file from controller")
         else:
             report_logger.print_error(f"FAIL: Controller: Log file not found for {process_name}")
