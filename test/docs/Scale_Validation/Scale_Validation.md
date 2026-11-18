@@ -374,7 +374,7 @@ Capture and validate one CPU utilization snapshot for every scale device.
 | Step Number | Controller | Agents | Expected Result |
 |-------------|------------|--------|-----------------|
 | 1 | Discover the enabled scale profile and scale devices. | Remain reachable. | The expected number of Extenders is discovered. |
-| 2 | Capture one CPU snapshot. | Capture one CPU snapshot from every Extender. | Each device provides a valid snapshot and passes the CPU validation limits. |
+| 2 | Capture one CPU snapshot from `top`. | Capture one CPU snapshot from `top` on every Extender. | Calculate `CPU utilization (%) = 100 - CPU idle (%)`. Each device must have CPU idle greater than 20% (equivalent to utilization below 80%). Record processes using more than 50% CPU for stability monitoring. |
 | 3 | Summarize the baseline results. | N/A | A baseline is available for every scale device. |
 
 ---
@@ -426,9 +426,9 @@ for the configured stability duration.
 
 | Step Number | Controller | Agents | Expected Result |
 |-------------|------------|--------|-----------------|
-| 1 | Capture the Controller CPU baseline. | Capture CPU baselines from all Extenders. | Baselines are available and pass the implemented CPU limits. |
-| 2 | Monitor CPU at the configured polling interval until the configured duration ends. | Report CPU snapshots at each poll. | CPU remains within limits and baseline changes are accepted by the validation logic. |
-| 3 | Capture final CPU snapshots. | Report final CPU values. | Final CPU values pass the same limits and baseline comparison. |
+| 1 | Capture the Controller CPU baseline from `top`. | Capture CPU baselines from all Extenders using `top`. | Calculate `CPU utilization (%) = 100 - CPU idle (%)`. Each baseline must have CPU idle greater than 20% (equivalent to utilization below 80%); record processes using more than 50% CPU. |
+| 2 | Monitor CPU at the configured polling interval until the configured duration ends. | Report CPU snapshots at each poll. | Recalculate CPU utilization at every poll. CPU idle must remain greater than 20%, utilization must remain below 80%, and utilization must not increase by more than 20 percentage points from baseline. A process using more than 50% CPU for 2 consecutive samples fails the test. |
+| 3 | Capture final CPU snapshots and calculate `CPU utilization (%) = 100 - CPU idle (%)`. | Report final CPU values. | Apply the same idle, utilization, baseline-change, and high-CPU-process limits to the final values. |
 
 ---
 
@@ -477,7 +477,7 @@ Capture and validate one memory utilization snapshot for every scale device.
 | Step Number | Controller | Agents | Expected Result |
 |-------------|------------|--------|-----------------|
 | 1 | Discover the enabled scale profile and scale devices. | Remain reachable. | The expected number of Extenders is discovered. |
-| 2 | Capture one memory snapshot. | Capture one memory snapshot from every Extender. | Each device provides a valid snapshot and passes the memory validation limits. |
+| 2 | Capture one memory snapshot using `free -m`. | Capture one memory snapshot using `free -m` from every Extender. | Calculate `used memory (%) = used / total × 100` and `available memory (%) = available / total × 100`. Each device must have available memory greater than 20% and used memory less than 80%; the snapshot becomes the stability baseline. |
 | 3 | Summarize the baseline results. | N/A | A baseline is available for every scale device. |
 
 ---
@@ -529,9 +529,9 @@ the configured stability duration.
 
 | Step Number | Controller | Agents | Expected Result |
 |-------------|------------|--------|-----------------|
-| 1 | Capture the Controller memory baseline. | Capture memory baselines from all Extenders. | Baselines are available and pass the implemented memory limits. |
-| 2 | Monitor memory at the configured polling interval until the configured duration ends. | Report memory snapshots at each poll. | Available/used memory limits, baseline changes, and growth checks pass. |
-| 3 | Capture final memory snapshots. | Report final memory values. | Final memory values pass the same limits and growth validation. |
+| 1 | Capture the Controller memory baseline using `free -m`. | Capture memory baselines from all Extenders using `free -m`. | Calculate `used memory (%) = used / total × 100` and `available memory (%) = available / total × 100`. Each baseline must have available memory greater than 20% and used memory less than 80%. |
+| 2 | Monitor memory at the configured polling interval until the configured duration ends. | Report memory snapshots at each poll. | Recalculate used and available percentages at every poll. Available memory must remain greater than 20%, used memory must remain less than 80%, and used memory must not increase by more than 20 percentage points from baseline. Three consecutive increasing used-memory samples totaling at least 50 MB fail the test as sustained growth. |
+| 3 | Capture final memory snapshots. | Report final memory values. | Recalculate both percentages and apply the same absolute, baseline, and sustained-growth limits to the final values. |
 
 ---
 
@@ -563,6 +563,7 @@ supported configuration parameter.
 | Parameter | Value |
 |-----------|-------|
 | Observation Scope | Initial consistency and one propagation cycle for supported Controller configuration |
+| Parameters Changed | Fronthaul SSID; 2.4 GHz, 5 GHz, and 6 GHz operating channels |
 | Measured Metrics | Controller values, Extender values, propagation result, and restoration result |
 
 ---
@@ -583,7 +584,7 @@ supported configuration parameter.
 | Step Number | Controller | Agents | Clients | Expected Result |
 |-------------|------------|--------|---------|-----------------|
 | 1 | Read the original value for each supported parameter. | Report the corresponding parameter values. | Remain available for connectivity checks. | Original Controller and Extender values are captured. |
-| 2 | Change each supported parameter once and verify the Controller update. | Verify the changed value propagates. | Verify connectivity is not unexpectedly lost. | Each parameter update is accepted and propagated to all available Extenders. |
+| 2 | Change the fronthaul SSID and each supported radio channel parameter (`channel_2_4`, `channel_5`, and `channel_6`) once, then verify the Controller update. Use channel 1 or 6 for 2.4 GHz, 42, 58, or 106 for 5 GHz, and 7, 23, or 39 for 6 GHz. | Verify each changed value propagates. | Verify connectivity is not unexpectedly lost. | Each SSID and channel update is accepted and propagated to all available Extenders. |
 | 3 | Restore the original values and verify propagation. | Confirm restored values. | Confirm client connectivity. | All original values are restored consistently. |
 
 ---
@@ -616,6 +617,7 @@ Extenders for the configured stability duration.
 | Parameter | Value |
 |-----------|-------|
 | Observation Scope | Repeated Controller-to-Extender configuration propagation stability |
+| Parameters Changed | Fronthaul SSID; 2.4 GHz, 5 GHz, and 6 GHz operating channels |
 | Test Duration | 1 hour |
 | Poll Interval | 10 minutes |
 | Measured Metrics | Controller update result, Extender propagation result, parameter consistency, and restoration result |
@@ -638,7 +640,7 @@ Extenders for the configured stability duration.
 | Step Number | Controller | Agents | Clients | Expected Result |
 |-------------|------------|--------|---------|-----------------|
 | 1 | Capture the initial value for each supported parameter and validate initial propagation. | Report the corresponding baseline values. | Remain available. | Initial values and propagation baseline are recorded. |
-| 2 | At the configured polling interval, update each supported parameter. | Verify each new value propagates. | Verify normal connectivity. | Each propagation cycle completes without an Extender mismatch. |
+| 2 | At the configured polling interval, update the fronthaul SSID and each supported radio channel parameter (`channel_2_4`, `channel_5`, and `channel_6`). Use channel 1 or 6 for 2.4 GHz, 42, 58, or 106 for 5 GHz, and 7, 23, or 39 for 6 GHz. | Verify each new SSID and channel value propagates. | Verify normal connectivity. | Each propagation cycle completes without an Extender mismatch. |
 | 3 | Continue cycles until the configured duration ends. | Maintain parameter consistency. | Remain connected. | Configuration remains consistently propagated throughout monitoring. |
 | 4 | Restore the original values after monitoring. | Confirm restoration on every Extender. | Confirm connectivity. | Original configuration is restored successfully. |
 
