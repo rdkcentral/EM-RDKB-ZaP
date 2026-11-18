@@ -340,28 +340,25 @@ def verify_extender_services(initialize, extender, deadline=None):
         deadline,
     ) 
 
-def get_extender_parent_device(initialize, extender, devices, iw_dev_snapshot=None, report_errors=True):
+def get_extender_parent_device(initialize, extender, devices, iw_dev_snapshot=None):
     """
     Syntax: get_extender_parent_device(initialize, extender, devices)
     Description: Find the device hosting the mesh-backhaul AP connected to the extender.
     Parameters: initialize - Testbed interface; extender - Extender name; devices - Candidate parent devices.
-    report_errors - Log BSSID query errors when True.
     Return Value: A tuple containing the parent device name and connected BSSID, or None values when unavailable.
     Example: get_extender_parent_device(initialize, "extender1", ["controller", "extender1"])
     """
     try:
         backhaul_interface = initialize.read_from_database(extender, "backhaul_interface")
     except Exception as error:
-        if report_errors:
-            report_logger.print_error(f"FAIL: {extender}: unable to read backhaul_interface: {error}")
+        report_logger.print_error(f"FAIL: {extender}: unable to read backhaul_interface: {error}")
         return None, None
     if not backhaul_interface:
         return None, None
     try:
         bssids = initialize.get_iw_link_details(extender, backhaul_interface, "bssid")
     except Exception as error:
-        if report_errors:
-            report_logger.print_error(f"FAIL: {extender}: unable to read backhaul BSSID on {backhaul_interface}: {error}")
+        report_logger.print_error(f"FAIL: {extender}: unable to read backhaul BSSID on {backhaul_interface}: {error}")
         return None, None
     if not bssids:
         return None, None

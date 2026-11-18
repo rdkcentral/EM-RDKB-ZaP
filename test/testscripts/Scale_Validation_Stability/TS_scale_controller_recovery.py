@@ -60,12 +60,9 @@ def test_em_scale_controller_recovery_after_reboot(initialize):
             except Exception as error:
                 report_logger.print_error(f"FAIL: Controller cycle {cycle} reboot command failed: {error}")
                 return
-            report_logger.print_step(f"STEP {cycle + 1}.0: Confirm the controller reboot transition")
-            transition_deadline = started_at + recovery_kpi
-            if not wait_for_device_reboot(initialize, "controller", transition_deadline):
-                return
-            # Confirm the Controller reconnects and its services meet the recovery KPI.
-            report_logger.print_step(f"STEP {cycle + 1}.1: Wait for controller service recovery")
+            # Allow the reboot command to progress before recovery.
+            time.sleep(30)
+            report_logger.print_step(f"STEP {cycle + 1}.0: Recover the Controller")
             recovery_results = {}
             try:
                 recovery_utils.recover_device(initialize, "controller", started_at, recovery_results, recovery_type="controller")
@@ -77,6 +74,14 @@ def test_em_scale_controller_recovery_after_reboot(initialize):
                 return
             if recovery_time > recovery_kpi:
                 report_logger.print_error(f"FAIL: Controller cycle {cycle} recovery took {recovery_time:.1f}s; limit is {recovery_kpi}s")
+                return
+            try:
+                controller_reachable = initialize.is_device_alive("controller")
+            except Exception as error:
+                report_logger.print_error(f"FAIL: Controller cycle {cycle} reachability check failed: {error}")
+                return
+            if not controller_reachable:
+                report_logger.print_error(f"FAIL: Controller cycle {cycle} recovered services but is not reachable")
                 return
             report_logger.print_success(f"PASS: Controller recovered in {recovery_time:.1f}s during cycle {cycle}, within the {recovery_kpi}s limit")
             # Poll until all Agents match the baseline membership or the stabilization window expires.

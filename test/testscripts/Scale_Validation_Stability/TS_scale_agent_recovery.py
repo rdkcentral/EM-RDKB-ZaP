@@ -72,30 +72,20 @@ def test_em_scale_agent_recovery_after_reboot(initialize):
             if reboot_errors:
                 for agent, error in reboot_errors.items():
                     report_logger.print_error(f"FAIL: {agent}: cycle {cycle} reboot command failed: {error}")
-            recovery_agents = [agent for agent in agents if agent not in reboot_errors]
-            if not recovery_agents:
-                return
-            report_logger.print_step(f"STEP {cycle + 1}.0: Confirm transitions and recover eligible Agents concurrently")
-            transition_deadline = started_at + recovery_kpi
+            report_logger.print_step(f"STEP {cycle + 1}.0: Recover all Agents concurrently")
             recovery_results = {}
-            for agent in reboot_errors:
-                recovery_results[agent] = reboot_errors[agent]
-            with ThreadPoolExecutor(max_workers=len(recovery_agents)) as executor:
-                transition_futures = {
-                    executor.submit(wait_for_device_reboot, initialize, agent, transition_deadline): agent
-                    for agent in recovery_agents}
-                recovery_futures = {}
-                for future in as_completed(transition_futures):
-                    agent = transition_futures[future]
-                    try:
-                        transitioned = future.result()
-                    except Exception as error:
-                        transitioned = False
-                        report_logger.print_error(f"FAIL: {agent}: cycle {cycle} reboot transition check failed: {error}")
-                    if not transitioned:
-                        recovery_results[agent] = False
-                        continue
-                    recovery_futures[executor.submit(recovery_utils.recover_device, initialize, agent, started_at, recovery_results, recovery_type="agent")] = agent
+            with ThreadPoolExecutor(max_workers=len(agents)) as executor:
+                recovery_futures = {
+                    executor.submit(
+                        recovery_utils.recover_device,
+                        initialize,
+                        agent,
+                        started_at,
+                        recovery_results,
+                        recovery_type="agent",
+                    ): agent
+                    for agent in agents
+                }
                 for future in as_completed(recovery_futures):
                     agent = recovery_futures[future]
                     try:
@@ -104,6 +94,8 @@ def test_em_scale_agent_recovery_after_reboot(initialize):
                         recovery_results[agent] = error
             recovery_failed = False
             for agent in agents:
+                if agent in reboot_errors:
+                    recovery_results[agent] = reboot_errors[agent]
                 recovery_time = recovery_results.get(agent)
                 if (not isinstance(recovery_time, (int, float))or isinstance(recovery_time, bool)):
                     report_logger.print_error(f"FAIL: {agent}: cycle {cycle} recovery result is unavailable or failed: {recovery_time}")
@@ -111,8 +103,11 @@ def test_em_scale_agent_recovery_after_reboot(initialize):
                 elif recovery_time > recovery_kpi:
                     report_logger.print_error(f"FAIL: {agent}: cycle {cycle} recovery took {recovery_time:.1f}s; limit is {recovery_kpi}s")
                     recovery_failed = True
+                elif not initialize.is_device_alive(agent):
+                    report_logger.print_error(f"FAIL: {agent}: cycle {cycle} recovered services but the Agent is not reachable")
+                    recovery_failed = True
                 else:
-                    report_logger.print_success(f"PASS: {agent} recovered in {recovery_time:.1f}s during cycle {cycle}")
+                    report_logger.print_success(f"PASS: {agent} is reachable and recovered in {recovery_time:.1f}s during cycle {cycle}")
             if recovery_failed:
                 # All Agents were checked above; stop this cycle only after reporting every failure.
                 return

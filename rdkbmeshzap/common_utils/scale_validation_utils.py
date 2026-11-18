@@ -19,7 +19,7 @@ import re
 import time
 import uuid
 
-from rdkbmeshzap.common_utils import device_utils, recovery_utils, report_logger
+from rdkbmeshzap.common_utils import device_utils, report_logger
 from rdkbmeshzap.common_utils.link_stability_utils import POLL_INTERVAL_SEC, TEST_DURATION_SEC, parse_iperf_throughput
 
 # Time between scale setup stabilization checks.
@@ -101,12 +101,13 @@ def get_enabled_scale_setup(initialize, scale: str | None = None) -> dict:
 def get_extender_presence_snapshot(initialize, agents: list, nonfatal_query_errors: bool = False) -> dict:
     """
     Syntax : get_extender_presence_snapshot(initialize, agents, nonfatal_query_errors=False)
-    Description : Captures Controller-side Agent presence and parent relationships.
+    Description : Captures Agent backhaul presence, parent relationships, and Controller station membership.
     Parameters :
         initialize - Testbed initialization and database interface.
         agents - Names of extender devices included in the topology.
         nonfatal_query_errors - Suppress transient query errors until stabilization times out.
-    Return Value: Dictionary containing presence, topology, and query error details.
+    Return Value: Dictionary with ``agent_count``, ``agents``, ``parent_by_agent``,
+        ``controller_members``, ``query_errors``, and ``configuration_errors``.
     """
     connected_agents = set()
     parent_by_agent = {}
@@ -123,7 +124,7 @@ def get_extender_presence_snapshot(initialize, agents: list, nonfatal_query_erro
                 continue
             if initialize.get_wireless_backhaul_connection_status(agent, stored_interface):
                 connected_agents.add(agent)
-                parent, _ = device_utils.get_extender_parent_device(initialize, agent, topology_devices, report_errors=not nonfatal_query_errors)
+                parent, _ = device_utils.get_extender_parent_device(initialize, agent, topology_devices)
                 parent_by_agent[agent] = parent
                 if parent:
                     report_logger.print_info(f"INFO: {agent} is connected to parent {parent}")
@@ -157,12 +158,12 @@ def get_extender_presence_snapshot(initialize, agents: list, nonfatal_query_erro
 def get_controller_agent_membership(initialize, agents: list, nonfatal_query_errors: bool = False) -> tuple:
     """
     Syntax : get_controller_agent_membership(initialize, agents, nonfatal_query_errors=False)
-    Description : Maps Agent backhaul MACs to the Controller station table.
+    Description : Maps Agent backhaul MACs to the Controller station table for backhaul validation.
     Parameters :
         initialize - Testbed initialization and database interface.
         agents - Names of extender devices included in the topology.
         nonfatal_query_errors - Suppress transient query errors during stabilization.
-    Return Value: A tuple containing Controller members, query errors, and configuration errors.
+    Return Value: A tuple of ``(controller_members, query_errors, configuration_errors)``.
     """
     controller_members = set()
     query_errors = []
@@ -201,48 +202,6 @@ def get_controller_agent_membership(initialize, agents: list, nonfatal_query_err
             if not nonfatal_query_errors:
                 report_logger.print_error(f"FAIL: {query_errors[-1]}")
     return controller_members, query_errors, configuration_errors
-
-def wait_for_device_reboot(initialize, device: str, deadline: float) -> bool:
-    """
-    Syntax : wait_for_device_reboot(initialize, device, deadline)
-    Description : Waits for device shutdown and a subsequent connection.
-    Parameters :
-        initialize - Testbed initialization and database interface.
-        device - Device being monitored.
-        deadline - Monotonic deadline for the transition check.
-    Return Value: True when shutdown and reconnection are observed, otherwise False.
-    """
-    shutdown_observed = False
-    while time.monotonic() < deadline:
-        try:
-            if not initialize.is_device_alive(device):
-                shutdown_observed = True
-                break
-        except Exception as error:
-            shutdown_observed = True
-            report_logger.print_info(f"INFO: {device} shutdown transition observed: {error}")
-            break
-        remaining = deadline - time.monotonic()
-        if remaining > 0:
-            time.sleep(min(recovery_utils.RETRY_INTERVAL_SECONDS, remaining))
-    if not shutdown_observed:
-        report_logger.print_error(f"FAIL: {device}: shutdown transition was not observed before the recovery deadline")
-        return False
-    while time.monotonic() < deadline:
-        try:
-            initialize.close_connection(device)
-            connected = initialize.connect_with_device(device)
-            if connected is False:
-                raise RuntimeError("device connection API returned False")
-            report_logger.print_info(f"INFO: {device} post-reboot connection was restored")
-            return True
-        except Exception as error:
-            report_logger.print_info(f"INFO: {device} post-reboot connection is waiting: {error}")
-        remaining = deadline - time.monotonic()
-        if remaining > 0:
-            time.sleep(min(recovery_utils.RETRY_INTERVAL_SECONDS, remaining))
-    report_logger.print_error(f"FAIL: {device}: post-reboot connection was not restored before the recovery deadline")
-    return False
 
 def get_extender_presence_mismatches(expected_count: int, baseline: dict, current: dict) -> list:
     """
