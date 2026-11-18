@@ -323,8 +323,8 @@ the configured stability duration.
 | Step Number | Controller | Agents | Clients | Expected Result |
 |-------------|------------|--------|---------|-----------------|
 | 1 | Start the Controller `iperf3` server and capture the baseline. | Validate baseline Extender presence. | Reconnect Controller-owned and Extender-owned clients and capture baseline associations and throughput. | Baseline topology, associations, and throughput are valid. If `iperf3` cannot start, the test fails. |
-| 2 | Monitor the topology and traffic at the configured polling interval until the configured duration ends. | Report Extender presence and station associations. | Send periodic `iperf3` traffic samples. | Extender presence and associations match baseline; each throughput sample remains above the implemented baseline floor. |
-| 3 | Capture final topology, associations, and throughput. | Report final presence and station associations. | Complete the final throughput sample. | Final topology and associations match baseline and final throughput passes validation. |
+| 2 | Monitor the topology and traffic at the configured polling interval until the configured duration ends. | Report Extender presence and station associations. | Send periodic `iperf3` traffic samples. | Extender presence and associations match baseline; each client's throughput sample is at least 80% of that client's baseline throughput. |
+| 3 | Capture final topology, associations, and throughput. | Report final presence and station associations. | Complete the final throughput sample. | Final topology and associations match baseline and each client's final throughput is at least 80% of that client's baseline throughput. |
 | 4 | In a `finally` cleanup block, stop the Controller `iperf3` server whether sampling succeeds or fails. | N/A | N/A | Temporary traffic service is stopped and cleanup errors are reported. |
 
 ---
