@@ -23,6 +23,7 @@ from rdkbmeshzap.common_utils import device_utils, report_logger
 LOG_TRANSFER_SOCKET_TIMEOUT = 30
 # Limit the total duration of a log transfer.
 LOG_TRANSFER_DEADLINE_SECONDS = 600
+DIAGNOSTIC_COMMAND_TIMEOUT = 30
 # Each entry pairs a remote log path with whether to compress it.
 CONTROLLER_LOG_PATHS_WITH_COMPRESSION = (
     ("/tmp/em_ctrl.log", True),
@@ -153,10 +154,10 @@ def collect_device_failure_diagnostics(initialize, scenario_dir, device):
         services = CONTROLLER_SERVICES if device == "controller" else EXTENDER_SERVICES
         debug_sections.append("\n--- Services checked ---\n" + "\n".join(services) + "\n")
         service_command = " ".join(services)
-        record_command_output(debug_sections, "systemctl status", lambda: initialize.execute_command_with_result(device, f"systemctl status {service_command} --no-pager 2>&1"))
-        record_command_output(debug_sections, "iw dev", lambda: initialize.get_iw_dev_info(device, method="cli"))
-        record_command_output(debug_sections, "ifconfig", lambda: initialize.execute_command_with_result(device, "ifconfig 2>&1"))
-        record_command_output(debug_sections, "version.txt", lambda: initialize.execute_command_with_result(device, "cat /version.txt 2>&1"))
+        record_command_output(debug_sections, "systemctl status", lambda: initialize.execute_command_with_result(device, f"systemctl status {service_command} --no-pager 2>&1", timeout=DIAGNOSTIC_COMMAND_TIMEOUT))
+        record_command_output(debug_sections, "iw dev", lambda: initialize.execute_command_with_result(device, "iw dev", timeout=DIAGNOSTIC_COMMAND_TIMEOUT))
+        record_command_output(debug_sections, "ifconfig", lambda: initialize.execute_command_with_result(device, "ifconfig 2>&1", timeout=DIAGNOSTIC_COMMAND_TIMEOUT))
+        record_command_output(debug_sections, "version.txt", lambda: initialize.execute_command_with_result(device, "cat /version.txt 2>&1", timeout=DIAGNOSTIC_COMMAND_TIMEOUT))
     except Exception as error:
         message = f"FAIL: {device}: command diagnostics failed: {error!r}"
         report_logger.print_error(message)

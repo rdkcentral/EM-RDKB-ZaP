@@ -44,10 +44,7 @@ class SshInterface_Extension(SshInterface):
             RuntimeError: If SSH client cannot be accessed.
         """
         try:
-            connection_registry = getattr(
-                type(self),
-                "_SshInterface__objects"
-            )
+            connection_registry = getattr(type(self), "_SshInterface__objects")
             if device not in connection_registry:
                 raise RuntimeError(f"Device '{device}' not found in SSH connection registry")
             return connection_registry[device]["client"]
@@ -107,7 +104,7 @@ class SshInterface_Extension(SshInterface):
         Args:
             device: Device alias/name.
             command: Command to execute on the remote device.
-            timeout: Socket timeout in seconds.
+            timeout: Channel-open and output inactivity timeout in seconds.
             encoding: Text encoding for output (default: utf-8).
             errors: Error handling mode ('replace', 'ignore', 'strict').
             
@@ -128,16 +125,24 @@ class SshInterface_Extension(SshInterface):
             stdout_data = bytearray()
             stderr_data = bytearray()
             buffer_size = 65536
+            last_activity = time.monotonic()
 
             while not channel.exit_status_ready():
+                received_data = False
                 if channel.recv_ready():
                     data = channel.recv(buffer_size)
                     if data:
                         stdout_data.extend(data)
+                        received_data = True
                 if channel.recv_stderr_ready():
                     error_data = channel.recv_stderr(buffer_size)
                     if error_data:
                         stderr_data.extend(error_data)
+                        received_data = True
+                if received_data:
+                    last_activity = time.monotonic()
+                elif timeout is not None and time.monotonic() - last_activity >= timeout:
+                    raise TimeoutError(f"Command on {device} was inactive for {timeout} seconds")
                 time.sleep(0.01)
 
             while channel.recv_ready():
@@ -156,7 +161,7 @@ class SshInterface_Extension(SshInterface):
                 exit_status
             )
 
-        except RuntimeError:
+        except (RuntimeError, TimeoutError):
             raise
         except Exception as e:
             raise RuntimeError(f"Command execution failed on {device}: {e}") from e
@@ -198,25 +203,28 @@ class SshInterface_Extension(SshInterface):
         channel = None
         partial_path = local_path.with_name(local_path.name + ".part")
         error_output = bytearray()
-        last_activity = time.monotonic()
-        deadline = last_activity + total_timeout
+        deadline = time.monotonic() + total_timeout
 
         try:
-            channel = self.open_ssh_channel(device, timeout=socket_timeout)
+            remaining_timeout = deadline - time.monotonic()
+            if remaining_timeout <= 0:
+                raise TimeoutError(f"Stream transfer exceeded {total_timeout} seconds")
+            channel = self.open_ssh_channel(device, timeout=min(socket_timeout, remaining_timeout))
+            remaining_timeout = deadline - time.monotonic()
+            if remaining_timeout <= 0:
+                raise TimeoutError(f"Stream transfer exceeded {total_timeout} seconds")
+            channel.settimeout(min(socket_timeout, remaining_timeout))
             channel.exec_command(remote_command)
+            last_activity = time.monotonic()
 
             with partial_path.open("wb") as output:
                 while not channel.exit_status_ready() or channel.recv_ready() or channel.recv_stderr_ready():
                     now = time.monotonic()
 
-                    if now > deadline:
-                        raise TimeoutError(
-                            f"Stream transfer exceeded {total_timeout} seconds"
-                        )
+                    if now >= deadline:
+                        raise TimeoutError(f"Stream transfer exceeded {total_timeout} seconds")
                     if now - last_activity > socket_timeout:
-                        raise TimeoutError(
-                            f"Stream transfer was inactive for {socket_timeout} seconds"
-                        )
+                        raise TimeoutError(f"Stream transfer was inactive for {socket_timeout} seconds")
 
                     received_data = False
                     if channel.recv_ready():
@@ -236,6 +244,9 @@ class SshInterface_Extension(SshInterface):
                         time.sleep(0.05)
 
                 exit_status = channel.recv_exit_status()
+
+            if time.monotonic() >= deadline:
+                raise TimeoutError(f"Stream transfer exceeded {total_timeout} seconds")
 
             if exit_status != 0:
                 error_message = error_output.decode("utf-8", errors="replace").strip()
