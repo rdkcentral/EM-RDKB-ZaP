@@ -67,7 +67,7 @@ def stream_log(initialize, device, remote_path, local_path, compress=False, remo
                 total_timeout=LOG_TRANSFER_DEADLINE_SECONDS
             )
     except Exception as e:
-        raise RuntimeError(str(e))
+        raise RuntimeError(str(e)) from e
 
 def record_command_output(debug_sections, name, collect):
     """

@@ -262,12 +262,14 @@ class SshInterface_Extension(SshInterface):
         except Exception as e:
             raise RuntimeError(f"Stream transfer failed for {device}: {e}") from e
         finally:
-            partial_path.unlink(missing_ok=True)
-            if channel is not None:
-                try:
-                    channel.close()
-                except Exception:
-                    pass
+            try:
+                partial_path.unlink(missing_ok=True)
+            finally:
+                if channel is not None:
+                    try:
+                        channel.close()
+                    except Exception:
+                        pass
 
     def stream_remote_file(
         self,
