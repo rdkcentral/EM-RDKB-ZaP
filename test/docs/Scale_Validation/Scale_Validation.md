@@ -544,3 +544,457 @@ Verify that configuration changes applied on the Controller are successfully pro
 | 5 | Verify topology and service stability after propagation. | Verify all Agents remain connected and operational after the update. | Verify Clients remain connected and can access network services. | Parameter propagation is successful across the topology with no connectivity impact. |
 
 ---
+# Test Case 9: EM_Scale_ServiceRestart_Recovery
+
+## Objective
+
+Verify that Controller and Agent EasyMesh services recover without device
+reboot and restore topology, client connectivity, and active configuration.
+
+## Test Type
+
+**Recovery / Stability**
+
+---
+## Pre-Requisites
+
+1. Controller, Agents, and configured Clients are reachable.
+2. EasyMesh services are running.
+3. Baseline topology, client associations, configuration, and traffic are captured.
+4. Approved service-control commands are available.
+---
+## Test Configuration
+
+| Parameter | Value |
+|-----------|-------|
+| Restart Target | Controller, one Agent, or multiple Agents |
+| Traffic State | Normal traffic and traffic active during restart |
+| Monitoring | Service state, topology, client associations, logs, and recovery time |
+| Pass Criteria | Services recover and topology/client state returns to baseline |
+---
+# Test Environment
+
+| Component | Description |
+|-----------|-------------|
+| Controller | EasyMesh Controller |
+| Agents | EasyMesh Agents |
+| Clients | Wireless and LAN Clients |
+---
+# Scale Topologies
+
+## Small Scale
+- 1 Controller
+- 2 Agents
+- 5 Clients
+
+## Medium Scale
+- 1 Controller
+- 5 Agents
+- 25 Clients
+
+## Large Scale
+- 1 Controller
+- 10 Agents
+- 50 Clients
+---
+## Test Procedure and Expected Results
+
+| Step Number | Controller | Agents | Clients | Expected Result |
+|-------------|------------|--------|---------|-----------------|
+| 1 | Capture topology, Agent count, client count, configuration, and active traffic baseline. | Confirm Agent reachability and service state. | Confirm client associations and reachability. | Baseline is captured successfully. |
+| 2 | Restart the Controller or selected EasyMesh service using the approved command. | Continue monitoring connectivity. | Continue traffic and reachability checks. | Restart is recorded and the affected service becomes temporarily unavailable. |
+| 3 | Monitor service status and topology synchronization. | Verify Agent reconnection. | Verify client reconnection. | Services recover and synchronization starts automatically. |
+| 4 | Capture final topology and compare it with the baseline. | Verify all Agents remain operational. | Verify clients and traffic recover. | Configuration is preserved and no orphaned topology entry remains. |
+| 5 | Continue monitoring the recovered topology for the observation period. | Confirm services remain operational and backhaul connectivity is stable. | Confirm clients remain connected and traffic remains available. | Recovered topology remains stable with no unexpected disconnects or repeated service restarts. |
+
+---
+# Test Case 10: EM_Scale_ConfigurationPersistence_AfterReboot
+
+## Objective
+
+Verify that supported configuration values persist after reboot and remain
+consistent across the Controller and Agents.
+
+## Test Type
+
+**Configuration / Reboot Recovery**
+
+---
+## Pre-Requisites
+
+1. The scale topology is healthy.
+2. Configuration values can be read on the Controller and Agents.
+3. Baseline client and topology information is stored.
+---
+## Test Configuration
+
+| Parameter | Value |
+|-----------|-------|
+| Configuration Scope | SSID, operating class, and other supported parameters |
+| Recovery Action | Device reboot |
+| Validation | Controller/Agent parameter and topology comparison |
+| Pass Criteria | Configuration persists and topology is restored correctly |
+---
+# Test Environment
+
+| Component | Description |
+|-----------|-------------|
+| Controller | EasyMesh Controller |
+| Agents | EasyMesh Agents |
+| Clients | Wireless and LAN Clients |
+---
+ 
+# Scale Topologies
+
+## Small Scale
+- 1 Controller
+- 2 Agents
+- 5 Clients
+
+## Medium Scale
+- 1 Controller
+- 5 Agents
+- 25 Clients
+
+## Large Scale
+- 1 Controller
+- 10 Agents
+- 50 Clients
+
+---
+## Test Procedure and Expected Results
+
+| Step Number | Controller | Agents | Clients | Expected Result |
+|-------------|------------|--------|---------|-----------------|
+| 1 | Record SSID, operating class, topology, and client associations. | Record current Agent configuration. | Record client connectivity. | Baseline configuration is captured. |
+| 2 | Change a supported configuration parameter. | Verify the value propagated to the Agents. | Continue normal connectivity checks. | Updated values are consistent across the topology. |
+| 3 | Reboot the selected device and record the reboot start time. | Monitor Agent service and link recovery. | Monitor client reconnection. | The device reboots and returns to service without configuration loss. |
+| 4 | Capture final configuration and topology after reboot. | Verify final Agent values. | Verify final associations and reachability. | Final state matches the configured values and topology baseline without corruption. |
+| 5 | Continue monitoring the restored topology for the observation period. | Confirm Agents remain connected and operational. | Confirm Clients remain connected and reachable. | Configuration and topology remain stable after recovery. |
+
+---
+# Test Case 11: EM_Scale_WiFiReset_Recovery
+
+## Objective
+
+Verify that one or more Wi-Fi resets do not permanently affect the scaled
+topology or connected clients.
+
+## Test Type
+
+**Recovery / Scale Stability**
+
+---
+## Pre-Requisites
+
+1. Small, Medium, or Large scale topology is established.
+2. WLAN Clients are associated and reachable.
+3. Wi-Fi interface, radio, or service reset is supported.
+4. Baseline topology, traffic, CPU, and memory values are captured.
+---
+## Test Configuration
+
+| Parameter | Value |
+|-----------|-------|
+| Scale Profiles | Small, Medium, and Large |
+| Reset Target | Agent Wi-Fi interface, radio, or Wi-Fi service |
+| Monitoring | Topology, associations, traffic, CPU, memory, and recovery time |
+| Pass Criteria | Agents and Clients recover without manual reconnection |
+---
+# Test Environment
+
+| Component | Description |
+|-----------|-------------|
+| Controller | EasyMesh Controller |
+| Agents | EasyMesh Agents |
+| Clients | Wireless Clients |
+---
+ 
+# Scale Topologies
+
+## Small Scale
+- 1 Controller
+- 2 Agents
+- 5 Clients
+
+## Medium Scale
+- 1 Controller
+- 5 Agents
+- 25 Clients
+
+## Large Scale
+- 1 Controller
+- 10 Agents
+- 50 Clients
+
+---
+## Test Procedure and Expected Results
+
+| Step Number | Controller | Agents | Clients | Expected Result |
+|-------------|------------|--------|---------|-----------------|
+| 1 | Capture topology, client associations, link metrics, traffic, CPU, and memory baselines. | Confirm Wi-Fi state and Agent reachability. | Confirm WLAN associations. | Baseline is captured for the selected scale profile. |
+| 2 | Trigger the approved Wi-Fi reset on one or more selected devices. | Monitor interface and backhaul state. | Monitor client associations. | Reset is detected and associated with the correct device. |
+| 3 | Monitor backhaul and fronthaul recovery. | Verify Agents rejoin the topology. | Verify Clients rejoin and traffic recovers. | Expected topology and associations are restored. |
+| 4 | Compare final topology and metrics with the baseline. | Verify Agent count, topology, CPU, and memory. | Verify client membership, reachability, and traffic. | Client membership, topology, traffic, CPU, and memory return within limits. |
+| 5 | Continue monitoring the restored topology for the observation period. | Confirm Agents remain connected and operational. | Confirm Clients remain connected and reachable. | The scale topology remains stable after Wi-Fi recovery without manual reconnection. |
+
+---
+
+# Detailed Test Procedure Steps
+
+The following instructions expand the procedure tables into operator actions.
+Select one scale profile before starting a test and record the selected
+Controller, Agent, and Client inventory. Replace values in angle brackets with
+values from the test environment. Do not execute a command containing an
+unresolved placeholder.
+
+## Common Scale Validation Setup
+
+1. Select the Small, Medium, or Large topology and record the expected
+   Controller, Agent, and Client counts.
+2. Verify that every Agent is onboarded and visible from the Controller.
+3. Capture the topology baseline:
+   ```text
+   rbuscli get Device.WiFi.DataElements.Network.Topology
+   ```
+   Record Agent MAC addresses, parent-child relationships, backhaul state,
+   client count, client MAC addresses, and connection status.
+4. On each Agent, identify the relevant interfaces:
+   ```text
+   ip -br link
+   iw dev
+   ```
+   Record interface names before collecting link or station data.
+5. Capture client and link information with:
+   ```text
+   iw dev <interface> link
+   iw dev <interface> station dump
+   ```
+6. From the selected Clients, verify reachability to the approved gateway or
+   traffic host:
+   ```text
+   ping <gateway-or-server-ip>
+   ```
+7. Record the test start time, device inventory, baseline topology, client
+   associations, active configuration, traffic state, CPU, memory, and
+   relevant Controller and Agent log locations.
+
+## Test Case 1: Controller and Agent Connectivity
+
+1. Build the selected scale profile and confirm the expected number of Agents
+   and Clients are connected.
+2. Run the topology command from the Controller and save the complete output.
+3. On every Agent, verify the backhaul link and station information using the
+   interface identified during setup.
+4. From every Client, run a reachability check to the approved gateway or
+   server and record the result.
+5. Maintain normal traffic for the configured observation period. Repeat the
+   topology command at the defined interval and compare Agent count, Client
+   count, MAC addresses, parent-child relationships, and connection status.
+6. Review Controller and Agent logs for unexpected join, leave, disconnect,
+   reconnect, or re-onboarding events.
+7. Capture the final topology and client results. Pass only when the final
+   inventory and relationships match the baseline.
+
+## Test Case 2: Client Association
+
+1. Establish the selected scale profile and record each Client's expected
+   serving device and MAC address.
+2. On the Controller and each Agent, run:
+   ```text
+   iw dev <fronthaul_interface> station dump
+   ```
+   Save the baseline station list and association details.
+3. Confirm that all expected Clients are associated and can reach the approved
+   gateway or server.
+4. Maintain normal traffic and repeat the station dump at the configured
+   interval on every serving device.
+5. Compare each station list with the baseline. Check for missing MAC
+   addresses, unexpected associations, authentication failures, and connected
+   time resets.
+6. Review logs for deauthentication, disassociation, reassociation, or Agent
+   connectivity events.
+7. Perform a final topology and station dump comparison. Pass only when all
+   expected Clients remain associated and reachable.
+
+## Test Case 3: Client Traffic Throughput
+
+1. Establish the selected topology and identify an approved traffic server
+   reachable through the Controller and Agents.
+2. Start the traffic server on the Controller or approved external host:
+   ```text
+   iperf3 -s
+   ```
+3. From the selected Clients, start the approved throughput profile:
+   ```text
+   iperf3 -c <server_ip> -t 300
+   ```
+   Use the configured client-to-server or bidirectional profile.
+4. Record throughput, retransmissions, connection failures, and timestamps for
+   each Client.
+5. At each interval, collect topology and station data. Confirm Agent and
+   Client counts remain equal to the baseline.
+6. Run concurrent reachability checks and record latency and packet loss.
+7. Stop the traffic profile, capture final topology and station data, and
+   compare the results with the baseline. Pass only when traffic completes
+   without unexpected disconnects or topology loss.
+
+## Test Case 4: CPU Utilization
+
+1. Establish the selected scale profile and allow the network to reach a
+   steady state before collecting measurements.
+2. On the Controller and every Agent, capture the baseline:
+   ```text
+   top -b -n 1
+   ```
+   Record total CPU usage and the CPU usage of EasyMesh-related processes.
+3. Confirm the baseline topology and Client associations before applying load.
+4. Generate the approved normal traffic profile and collect CPU samples at the
+   configured interval.
+5. Record the timestamp, device, total CPU, EasyMesh process CPU, Agent count,
+   Client count, and any service or connectivity event for every sample.
+6. Check logs for process restarts, watchdog events, missed heartbeats, or
+   topology changes that coincide with CPU increases.
+7. Stop traffic and collect a final CPU and topology sample. Pass only when
+   CPU remains within the configured limit and all devices remain operational.
+
+## Test Case 5: Memory Utilization
+
+1. Establish the selected topology and verify all expected Clients are
+   associated.
+2. On the Controller and every Agent, capture the baseline:
+   ```text
+   free -m
+   ```
+   Record total, used, free, available memory, and swap usage if present.
+3. Maintain the approved traffic and topology workload for the observation
+   period.
+4. Collect `free -m` at each interval and record the values with timestamps.
+5. Compare memory usage with the baseline and check for continuous growth,
+   reduced available memory, swap activity, process restarts, or OOM events.
+6. At each interval, confirm topology, Agent count, Client count, and traffic
+   remain healthy.
+7. Stop the workload and collect final memory and topology data. Pass only
+   when memory returns to the expected range without service impact or
+   abnormal growth.
+
+## Test Case 6: Agent Recovery After Reboot
+
+1. Select one Agent and capture the complete topology, link, Client, and
+   reachability baseline.
+2. Ensure the Agent has console or out-of-band access before rebooting it.
+3. Start continuous ping from an approved Client or traffic host and record the
+   reboot start time.
+4. Reboot only the selected Agent using the approved platform procedure.
+5. Monitor the Agent until it is reachable again. Record the time at which the
+   device, EasyMesh service, backhaul, and fronthaul become available.
+6. From the Controller, repeatedly query:
+   ```text
+   rbuscli get Device.WiFi.DataElements.Network.Topology
+   ```
+   Confirm that the Agent is re-onboarded under the correct parent and that no
+   stale or duplicate topology entry remains.
+7. Confirm expected Clients reconnect and traffic resumes. Compare final Agent
+   state, Client membership, and topology relationships with the baseline.
+
+## Test Case 7: Controller Recovery After Reboot
+
+1. Capture the complete topology, Agent count, Client count, configuration,
+   traffic, and reachability baseline.
+2. Start continuous ping from representative Clients and record the Controller
+   reboot start time.
+3. Reboot the Controller using the approved platform procedure.
+4. Monitor Controller reachability and service recovery. Record when the
+   Controller becomes reachable and when EasyMesh topology synchronization
+   begins.
+5. Confirm that each Agent reconnects to the Controller and that the expected
+   parent-child relationships are restored.
+6. Query the topology and compare Agent MAC addresses, Client count, Client
+   MAC addresses, and connection status with the baseline.
+7. Confirm Client traffic and reachability. Continue monitoring for the
+   observation period and pass only when no unexpected disconnect or topology
+   corruption remains.
+
+## Test Case 8: Configuration Propagation Stability
+
+1. Select one supported configuration parameter and record its current value on
+   the Controller and every Agent.
+2. Save the topology, Client associations, and traffic baseline before making
+   the change.
+3. Apply the new value on the Controller using the approved configuration
+   method. Record the exact parameter path, old value, new value, and time.
+4. Query the updated value on the Controller and each Agent. Confirm that the
+   value is identical across the topology.
+5. Verify that Clients remain associated and reachable. Repeat the topology
+   query and station checks after propagation.
+6. Review Controller and Agent logs for rejected updates, propagation errors,
+   service restarts, or unexpected Client disconnects.
+7. Continue normal traffic for the observation period, then capture final
+   parameter, topology, and Client results. Pass only when propagation is
+   consistent and connectivity is unaffected.
+
+## Test Case 9: Controller and Agent Service Restart
+
+1. Complete the Common Scale Validation Setup and record the service state,
+   topology, Client associations, configuration, and active traffic.
+2. Select the restart target and confirm that approved service-control
+   commands and console or out-of-band access are available.
+3. Start normal traffic and record the restart start time.
+4. Restart only the selected Controller or Agent EasyMesh service using the
+   approved command. Do not reboot the device for this test.
+5. Monitor service state, Controller and Agent logs, topology visibility,
+   backhaul state, Client associations, and traffic while the service is down.
+6. Record the time at which the service returns, the Agent re-onboards or
+   synchronizes, Clients reconnect, and traffic resumes.
+7. Query the final topology and configuration. Continue monitoring for the
+   observation period and pass only when the state returns to baseline without
+   orphaned entries or repeated service restarts.
+
+## Test Case 10: Configuration Persistence After Reboot
+
+1. Select supported parameters such as SSID or operating class and record their
+   values on the Controller and all Agents.
+2. Capture the baseline topology, Client associations, reachability, and
+   configuration values.
+3. Change the selected parameter using the approved configuration method and
+   wait for propagation to all Agents.
+4. Verify the changed value on the Controller and every Agent before rebooting.
+5. Start Client reachability monitoring and record the reboot start time.
+6. Reboot the selected device using the approved reboot procedure. This test
+   uses reboot recovery only; do not substitute a factory reset.
+7. After recovery, verify the device, EasyMesh service, topology, backhaul,
+   fronthaul, and Client associations in that order.
+8. Query the selected configuration values again and compare them with the
+   values recorded before reboot. Continue monitoring and pass only when the
+   values persist, topology is restored, and Clients remain reachable.
+
+## Test Case 11: Wi-Fi Reset at Scale
+
+1. Select the Small, Medium, or Large profile and record the affected Agent or
+   Agents. Capture topology, station lists, traffic, CPU, and memory baselines.
+2. Identify the Wi-Fi interface or radio to reset using:
+   ```text
+   ip -br link
+   iw dev
+   ```
+   Do not select the management interface unless the test specifically has
+   console or out-of-band recovery.
+3. Start reachability monitoring and normal traffic. Record the reset start
+   time and the exact device and interface or radio target.
+4. Trigger the approved Wi-Fi interface, radio, or service reset. If the
+   selected fault is an interface reset, use the approved interface-reset
+   command and restore the interface before validation.
+5. Monitor the Controller topology, Agent backhaul, fronthaul interfaces,
+   Client station lists, traffic, CPU, and memory during recovery.
+6. Record the first time each affected Agent rejoins and each Client
+   reassociates. Verify:
+   ```text
+   iw dev <interface> link
+   iw dev <interface> station dump
+   ```
+7. Query the final topology and compare Agent count, Client count, MAC
+   membership, parent-child relationships, traffic, CPU, and memory with the
+   baseline.
+8. Continue monitoring for the observation period. Pass only when all expected
+   Agents and Clients recover without manual reconnection, topology corruption,
+   service failure, or abnormal resource usage.
