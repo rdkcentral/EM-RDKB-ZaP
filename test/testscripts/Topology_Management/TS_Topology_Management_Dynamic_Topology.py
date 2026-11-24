@@ -16,7 +16,7 @@
 # limitations under the License.
 
 from rdkbmeshzap.common_utils import device_utils, report_logger
-from topology_management_utils import *
+from rdkbmeshzap.common_utils.topology_utils import *
 
 def test_topology_management_dynamic_topology(initialize):
     """
@@ -42,10 +42,9 @@ def test_topology_management_dynamic_topology(initialize):
 
         # Collect each Extender's configured backhaul MAC.
         report_logger.print_step("STEP 3: Read backhaul MAC addresses for each Extender")
-        backhaul_data = collect_backhaul_macs(initialize, extenders, interface_details)
-        if backhaul_data is None:
+        extender_by_backhaul_mac = collect_backhaul_macs(initialize, extenders, interface_details)
+        if extender_by_backhaul_mac is None:
             return
-        backhaul_mac_to_agent = backhaul_data
         report_logger.print_success("PASS: Extender backhaul MAC addresses collected")
 
         # Find bridge station interfaces used for backhaul association checks.
@@ -80,7 +79,7 @@ def test_topology_management_dynamic_topology(initialize):
 
         # Confirm each Extender MAC is present in its parent's station table.
         report_logger.print_step("STEP 7: Confirm each Extender's backhaul MAC appears in its parent's station table")
-        if not validate_backhaul_associations(extenders, parent_by_agent, backhaul_mac_to_agent, station_macs_by_device):
+        if not validate_backhaul_associations(extenders, parent_by_agent, extender_by_backhaul_mac, station_macs_by_device):
             return
         report_logger.print_success("PASS: Each Extender's backhaul MAC appears in its parent's station table")
 

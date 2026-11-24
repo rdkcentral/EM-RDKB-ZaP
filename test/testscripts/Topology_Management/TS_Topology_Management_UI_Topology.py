@@ -16,7 +16,7 @@
 # limitations under the License.
 
 from rdkbmeshzap.common_utils import device_utils, report_logger
-from topology_management_utils import *
+from rdkbmeshzap.common_utils.topology_utils import *
 
 def test_topology_management_ui_topology(initialize):
     """

@@ -989,4 +989,61 @@ class FeatureInterfaceCLI(DatabaseModule,
         if error:
             raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
         return str(output).strip()
+
+    def get_core_dump_status(self,
+                             device: str,
+                             timestamp: float) -> list[str]:
+        """
+        Return /tmp core-dump files modified after the supplied Unix timestamp.
+        """
+        zi_logger.print_context()
+        try:
+            timestamp = float(timestamp)
+        except (TypeError, ValueError) as error:
+            raise ValueError(f"Invalid core-dump timestamp: {timestamp!r}") from error
+        if timestamp < 0:
+            raise ValueError(f"Invalid core-dump timestamp: {timestamp!r}")
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        script = (
+            "import glob, os, sys; "
+            "timestamp = float(sys.argv[1]); "
+            "print('\\n'.join(os.path.basename(path) for path in glob.glob('/tmp/*') "
+            "if os.path.isfile(path) and os.path.getmtime(path) > timestamp and "
+            "(lambda name: 'dmp' in name or name.startswith('core') or '.core' in name)"
+            "(os.path.basename(path).lower())))"
+        )
+        command = (
+            "python3 -c "
+            + shlex.quote(script)
+            + f" {shlex.quote(str(timestamp))}"
+        )
+        log_state = zi_logger.enable_log
+        zi_logger.set_log_state(False)
+        try:
+            output, error = connection_obj.execute_command(device, command, return_stderr=True)
+        finally:
+            zi_logger.set_log_state(log_state)
+        if error != '':
+            raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
+        return [line for line in (output or "").splitlines() if line.strip()]
+
+    def restart_service(self,
+                    device: str,
+                    service_name: str) -> bool:
+        """
+        Restart the specified service on the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        command = f"systemctl restart {shlex.quote(service_name)}"
+        try:
+            connection_obj.execute_command(device, command, blocking_call=False)
+        except Exception as error:
+            detail = str(error).strip() or type(error).__name__
+            raise RuntimeError(
+                f"Could not restart service {service_name} on {device}: {detail}"
+            ) from error
+        return True
     

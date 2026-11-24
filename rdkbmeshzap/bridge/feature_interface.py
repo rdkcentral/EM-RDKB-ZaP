@@ -733,3 +733,25 @@ class FeatureInterface(FeatureInterfaceModules):
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.remove_file(device, file_path)
+
+    def get_core_dump_status(self,
+                             device: str,
+                             timestamp: float,
+                             method: str = 'cli') -> list[str]:
+        """
+        Return core-dump files modified after the supplied Unix timestamp.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_core_dump_status(device, timestamp)
+
+    def restart_service(self,
+                    device: str,
+                    service_name: str,
+                    method: str = 'cli') -> bool:
+        """
+        Restart the specified service on the device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.restart_service(device, service_name)
