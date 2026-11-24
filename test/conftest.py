@@ -42,13 +42,13 @@ from pathlib import Path
 from urllib.parse import quote
 from datetime import datetime
 
-import zaero
 from playwright.sync_api import Error as PlaywrightError
 from zaero.utils import zi_logger
 from zaero.utils.database import Database
 from packet_analyzer.protocol_validation import common_protocol_validation
 from packet_analyzer.packet_dissector import error_list
 from rdkbmeshzap.common_utils import failure_diagnostics, report_logger, test_environment_checks
+from rdkbmeshzap.framework_extensions.framework_extension import Framework_Extension
 
 setup_sections = {
 	"setup_accessibility": "",
@@ -80,7 +80,8 @@ def close_device_connections(initialize):
 
 @pytest.fixture(scope="session", autouse=True)
 def initialize():
-	zaero_obj = zaero.zaero()
+	# Use the extended Zaero object for the test session.
+	zaero_obj = Framework_Extension()
 	current_directory = Path(__file__).parent / "config"
 	zaero_obj.initialize_database(current_directory)
 	platform = zaero_obj.read_from_database("controller", "platform")
