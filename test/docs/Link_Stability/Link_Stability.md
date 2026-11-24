@@ -402,3 +402,4 @@ Verify that client TX and RX PHY rates remain stable throughout the observation 
 | 4 | Compare PHY rates against baseline values and verify connectivity | Verify no abnormal PHY rate degradation is observed | Verify traffic flow remains uninterrupted | PHY rates remain stable and client communication is unaffected |
 
 ---
+
