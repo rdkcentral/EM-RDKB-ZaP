@@ -65,7 +65,7 @@ def test_client_association_disassociation_event(initialize):
                 report_logger.print_error("FAIL: Failed to retrieve SSID or Fronthaul password")
                 return False
             report_logger.print_success(f"PASS: SSID and Fronthaul password retrieved successfully")
-            report_logger.print_info(f"INFO: Attempting to connect {client} to SSID {ssid} with password {password}")
+            report_logger.print_info(f"INFO: Attempting to connect {client} to SSID {ssid} ")
             if not client_utils.remove_and_connect_client(initialize, client, ssid, password):
                 report_logger.print_error(f"FAIL: {client} failed to connect to SSID {ssid}")
                 return False

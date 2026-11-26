@@ -47,7 +47,7 @@ def test_client_association_success_rate_repeated_cycles(initialize):
             return
         report_logger.print_success("PASS: Fronthaul password retrieved successfully")
         step_index += 1
-        report_logger.print_step(f"STEP {step_index}: Execute 100 association/disassociation cycles")
+        report_logger.print_step(f"STEP {step_index}: Execute association/disassociation cycles")
         for client in selected_clients:
             total_cycles = initialize.read_from_database("test_parameters","client_association", "association_cycles")
             cycle_results = client_utils.verify_repeated_association_cycles(

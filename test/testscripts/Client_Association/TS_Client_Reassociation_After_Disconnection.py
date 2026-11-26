@@ -170,6 +170,7 @@ def test_client_reassociation_after_disconnection(initialize):
                     step_passed = False
                 else:
                     report_logger.print_success(f"PASS: {client} successfully pinged gateway {gateway_ip}")
+                initialize.set_client_radio_state(client,1)
         if step_passed:
             report_logger.print_success(f"PASS: {', '.join(selected_clients)} successfully reassociated after disconnection without manual credential entry")
         else:
