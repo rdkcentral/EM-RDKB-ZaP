@@ -997,7 +997,7 @@ class FeatureInterfaceCLI(DatabaseModule,
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        command = f"cat {file_path}"
+        command = f"cat -- {shlex.quote(file_path)}"
         output, error = connection_obj.execute_command(device, command, return_stderr=True)
         if error:
             raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
