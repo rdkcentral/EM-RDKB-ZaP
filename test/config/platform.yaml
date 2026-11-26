@@ -145,3 +145,5 @@ test_parameters:
         aa:bb:cc:dd:ee:ff : 0xff                             # replace with extender1 al mac and its multi-ap profile type
         aa:bb:cc:dd:ee:ff : 0xff                             # replace with extender2 al mac and its multi-ap profile type
         aa:bb:cc:dd:ee:ff : 0xff                             # replace with extender3 al mac and its multi-ap profile type
+    client_association:
+        association_cycles: 10                               # Number of association/disassociation cycles to perform        

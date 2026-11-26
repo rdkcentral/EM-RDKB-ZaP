@@ -23,33 +23,25 @@ import time
 def select_wifi_clients(initialize):
     """
     Syntax: select_wifi_clients(initialize)
-    Description: Retrieve the enabled Wi-Fi clients and randomly select one client each from the controller and Extender-1, if available.
-    Parameters: initialize - Testbed interface.
-    Return Value: List of selected Wi-Fi clients (one controller client and one extender client, if available).
-    Example: select_wifi_clients(initialize)
+    Description:
+        Retrieve enabled Wi-Fi clients and randomly select one client from each available node (Controller and Extenders).
+    Parameters:
+        initialize: Testbed interface.
+    Return Value:
+        List of randomly selected Wi-Fi clients, one per available node.
+    Example:
+        select_wifi_clients(initialize)
     """
     clients = device_utils.get_enabled_clients(initialize)
-    controller_clients = [
-        client for client in clients
-        if "controller_wlan_client" in client]
-    extender_clients = [
-        client for client in clients
-        if "extender1_wlan_client" in client]
-    report_logger.print_info(f"INFO: Available controller clients: {controller_clients}")
-    report_logger.print_info(f"INFO: Available extender clients: {extender_clients}")
-    selected_clients = []
-    if controller_clients:
-        selected = random.choice(controller_clients)
-        selected_clients.append(selected)
-        report_logger.print_info(f"INFO: Selected controller client: {selected}")
-    else:
-        report_logger.print_error("FAIL: No controller WLAN clients available")
-    if extender_clients:
-        selected = random.choice(extender_clients)
-        selected_clients.append(selected)
-        report_logger.print_info(f"INFO: Selected extender client: {selected}")
-    else:
-        report_logger.print_error("FAIL: No extender WLAN clients available")
+    node_clients = {}
+    for client in clients:
+        if "_wlan_client" in client:
+            node = client.split("_wlan_client")[0]
+            node_clients.setdefault(node, []).append(client)
+    selected_clients = [
+        random.choice(clients)
+        for clients in node_clients.values()]
+    report_logger.print_info(f"Selected Wi-Fi clients for testing: {selected_clients}")
     return selected_clients
 
 def connect_and_verify_clients(initialize, selected_clients):
