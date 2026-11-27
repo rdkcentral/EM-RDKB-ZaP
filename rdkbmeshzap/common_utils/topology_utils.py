@@ -57,7 +57,6 @@ def get_em_services(initialize, device, service=None):
         )
     elif device == "extender" or device.startswith("extender"):
         service_keys = ("ieee1905_agent_service", "em_agent_service")
-
     return tuple(
         initialize.read_from_database("em_services", service_key)
         for service_key in service_keys
@@ -454,17 +453,15 @@ def validate_topology_discovery_packets(discovery_details, expected_devices):
     if not expected_devices:
         report_logger.print_error("FAIL: No enabled devices available for discovery validation")
         return False
-
     expected_macs = {al_mac.lower() for al_mac in expected_devices.values()}
     packets_by_mac = defaultdict(list)
     for packet in discovery_details:
         al_mac = packet["al_mac"].lower()
         if al_mac in expected_macs:
             packets_by_mac[al_mac].append(packet["timestamp"])
-
     for device, al_mac in expected_devices.items():
         timestamps = sorted(packets_by_mac[al_mac.lower()])
-        report_logger.print_info(f"{device}: {len(timestamps)} discovery packets")
+        report_logger.print_info(f"INFO: {device}: {len(timestamps)} discovery packets")
         if not timestamps:
             report_logger.print_error(f"FAIL: {device} (AL MAC {al_mac}) sent no discovery packets")
             continue

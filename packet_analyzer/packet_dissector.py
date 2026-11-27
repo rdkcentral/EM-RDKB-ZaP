@@ -115,22 +115,6 @@ def check_message_presence(reassembled_packets, message_type, src_mac=None, dst_
         matching_payloads.append(payload)
     return matching_payloads or None
 
-def extract_message_ids_from_payloads(payloads):
-    """
-    Syntax : extract_message_ids_from_payloads(payloads)
-    Description : Extracts unique CMDU message IDs from payloads with complete message-ID fields.
-    Parameters :
-        payloads - CMDU payload bytes, typically returned by check_message_presence.
-    Return Value: A set of integer message IDs.
-    Raises : ValueError if any payload is too short to contain the message ID.
-    """
-    message_ids = set()
-    for index, payload in enumerate(payloads or []):
-        if len(payload) < 6:
-            raise ValueError(f"CMDU payload at index {index} is too short to contain a message ID")
-        message_ids.add(int.from_bytes(payload[4:6], "big"))
-    return message_ids
-
 def check_tlv_presence(message_payload, tlv_type=None):
     """
     Syntax : check_tlv_presence(message_payload, tlv_type=None)

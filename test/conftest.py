@@ -88,7 +88,8 @@ def initialize():
 	zaero_obj.configure_platform(platform)
 	for device_name, device_data in Database._Database__database.items():
 		device_data.setdefault(
-			"device_present", device_name not in {"protocol", "test_parameters", "profile_type"}
+			"device_present",
+			device_name not in {"protocol", "test_parameters", "profile_type", "em_services"},
 		)
 	pcap_log_dir = zaero_obj.read_from_database("controller", "pcap_remote_dir")
 	pcap_local_dir = zaero_obj.read_from_database("controller", "pcap_local_dir")

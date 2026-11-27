@@ -43,6 +43,7 @@ def test_topology_discovery_extender_isolation_resilience(initialize):
         if missing_al_macs:
             report_logger.print_error("FAIL: Could not collect AL MAC addresses for: " + ", ".join(missing_al_macs))
             return
+        core_dump_check_timestamp = time.time()
         report_logger.print_info(f"INFO: Found {len(extenders)} enabled Extenders: {extenders}")
         ieee1905_agent_service = get_em_services(initialize, "extender", service="ieee1905_agent")
 
@@ -77,17 +78,25 @@ def test_topology_discovery_extender_isolation_resilience(initialize):
             return
         report_logger.print_success(f"PASS: {isolated_extender} {ieee1905_agent_service} is stopped")
 
+        # Check the isolated Extender for core dumps created after its IEEE 1905 agent was stopped.
+        report_logger.print_step(f"STEP 5: Check {isolated_extender} for core dumps after its IEEE 1905 agent is stopped")
+        core_dump_files = initialize.get_core_dump_status(isolated_extender, core_dump_check_timestamp)
+        if core_dump_files:
+            report_logger.print_error(f"FAIL: Core dump(s) found on {isolated_extender}: {', '.join(core_dump_files)}")
+            return
+        report_logger.print_success(f"PASS: No new core dumps found on {isolated_extender}")
+
         # Start the Controller capture after confirming the selected Extender service is stopped.
-        capture_name = device_utils.start_capture(initialize, "controller", "topology_discovery_extender_isolation_resilience", step=5)
+        capture_name = device_utils.start_capture(initialize, "controller", "topology_discovery_extender_isolation_resilience", step=6)
         capture_started = True
 
         # Capture IEEE 1905 traffic for the full Topology Discovery observation period.
-        report_logger.print_step(f"STEP 6: Capture IEEE 1905 traffic for {TIME_DC // 60} minutes")
+        report_logger.print_step(f"STEP 7: Capture IEEE 1905 traffic for {TIME_DC // 60} minutes")
         time.sleep(TIME_DC)
         report_logger.print_info("INFO: The IEEE 1905 capture interval is complete")
 
         # Stop and collect the completed Controller IEEE 1905 capture.
-        report_logger.print_step("STEP 7: Stop and collect the IEEE 1905 capture from the Controller")
+        report_logger.print_step("STEP 8: Stop and collect the IEEE 1905 capture from the Controller")
         pcap_file = device_utils.stop_and_collect_capture(initialize, "controller", capture_name)
         capture_started = False
         if not pcap_file or not os.path.isfile(pcap_file):
@@ -95,7 +104,7 @@ def test_topology_discovery_extender_isolation_resilience(initialize):
             return
 
         # Reassemble the IEEE 1905 capture and extract Topology Discovery packet details.
-        report_logger.print_step("STEP 8: Extract Topology Discovery packet details from the IEEE 1905 capture")
+        report_logger.print_step("STEP 9: Extract Topology Discovery packet details from the IEEE 1905 capture")
         details = extract_topology_discovery_packet_details(pcap_file)
         if not details:
             report_logger.print_error("FAIL: No Topology Discovery packets were found in the captured IEEE 1905 traffic")
@@ -103,7 +112,7 @@ def test_topology_discovery_extender_isolation_resilience(initialize):
         report_logger.print_success(f"PASS: Extracted details for {len(details)} Topology Discovery packet(s) from the IEEE 1905 capture data")
 
         # Confirm the isolated Extender sent no Discovery packets while its service was stopped.
-        report_logger.print_step("STEP 9: Verify no Topology Discovery packets came from the isolated Extender")
+        report_logger.print_step("STEP 10: Verify no Topology Discovery packets came from the isolated Extender")
         isolated_packets = [packet for packet in details if packet["al_mac"].lower() == isolated_al_mac]
         if isolated_packets:
             report_logger.print_error(f"FAIL: {isolated_extender} sent {len(isolated_packets)} Topology Discovery packet(s) while {ieee1905_agent_service} was stopped")
@@ -111,7 +120,7 @@ def test_topology_discovery_extender_isolation_resilience(initialize):
             report_logger.print_success(f"PASS: No Topology Discovery packets were detected from {isolated_extender} while its IEEE 1905 agent was stopped")
 
         # Verify the Controller and other enabled Extenders continue sending Discovery.
-        report_logger.print_step("STEP 10: Verify active-device Topology Discovery packets and intervals")
+        report_logger.print_step("STEP 11: Verify active-device Topology Discovery packets and intervals")
         validate_topology_discovery_packets(details, expected_active_devices)
 
     finally:

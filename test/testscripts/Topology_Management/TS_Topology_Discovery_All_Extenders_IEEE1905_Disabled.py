@@ -38,6 +38,7 @@ def test_topology_discovery_all_extenders_ieee1905_disabled(initialize):
             report_logger.print_error("FAIL: No enabled Extenders found in infra.yaml")
             return
         expected_devices = device_utils.get_enabled_device_al_macs(initialize)
+        core_dump_check_timestamp = time.time()
         report_logger.print_info(f"INFO: Found {len(extenders)} enabled Extenders: {extenders}")
         ieee1905_agent_service = get_em_services(initialize, "extender", service="ieee1905_agent")
 
@@ -65,17 +66,32 @@ def test_topology_discovery_all_extenders_ieee1905_disabled(initialize):
         if stop_failures:
             return
 
+        # Check for core dumps created after the Extender services were stopped.
+        report_logger.print_step("STEP 4: Check Extenders with stopped IEEE 1905 agents for core dumps")
+        core_dump_devices = extenders
+        core_dump_failures = []
+        for device in core_dump_devices:
+            core_dump_files = initialize.get_core_dump_status(device, core_dump_check_timestamp)
+            if core_dump_files:
+                core_dump_failures.append(f"{device}: {', '.join(core_dump_files)}")
+                report_logger.print_error(f"FAIL: Core dump(s) found on {device}: {', '.join(core_dump_files)}")
+            else:
+                report_logger.print_success(f"PASS: No new core dumps found on {device}")
+        if core_dump_failures:
+            report_logger.print_error("FAIL: Core dumps detected: " + "; ".join(core_dump_failures))
+            return
+
         # Start an IEEE 1905 capture after all targeted Extender agents are stopped.
-        capture_name = device_utils.start_capture(initialize, "controller", "topology_discovery_all_extenders_ieee1905_disabled", step=4)
+        capture_name = device_utils.start_capture(initialize, "controller", "topology_discovery_all_extenders_ieee1905_disabled", step=5)
         capture_started = True
 
         # Capture IEEE 1905 traffic throughout the configured Discovery observation period.
-        report_logger.print_step(f"STEP 5: Capture IEEE 1905 traffic for {TIME_DC // 60} minutes")
+        report_logger.print_step(f"STEP 6: Capture IEEE 1905 traffic for {TIME_DC // 60} minutes")
         time.sleep(TIME_DC)
         report_logger.print_info("INFO: Completed the IEEE 1905 capture period")
 
         # Stop and download the completed Controller IEEE 1905 capture.
-        report_logger.print_step("STEP 6: Stop and collect the Controller IEEE 1905 capture")
+        report_logger.print_step("STEP 7: Stop and collect the Controller IEEE 1905 capture")
         pcap_file = device_utils.stop_and_collect_capture(initialize, "controller", capture_name)
         capture_started = False
         if not pcap_file or not os.path.isfile(pcap_file):
@@ -83,7 +99,7 @@ def test_topology_discovery_all_extenders_ieee1905_disabled(initialize):
             return
 
         # Reassemble the IEEE 1905 capture and extract Topology Discovery packet details.
-        report_logger.print_step("STEP 7: Extract Topology Discovery packet details from the IEEE 1905 capture")
+        report_logger.print_step("STEP 8: Extract Topology Discovery packet details from the IEEE 1905 capture")
         details = extract_topology_discovery_packet_details(pcap_file)
         if not details:
             report_logger.print_error("FAIL: No Topology Discovery packets were found in the captured IEEE 1905 traffic")
@@ -91,7 +107,7 @@ def test_topology_discovery_all_extenders_ieee1905_disabled(initialize):
         report_logger.print_success(f"PASS: Extracted details for {len(details)} Topology Discovery packet(s) from the IEEE 1905 capture data")
 
         # Check for Discovery packets from any Extender whose IEEE 1905 agent was stopped.
-        report_logger.print_step("STEP 8: Verify no Topology Discovery packets came from the Extenders")
+        report_logger.print_step("STEP 9: Verify no Topology Discovery packets came from the Extenders")
         discovery_counts = {
             extender: sum(
                 packet["al_mac"].lower() == expected_devices[extender].lower()
@@ -106,7 +122,7 @@ def test_topology_discovery_all_extenders_ieee1905_disabled(initialize):
             report_logger.print_success("PASS: No Topology Discovery packets were detected from any Extender while its IEEE 1905 agent was stopped")
 
         # Confirm the Controller continues sending Topology Discovery packets.
-        report_logger.print_step("STEP 9: Verify the Controller continued sending Topology Discovery packets while all Extender IEEE 1905 agents were stopped")
+        report_logger.print_step("STEP 10: Verify the Controller continued sending Topology Discovery packets while all Extender IEEE 1905 agents were stopped")
         validate_topology_discovery_packets(details, {"controller": expected_devices["controller"]})
 
     finally:

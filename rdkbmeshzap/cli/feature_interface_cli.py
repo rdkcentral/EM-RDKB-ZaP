@@ -601,24 +601,14 @@ class FeatureInterfaceCLI(DatabaseModule,
                 *commands,
             ]
         for command in commands:
-            _, error = connection_obj.execute_command(
-                device, command,
-                return_stderr=True
-            )
+            _, error = connection_obj.execute_command(device, command, return_stderr=True)
             if error:
-                raise RuntimeError(
-                    f"Command execution failed: {command}. stderr: {error.strip()}"
-                )
+                raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
         if not start_only:
             command = f"systemctl status {shlex.quote(service_name)}"
-            _, error = connection_obj.execute_command(
-                device, command,
-                return_stderr=True
-            )
+            _, error = connection_obj.execute_command(device, command, return_stderr=True)
             if error:
-                raise RuntimeError(
-                    f"Command execution failed: {command}. stderr: {error.strip()}"
-                )
+                raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
         return True
 
     def stop_service(self,
@@ -1022,7 +1012,9 @@ class FeatureInterfaceCLI(DatabaseModule,
         connection_obj = self.get_connection_module_object(connection)
         command = f"systemctl restart {shlex.quote(service_name)}"
         try:
-            connection_obj.execute_command(device, command, blocking_call=False)
+            _, error = connection_obj.execute_command(device, command, return_stderr=True, timeout=120)
+            if error:
+                raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
         except Exception as error:
             detail = str(error).strip() or type(error).__name__
             raise RuntimeError(

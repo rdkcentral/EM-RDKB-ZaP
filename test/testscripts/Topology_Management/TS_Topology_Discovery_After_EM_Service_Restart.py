@@ -37,6 +37,7 @@ def test_topology_discovery_after_em_service_restart(initialize):
         if not extenders or not expected_devices:
             report_logger.print_error("FAIL: Enabled Controller and Extender devices are required")
             return
+        core_dump_check_timestamp = time.time()
         # Load the Controller and Extender service lists from test parameters.
         controller_em_services = get_em_services(initialize, "controller")
         extender_em_services = get_em_services(initialize, "extender")
@@ -129,17 +130,32 @@ def test_topology_discovery_after_em_service_restart(initialize):
         if unreachable_extenders:
             return
 
+        # Check for core dumps created during the service restart and recovery.
+        report_logger.print_step("STEP 8: Check all devices for core dumps after EM service restart")
+        core_dump_devices = ["controller"] + extenders
+        core_dump_failures = []
+        for device in core_dump_devices:
+            core_dump_files = initialize.get_core_dump_status(device, core_dump_check_timestamp)
+            if core_dump_files:
+                core_dump_failures.append(f"{device}: {', '.join(core_dump_files)}")
+                report_logger.print_error(f"FAIL: Core dump(s) found on {device}: {', '.join(core_dump_files)}")
+            else:
+                report_logger.print_success(f"PASS: No new core dumps found on {device}")
+        if core_dump_failures:
+            report_logger.print_error("FAIL: Core dumps detected: " + "; ".join(core_dump_failures))
+            return
+
         # Start IEEE 1905 capture once all Controller and Extender services have recovered.
-        capture_name = device_utils.start_capture(initialize, "controller", "topology_discovery_after_em_service_restart", step=8)
+        capture_name = device_utils.start_capture(initialize, "controller", "topology_discovery_after_em_service_restart", step=9)
         capture_started = True
 
         # Capture IEEE 1905 traffic for the full Topology Discovery observation period.
-        report_logger.print_step(f"STEP 9: Capture IEEE 1905 traffic for {TIME_DC // 60} minutes")
+        report_logger.print_step(f"STEP 10: Capture IEEE 1905 traffic for {TIME_DC // 60} minutes")
         time.sleep(TIME_DC)
         report_logger.print_info("INFO: Completed the IEEE 1905 capture period")
 
         # Stop and download the completed Controller IEEE 1905 capture.
-        report_logger.print_step("STEP 10: Stop and collect the IEEE 1905 capture from the Controller")
+        report_logger.print_step("STEP 11: Stop and collect the IEEE 1905 capture from the Controller")
         pcap_file = device_utils.stop_and_collect_capture(initialize, "controller", capture_name)
         capture_started = False
         if not pcap_file or not os.path.isfile(pcap_file):
@@ -147,7 +163,7 @@ def test_topology_discovery_after_em_service_restart(initialize):
             return
 
         # Reassemble the IEEE 1905 capture and extract Topology Discovery packet details.
-        report_logger.print_step("STEP 11: Extract Topology Discovery packet details from the IEEE 1905 capture")
+        report_logger.print_step("STEP 12: Extract Topology Discovery packet details from the IEEE 1905 capture")
         details = extract_topology_discovery_packet_details(pcap_file)
         if not details:
             report_logger.print_error("FAIL: No Topology Discovery packets were found in the captured IEEE 1905 traffic")
@@ -155,7 +171,7 @@ def test_topology_discovery_after_em_service_restart(initialize):
         report_logger.print_success(f"PASS: Extracted details for {len(details)} Topology Discovery packet(s) from the IEEE 1905 capture data")
 
         # Verify all enabled devices sent Discovery packets at valid intervals.
-        report_logger.print_step(f"STEP 12: Verify all {len(expected_devices)} enabled devices sent Topology Discovery packets and meet the interval limit")
+        report_logger.print_step(f"STEP 13: Verify all {len(expected_devices)} enabled devices sent Topology Discovery packets and meet the interval limit")
         validate_topology_discovery_packets(details, expected_devices)
     finally:
         if capture_started:
