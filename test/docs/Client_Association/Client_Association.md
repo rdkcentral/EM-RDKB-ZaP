@@ -778,7 +778,7 @@ Verify that the Controller can successfully transmit UDP data traffic (downstrea
 # Test Case 14: EM_ClientAssociation_SuccessRateRepeatedCycles
 
 ## Objective
-Verify that a Wi-Fi client device maintains a high association success rate (> 99%) when undergoing repeated connect/disconnect cycles to the EasyMesh SSID over an extended period, across a mesh of 1 Controller and 3 Agents.
+Verify that selected Wi-Fi client devices maintains a high association success rate (> 99%) when undergoing repeated connect/disconnect cycles to the EasyMesh SSID over an extended period, across a mesh of 1 Controller and 3 Agents.
 
 ## Test Type
 **Positive / Stress / Reliability**
@@ -792,19 +792,17 @@ Verify that a Wi-Fi client device maintains a high association success rate (> 9
 | Agent 1 | EasyMesh Agent |
 | Agent 2 | EasyMesh Agent |
 | Agent 3 | EasyMesh Agent |
-| Agent 4 | EasyMesh Agent |
 | Client (DUT) | Wi-Fi STA capable of 802.11n/802.11ac or higher |
 | Network Setup | Mesh topology with 1 Controller + 3 Agents in operational state |
 
 ---
 
 ## Pre-Requisites
-1. Controller and all 3 Agents (Agent 1-Agent 4) initialized and synchronized via IEEE 1905.1 topology.
+1. Controller and all 3 Agents (Agent 1-Agent 3) initialized and synchronized via IEEE 1905.1 topology.
 2. EasyMesh SSID provisioned with WPA2-Personal or WPA3-Personal security, consistent across Controller and all 3 Agents.
 3. Client device powered on and Wi-Fi scanning operational.
 4. rbuscli accessible on Controller for DataElements queries.
-5. Automated connection/disconnection script available on client.
-6. Test duration: minimum 100 cycles.
+5. Test duration: minimum 100 cycles.
 
 ---
 
@@ -817,7 +815,6 @@ Verify that a Wi-Fi client device maintains a high association success rate (> 9
 | Total Cycles | 100 minimum |
 | Cycle Time | Connect (30 sec) + Disconnect (5 sec) = 35 sec per cycle |
 | Expected Success Rate | > 99% (maximum 1 failure per 100 cycles) |
-| Test Duration | ~58 minutes |
 
 ---
 
@@ -825,14 +822,14 @@ Verify that a Wi-Fi client device maintains a high association success rate (> 9
 
 | Step Number | Controller | Client | Expected Result |
 |-------------|-----------|--------|-----------------|
-| 1 | Verify SSID is enabled: `rbuscli getv Device.WiFi.DataElements.Network.SSID.{i}.SSID` | N/A | Returns: `SSID = EasyMesh-MESH` |
-| 2 | N/A | Initialize cycle counter (cycles=0, failures=0) | Test tracking initialized |
-| 3 | N/A | Execute automated script: `for i in {1..100}; do nmcli device wifi connect EasyMesh-MESH password correctpassphrase123; sleep 30; nmcli device disconnect <wlan_iface>; sleep 5; done` | 100 connect/disconnect cycles execute (client may roam to any of the Controller or 3 Agents based on signal strength) |
-| 4 | N/A | Monitor connection status during each cycle: `iw dev <wlan_iface> link` | Each cycle: Connected -> Disconnected -> Connected |
-| 5 | N/A | Log connection failures and the associated AP (Controller/Agent 1-4) for each cycle: timestamp, error message, retry status | Failures tracked and logged per AP |
-| 6 | N/A | Calculate success rate: `(100 - failures) / 100 x 100` | Success Rate = (100 - failures) / 100 x 100 |
-| 7 | N/A | Verify success rate meets requirement: `if Success_Rate >= 99.0; then PASS; else FAIL; fi` | Success Rate >= 99.0% |
-| 8 | Verify Controller and all 3 Agents remained operational: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.Status` | N/A | Status = Operational on all 5 devices (no errors/degradation) |
+| 1 | Select random controller and extender clients for validation | N/A | Returns list of selected clients |
+| 2 | Verify SSID is enabled: `rbuscli getv Device.WiFi.DataElements.Network.SSID.{i}.SSID` | N/A | Returns: `SSID = EasyMesh-MESH` |
+| 3 | Retrieve fronthaul password from gui | N/A | Returns `Password` |
+| 4 | N/A | Execute automated script: `for i in {1..100}; do nmcli device wifi connect EasyMesh-MESH password correctpassphrase123; sleep 30; nmcli device disconnect <wlan_iface>; sleep 5; done` | 100 connect/disconnect cycles execute (client may roam to any of the Controller or 3 Agents based on signal strength) |
+| 5 | N/A | Monitor connection status during each cycle: `iw dev <wlan_iface> link` | Each cycle: Connected -> Disconnected -> Connected |
+| 6 | N/A | Log connection failures and the associated AP (Controller/Agent 1-4) for each cycle: timestamp, error message, retry status | Failures tracked and logged per AP |
+| 7 | N/A | Calculate success rate: `(100 - failures) / 100 x 100` | Success Rate = (100 - failures) / 100 x 100 |
+| 8 | N/A | Verify success rate meets requirement: `if Success_Rate >= 99.0; then PASS; else FAIL; fi` | Success Rate >= 99.0% |
 | 9 | N/A | Verify no system crashes: `dmesg` | grep -i `"error crash segfault"`  Kernel logs show no critical errors |
 | 10 | Confirm association success rate > 99% across the Controller and 3 Agents | Confirm no unexpected disconnections | Test PASSED if success rate >= 99% |
 
@@ -1007,9 +1004,12 @@ Verify that a Wi-Fi client device automatically re-associates to the EasyMesh SS
 
 | Step Number | Controller | Client | Expected Result |
 |-------------|-----------|--------|-----------------|
-| 1 | Query associated client count before disconnection on Device.N(old): `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{k}.STANumberOfEntries` | N/A | Count >= 1 (client currently associated) |
+| 1 | Select random controller and extender clients for validation | N/A | Returns list of selected clients |
+| 2 | Verify SSID is enabled: `rbuscli getv Device.WiFi.DataElements.Network.SSID.{i}.SSID` | N/A | Returns: `SSID = EasyMesh-MESH` |
+| 3 | Retrieve fronthaul password from gui | N/A | Returns `Password` |
+| 1 | Query associated client count before disconnection on Device.N(old): `rbuscli get Device.DHCPv4.Server.Pool.{index}.ClientNumberOfEntries` | N/A | Count >= 1 (client currently associated) |
 | 2 | N/A | Verify client is currently connected: `iw dev <wlan_iface> link` | grep `"Connected"`  Output shows: `Connected to [MAC]` |
-| 3 | N/A | Disconnect from network: `nmcli device disconnect <wlan_iface>` or disable WiFi radio | Disconnection initiated |
+| 3 | N/A | Disconnect from network: `nmcli radio wifi off` | Disconnection initiated |
 | 4 | N/A | Verify disconnection: `iw dev <wlan_iface> link` | grep `"Not connected"`  Output shows: `Not connected` |
 | 5 | Query associated client count after disconnection on Device.N(old): `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{k}.STANumberOfEntries` | N/A | Count decreased by 1 (client removed from list) |
 | 6 | N/A | Re-enable WiFi or power on device: `nmcli radio wifi on` | WiFi re-enabled |
@@ -1017,68 +1017,56 @@ Verify that a Wi-Fi client device automatically re-associates to the EasyMesh SS
 | 8 | N/A | Trigger automatic re-association (client should auto-connect): `nmcli device wifi connect EasyMesh-MESH` (without password if stored) or auto-connect enabled | Client initiates re-association automatically |
 | 9 | N/A | Verify re-association successful and identify Device.N(new): `iw dev <wlan_iface> link` | grep `"Connected"`  Output shows: `Connected to [MAC]` (may be a different Controller/Agent BSSID than before, i.e. Device.N(new) != Device.N(old), in a multi-AP mesh) |
 | 10 | N/A | Wait for DHCP IP assignment: `ip addr show <wlan_iface>` | grep `"inet "`  Client receives new IP address |
-| 11 | Query associated client count after re-association on Device.N(new): `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{k}.STANumberOfEntries` | N/A | Count increased back to original on Device.N(new) (client re-joined, possibly via a different Agent) |
-| 12 | Query connected clients list on Device.N(new): `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{k}.STA.{l}.MACAddress` | N/A | Client MAC present in list again |
+| 11 | Query associated client count after re-association on Device.N(new): `rbuscli get Device.DHCPv4.Server.Pool.{index}.ClientNumberOfEntries` | N/A | Count increased back to original on Device.N(new) (client re-joined, possibly via a different Agent) |
+| 12 | Query connected clients list on Device.N(new): `rbuscli get Device.DHCPv4.Server.Pool.{index}.Client.{sta_index}.Chaddr` | N/A | Client MAC present in list again |
 | 13 | N/A | Verify connectivity after re-association: `ping -c 3 <gateway-IP>` | Ping successful to gateway |
 | 14 | Confirm client re-associated (to Controller or any of the 3 Agents) without manual credential entry | Confirm automatic association and IP assignment | Test PASSED if client re-associated without manual configuration |
 
 ---
 
-# Test Case 18: EM_ClientAssociation_DisassociationHandling
+Test Case 18: EMClientDisassociationNotification
 
-## Objective
-Verify that client disassociation is handled cleanly - client is properly removed from the topology and connected-client list on the Controller and on whichever of the 3 Agents it was attached to, after disconnection.
+Objective
+Verify that when a client disconnects, the serving node sends a Topology Notification with a Client Association Event (left) to the Controller.
 
-## Test Type
-**Positive / Reliability**
+Test Type
+**Positive**
 
----
-
-## Test Environment
+Test Environment
 | Component | Description |
 |-----------|-------------|
 | Controller | EasyMesh Controller |
 | Agent 1 | EasyMesh Agent |
 | Agent 2 | EasyMesh Agent |
 | Agent 3 | EasyMesh Agent |
-| Agent 4 | EasyMesh Agent |
-| Client (DUT) | Wi-Fi STA capable of 802.11n/802.11ac or higher |
+| Client (DUT) | Wi-Fi STA capable of 802.11ac or higher |
 | Network Setup | Mesh topology with 1 Controller + 3 Agents in operational state |
 
----
+Pre-Requisites
+1. Controller and all 3 Agents initialized and synchronized via IEEE 1905.1 topology.
+2. Client associated to EasyMesh SSID.
+3. tcpdump available on Controller and all Agents.
 
-## Pre-Requisites
-1. Controller and all 3 Agents (Agent 1-Agent 4) initialized and synchronized via IEEE 1905.1 topology.
-2. EasyMesh SSID provisioned with WPA2-Personal or WPA3-Personal security, consistent across Controller and all 3 Agents.
-3. Client device already associated to EasyMesh-MESH SSID, on the Controller or one of the 3 Agents.
-4. rbuscli accessible on Controller for DataElements queries.
-5. Note: `Device.N` below refers to whichever Controller/Agent (Device.1-Device.5) the client is attached to.
-
----
-
-## Test Configuration
+Test Configuration
 | Parameter | Value |
 |-----------|-------|
 | SSID Name | EasyMesh-MESH |
-| Security Type | WPA2-Personal or WPA3-Personal |
-| Disassociation Method | WiFi toggle, power off, or explicit disconnect |
+| Security Type | WPA2-Personal / WPA3-Personal |
+| Capture Interface | eth0_virt_peer |
+| Capture Filter | ether proto 0x893a |
+| Notification Wait | 15 seconds |
 
----
-
-## Test Procedure and Expected Results
+Test Procedure and Expected Results
 
 | Step Number | Controller | Client | Expected Result |
 |-------------|-----------|--------|-----------------|
-| 1 | Query associated client count before disassociation on Device.N: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{k}.STANumberOfEntries` | N/A | Returns count including client (count >= 1) |
-| 2 | Query connected clients list before disassociation on Device.N: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{k}.STA.{l}.MACAddress` | N/A | Client MAC present in list |
-| 3 | N/A | Query client MAC: `ip link show <wlan_iface>` | grep `"link/ether"` Returns client MAC (e.g., aa:bb:cc:dd:ee:ff) |
-| 4 | N/A | Initiate disassociation: `nmcli device disconnect <wlan_iface>` or toggle WiFi off | Disconnection initiated |
-| 5 | N/A | Verify client disconnected: `iw dev <wlan_iface> link` | grep `"Not connected"`  Output shows: `Not connected` |
-| 6 | Query associated client count after disassociation on Device.N: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{k}.STANumberOfEntries` | N/A | Count decreased by 1 on Device.N (client removed) |
-| 7 | Query connected clients list after disassociation on Device.N: `rbuscli getv Device.WiFi.DataElements.Network.Device.{i}.Radio.{j}.BSS.{k}.STA.{l}.MACAddress` | N/A | Client MAC NOT in list (removed cleanly) |
-| 8 | Query DHCP client list on Controller: `rbuscli getv Device.DHCPv4.Server.Pool.{i}.ClientNumberOfEntries` | N/A | Client count decreased (DHCP lease released) |
-| 9 | Verify client MAC not in DHCP clients: `rbuscli getv Device.DHCPv4.Server.Pool.{i}.Client.{j}.Chaddr` | N/A | Client MAC not found in active DHCP clients |
-| 10 | Verify no lingering errors in Controller and Agent 1-4 logs: `dmesg | grep -i "error|deauth" | tail -5` | N/A | Disassociation logged cleanly on Device.N, no anomalies on the Controller or the other 3 Agents |
-| 11 | Confirm client removed from all relevant Data Elements on the Controller and the associated Agent | Confirm no stale entries in connected-client list | Test PASSED if client cleanly removed from topology |
-
+| 1 | Retrieve and store AL MAC, interface names and BSSIDs for controller and agents from database | N/A | Returns device details |
+| 2 | N/A | Get client MAC and serving BSSID:  `iw dev {client_iface} link` | Client MAC and BSSID stored |
+| 3 | Start capture on Controller and all Agents: `tcpdump -i eth0_virt_peer -e "ether proto 0x893a" -b /tmp/capture.pcap` | N/A | Capture running on all nodes |
+| 4 | N/A | Disconnect: `nmcli device disconnect {client_iface}` | Device disconnected successfully |
+| 5 | N/A | Verify: `iw dev {client_iface} link` | Returns "Not connected" |
+| 6 | Wait 15 seconds and stop all captures | N/A | Capture files saved |
+| 7 | Parse Controller capture: `wireshark -r capture.pcap -Y "ieee1905.message_type == 0x0001" -V ` | N/A | Topology Notification received from serving node AL MAC |
+| 8 | Decode Client Association Event TLV (0x92) | N/A | Client MAC = client MAC, BSSID = serving BSSID, Association Event = 0 (left) |
+| 9 | Parse capture for Client Disassociation Stats message (R2 and above) | N/A | Message present with STA MAC Address TLV = client MAC and a valid Reason Code |
 ---

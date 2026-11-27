@@ -239,7 +239,7 @@ class FeatureInterfaceDE(DatabaseModule,
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
         index = self.db_obj.read_from_database(device, index)
-        sta_index = self.db_obj.read_from_database(device, sta_index)
+        # sta_index = self.db_obj.read_from_database(device, sta_index)
         cmd = f"rbuscli get Device.DHCPv4.Server.Pool.{index}.Client.{sta_index}.Chaddr"
         output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
 

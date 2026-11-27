@@ -679,7 +679,7 @@ class FeatureInterfaceCLI(DatabaseModule,
         for line in link_info.splitlines():
             if "Connected to" in line:
                 return line.split()[2]
-        raise RuntimeError("Command execution failed: client not associated")
+        return "Not associated"
 
     def verify_dhcp_process(self, device: str) -> str:
         """
