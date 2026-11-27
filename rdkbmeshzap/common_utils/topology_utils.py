@@ -15,12 +15,52 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import defaultdict
 import re
 from typing import Any
+from scapy.all import Ether
+from packet_analyzer.ieee1905_utils import TLV_TYPE_AL_MAC_ADDRESS
+from packet_analyzer.packet_dissector import check_message_presence, check_tlv_presence, reassemble_packets
 from rdkbmeshzap.common_utils import device_utils, report_logger
 
 # Match colon-delimited MAC addresses in UI tooltip text.
 MAC_PATTERN = re.compile(r"\b[0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){5}\b")
+# IEEE 1905 message type for Topology Discovery.
+TOPOLOGY_DISCOVERY_TYPE = 0x0000
+# Maximum allowed interval between successive Topology Discovery messages, in seconds.
+MAX_DISCOVERY_INTERVAL = 62
+# Duration of the Topology Discovery packet capture, in seconds.
+TIME_DC = 4 * 60
+# Timeout for service recovery checks, in seconds.
+SERVICE_RECOVERY_TIMEOUT = 60
+
+def get_em_services(initialize, device, service=None):
+    """
+    Return configured EM service names for a device, optionally selecting one service.
+    """
+    service_parameters = {
+        "ieee1905_agent": "ieee1905_agent_service",
+        "ieee1905_controller": "ieee1905_controller_service",
+        "em_agent": "em_agent_service",
+        "em_controller": "em_controller_service",
+    }
+    if service is not None:
+        if service not in service_parameters:
+            raise ValueError(f"Unsupported EM service: {service}")
+        return initialize.read_from_database("em_services", service_parameters[service])
+    elif device == "controller":
+        service_keys = (
+            "ieee1905_agent_service",
+            "ieee1905_controller_service",
+            "em_controller_service",
+            "em_agent_service",
+        )
+    elif device == "extender" or device.startswith("extender"):
+        service_keys = ("ieee1905_agent_service", "em_agent_service")
+    return tuple(
+        initialize.read_from_database("em_services", service_key)
+        for service_key in service_keys
+    )
 
 def collect_interface_details(initialize, devices: list[str]) -> dict[str, dict[str, dict[str, str]]] | None:
     """
@@ -40,9 +80,7 @@ def collect_interface_details(initialize, devices: list[str]) -> dict[str, dict[
             interface_names = device_utils.parse_iw_dev_output(iw_dev_output)
             # Reuse this snapshot for every interface on the device.
             interface_details_by_device[device] = {
-                interface: initialize.get_iw_interface_details(
-                    device, interface, iw_dev_output=iw_dev_output
-                )
+                interface: initialize.get_iw_interface_details(device, interface, iw_dev_output=iw_dev_output)
                 for interface in interface_names
             }
         except Exception as error:
@@ -63,7 +101,7 @@ def collect_backhaul_macs(initialize, extenders: list[str], interface_details: d
     Return Value: Backhaul-MAC-to-Extender mapping, or None if discovery fails.
     Example: collect_backhaul_macs(initialize, extenders, interface_details)
     """
-    backhaul_mac_to_agent = {}
+    extender_by_backhaul_mac = {}
     errors = []
     for extender in extenders:
         try:
@@ -83,15 +121,15 @@ def collect_backhaul_macs(initialize, extenders: list[str], interface_details: d
             errors.append(f"{extender}: no MAC address found for {backhaul_iface}")
             continue
         # Index by MAC to detect duplicates while preserving Extender ownership.
-        if backhaul_mac in backhaul_mac_to_agent:
-            errors.append(f"Duplicate backhaul MAC {backhaul_mac} on {extender} and {backhaul_mac_to_agent[backhaul_mac]}")
+        if backhaul_mac in extender_by_backhaul_mac:
+            errors.append(f"Duplicate backhaul MAC {backhaul_mac} on {extender} and {extender_by_backhaul_mac[backhaul_mac]}")
             continue
-        backhaul_mac_to_agent[backhaul_mac] = extender
-        print(f"{extender}: backhaul interface={backhaul_iface}, MAC={backhaul_mac}")
+        extender_by_backhaul_mac[backhaul_mac] = extender
+        report_logger.print_info(f"INFO: {extender}: backhaul interface={backhaul_iface}, MAC={backhaul_mac}")
     if errors:
         report_logger.print_error("FAIL: Backhaul MAC discovery failed: " + "; ".join(errors))
         return None
-    return backhaul_mac_to_agent
+    return extender_by_backhaul_mac
 
 def collect_bridge_station_interfaces(initialize, devices: list[str]) -> dict[str, list[str]] | None:
     """
@@ -138,7 +176,7 @@ def collect_station_macs(initialize, station_interfaces_by_device: dict[str, lis
     for device, station_interfaces in station_interfaces_by_device.items():
         station_macs_by_device[device] = set()
         if not station_interfaces:
-            print(f"INFO: {device} bridge station table has no interfaces to read")
+            report_logger.print_info(f"INFO: {device} bridge station table has no interfaces to read")
             continue
         # Merge station records from all bridge interfaces on this device.
         for station_iface in station_interfaces:
@@ -158,25 +196,25 @@ def collect_station_macs(initialize, station_interfaces_by_device: dict[str, lis
         return None
     return station_macs_by_device
 
-def validate_backhaul_associations(extenders: list[str], parent_by_agent: dict[str, str], backhaul_mac_to_agent: dict[str, str], station_macs_by_device: dict[str, set[str]]) -> bool:
+def validate_backhaul_associations(extenders: list[str], parent_by_agent: dict[str, str], extender_by_backhaul_mac: dict[str, str], station_macs_by_device: dict[str, set[str]]) -> bool:
     """
-    Syntax: validate_backhaul_associations(extenders, parent_by_agent, backhaul_mac_to_agent, station_macs_by_device)
+    Syntax: validate_backhaul_associations(extenders, parent_by_agent, extender_by_backhaul_mac, station_macs_by_device)
     Description: Verify each Extender's backhaul MAC appears in its mapped parent's station table.
     Parameters:
         extenders : Enabled Extender device names.
         parent_by_agent : Mapping from Extender names to their parent device names.
-        backhaul_mac_to_agent : Mapping from backhaul MAC addresses to Extender names.
+        extender_by_backhaul_mac : Mapping from backhaul MAC addresses to Extender names.
         station_macs_by_device : Device-to-set-of-associated-station-MACs mapping.
     Return Value: True when all backhaul associations are present; otherwise False.
-    Example: validate_backhaul_associations(extenders, parent_by_agent, backhaul_mac_to_agent, station_macs_by_device)
+    Example: validate_backhaul_associations(extenders, parent_by_agent, extender_by_backhaul_mac, station_macs_by_device)
     """
     errors = []
-    agent_to_backhaul_mac = {
-        agent: mac for mac, agent in backhaul_mac_to_agent.items()
+    backhaul_mac_by_extender = {
+        extender: mac for mac, extender in extender_by_backhaul_mac.items()
     }
     for extender in extenders:
         parent = parent_by_agent[extender]
-        backhaul_mac = agent_to_backhaul_mac.get(extender)
+        backhaul_mac = backhaul_mac_by_extender.get(extender)
         if backhaul_mac not in station_macs_by_device.get(parent, set()):
             errors.append(f"{extender}: backhaul MAC {backhaul_mac} was not found in {parent}'s bridge station table")
             continue
@@ -377,4 +415,66 @@ def map_ui_nodes_to_devices(page, ui_nodes, devices, interface_details, root_id)
         report_logger.print_info(f"INFO: UI node {label} maps to {device}")
     return device_to_ui_node, errors
 
+def extract_topology_discovery_packet_details(capture_path):
+    """
+    Syntax: extract_topology_discovery_packet_details(capture_path)
+    Description: Reassemble a capture and extract details from Topology Discovery packets.
+    Parameters:
+        capture_path : Path to the captured packet file.
+    Return Value: Discovery packet details sorted by timestamp.
+    Raises: ValueError if a Topology Discovery packet has a missing or invalid AL MAC Address TLV.
+    Example: extract_topology_discovery_packet_details("capture.pcap")
+    """
+    details = []
+    for index, packet in enumerate(reassemble_packets(capture_path)):
+        payloads = check_message_presence([packet], TOPOLOGY_DISCOVERY_TYPE)
+        if not payloads:
+            continue
+        payload = payloads[0]
+        tlvs = check_tlv_presence(payload, TLV_TYPE_AL_MAC_ADDRESS)
+        if not tlvs or len(tlvs) != 1 or len(tlvs[0]) != 9:
+            raise ValueError(f"Discovery packet {index} has a missing or invalid AL MAC Address TLV")
+        eth = packet[Ether]
+        details.append({
+            "timestamp": packet.time,
+            "src_mac": eth.src.lower(),
+            "al_mac": ":".join(f"{byte:02x}" for byte in tlvs[0][3:]),
+            "dst_mac": eth.dst.lower(),
+            "msg_id": int.from_bytes(payload[4:6], "big"),
+            "payload": payload,
+            "packet_index": index,
+        })
+    return sorted(details, key=lambda packet: packet["timestamp"])
 
+def validate_topology_discovery_packets(discovery_details, expected_devices):
+    """
+    Validate packet counts and intervals for each expected device.
+    """
+    if not expected_devices:
+        report_logger.print_error("FAIL: No enabled devices available for discovery validation")
+        return False
+    expected_macs = {al_mac.lower() for al_mac in expected_devices.values()}
+    packets_by_mac = defaultdict(list)
+    for packet in discovery_details:
+        al_mac = packet["al_mac"].lower()
+        if al_mac in expected_macs:
+            packets_by_mac[al_mac].append(packet["timestamp"])
+    for device, al_mac in expected_devices.items():
+        timestamps = sorted(packets_by_mac[al_mac.lower()])
+        report_logger.print_info(f"INFO: {device}: {len(timestamps)} discovery packets")
+        if not timestamps:
+            report_logger.print_error(f"FAIL: {device} (AL MAC {al_mac}) sent no discovery packets")
+            continue
+        if len(timestamps) < 2:
+            report_logger.print_error(f"FAIL: {device} (AL MAC {al_mac}) sent fewer than two Topology Discovery packets; interval could not be verified")
+            continue
+        intervals = [later - earlier for earlier, later in zip(timestamps, timestamps[1:])]
+        invalid_intervals = [interval for interval in intervals if not 0 < interval <= MAX_DISCOVERY_INTERVAL]
+        if invalid_intervals:
+            report_logger.print_error(
+                f"FAIL: {device} (AL MAC {al_mac}) has invalid discovery intervals: "
+                f"{', '.join(f'{interval:.3f}s' for interval in invalid_intervals)} "
+                f"(limit: {MAX_DISCOVERY_INTERVAL}s)"
+            )
+            continue
+        report_logger.print_success(f"PASS: {device} sent Topology Discovery packets with all intervals at or below {MAX_DISCOVERY_INTERVAL}s")

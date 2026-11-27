@@ -444,24 +444,22 @@ class FeatureInterfaceCLI(DatabaseModule,
             raise RuntimeError(f"No fronthaul BSSIDs found on {device}")
         return [bssid.lower() for bssid in bssids]
 
-    def verify_service_status(self, device: str, service_name: str):
+    def verify_service_status(self, device: str, service_name: str, expected_status: str = "active"):
         """
-        Verify that a systemd service is active on a device.
+        Verify that a systemd service has the expected status on a device.
         """
+        if expected_status not in ("active", "inactive"):
+            raise ValueError("expected_status must be 'active' or 'inactive'")
         zi_logger.print_context()
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-        command = f"systemctl is-active {service_name}"
-        output, error = connection_obj.execute_command(
-            device, command, return_stderr=True
-        )
+        command = f"systemctl is-active {shlex.quote(service_name)}"
+        output, error = connection_obj.execute_command(device, command, return_stderr=True)
         if error:
             raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
         status = str(output).strip()
-        if status != "active":
-            raise RuntimeError(
-                f"Service {service_name} on {device} is not active: {status}"
-            )
+        if status != expected_status:
+            raise RuntimeError(f"Service {service_name} on {device} expected {expected_status} but was {status}")
 
     def get_file_presence_status(self,
                             device: str,
@@ -587,41 +585,30 @@ class FeatureInterfaceCLI(DatabaseModule,
 
     def start_service(self,
                     device: str,
-                    service_name: str) -> bool:
+                    service_name: str,
+                    start_only: bool = False) -> bool:
         """
-        Start and enable the specified service on the device.
+        Start the specified service, optionally without enabling it.
         """
         zi_logger.print_context()
-
         connection = self.db_obj.read_from_database(device, 'connection')
         connection_obj = self.get_connection_module_object(connection)
-
-        commands = [
-            "systemctl daemon-reload",
-            f"systemctl enable {shlex.quote(service_name)}",
-            f"systemctl start {shlex.quote(service_name)}",
-        ]
-
+        commands = [f"systemctl start {shlex.quote(service_name)}"]
+        if not start_only:
+            commands = [
+                "systemctl daemon-reload",
+                f"systemctl enable {shlex.quote(service_name)}",
+                *commands,
+            ]
         for command in commands:
-            _, error = connection_obj.execute_command(
-                device, command,
-                return_stderr=True
-            )
+            _, error = connection_obj.execute_command(device, command, return_stderr=True)
             if error:
-                raise RuntimeError(
-                    f"Command execution failed: {command}. stderr: {error.strip()}"
-                )
-
-        command = f"systemctl status {shlex.quote(service_name)}"
-        _, error = connection_obj.execute_command(
-            device, command,
-            return_stderr=True
-        )
-        if error:
-            raise RuntimeError(
-                f"Command execution failed: {command}. stderr: {error.strip()}"
-            )
-
+                raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
+        if not start_only:
+            command = f"systemctl status {shlex.quote(service_name)}"
+            _, error = connection_obj.execute_command(device, command, return_stderr=True)
+            if error:
+                raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
         return True
 
     def stop_service(self,
@@ -642,18 +629,8 @@ class FeatureInterfaceCLI(DatabaseModule,
             return_stderr=True
         )
         if error:
-            raise RuntimeError(
-                f"Command execution failed: {command}. stderr: {error.strip()}"
-            )
-        command = f"systemctl status {shlex.quote(service_name)}"
-        _, error = connection_obj.execute_command(
-            device, command,
-            return_stderr=True
-        )
-        if error:
-            raise RuntimeError(
-                f"Command execution failed: {command}. stderr: {error.strip()}"
-            )
+            raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
+        self.verify_service_status(device, service_name, expected_status="inactive")
         return True
 
     def get_ap_ssid_visibility(self, device:str, ssid:str) -> str:
@@ -990,6 +967,60 @@ class FeatureInterfaceCLI(DatabaseModule,
             raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
         return str(output).strip()
 
+    def get_core_dump_status(self,
+                             device: str,
+                             timestamp: float) -> list[str]:
+        """
+        Return /tmp core-dump files modified after the supplied Unix timestamp.
+        """
+        zi_logger.print_context()
+        try:
+            timestamp = float(timestamp)
+        except (TypeError, ValueError) as error:
+            raise ValueError(f"Invalid core-dump timestamp: {timestamp!r}") from error
+        if timestamp < 0:
+            raise ValueError(f"Invalid core-dump timestamp: {timestamp!r}")
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        script = (
+            "import glob, os, sys; "
+            "timestamp = float(sys.argv[1]); "
+            "print('\\n'.join(os.path.basename(path) for path in glob.glob('/tmp/*') "
+            "if os.path.isfile(path) and os.path.getmtime(path) > timestamp and "
+            "(lambda name: 'dmp' in name or name.startswith('core') or '.core' in name)"
+            "(os.path.basename(path).lower())))"
+        )
+        command = "python3 -c " + shlex.quote(script) + f" {shlex.quote(str(timestamp))}"
+        log_state = zi_logger.enable_log
+        zi_logger.set_log_state(False)
+        try:
+            output, error = connection_obj.execute_command(device, command, return_stderr=True)
+        finally:
+            zi_logger.set_log_state(log_state)
+        if error != '':
+            raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
+        return [line for line in (output or "").splitlines() if line.strip()]
+
+    def restart_service(self,
+                    device: str,
+                    service_name: str) -> bool:
+        """
+        Restart the specified service on the device.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        command = f"systemctl restart {shlex.quote(service_name)}"
+        try:
+            _, error = connection_obj.execute_command(device, command, return_stderr=True, timeout=120)
+            if error:
+                raise RuntimeError(f"Command execution failed: {command}. stderr: {error.strip()}")
+        except Exception as error:
+            detail = str(error).strip() or type(error).__name__
+            raise RuntimeError(
+                f"Could not restart service {service_name} on {device}: {detail}"
+            ) from error
+        return True
     def view_file(self, device: str, file_path: str) -> str:
         """
         To view a file from specified device

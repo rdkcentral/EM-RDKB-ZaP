@@ -223,13 +223,14 @@ class FeatureInterface(FeatureInterfaceModules):
         return iface_obj.get_ap_metrics_reporting_interval(device)
 
     def verify_service_status(self, device: str, service_name: str,
-                              method: str = 'cli'):
+                              method: str = 'cli',
+                              expected_status: str = 'active'):
         """
         Verify the status of a device service.
         """
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
-        iface_obj.verify_service_status(device, service_name)
+        iface_obj.verify_service_status(device, service_name, expected_status=expected_status)
 
     def get_fronthaul_credentials(self, device: str,
                                   method: str = 'cli') -> tuple:
@@ -338,13 +339,14 @@ class FeatureInterface(FeatureInterfaceModules):
     def start_service(self,
                     device: str,
                     service_name: str,
-                    method: str = 'cli') -> bool:
+                    method: str = 'cli',
+                    start_only: bool = False) -> bool:
         """
-        Start the specified service on the device.
+        Start the specified service, optionally without enabling it.
         """
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
-        return iface_obj.start_service(device, service_name)
+        return iface_obj.start_service(device, service_name, start_only=start_only)
 
     def stop_service(self,
                     device: str,
@@ -734,6 +736,27 @@ class FeatureInterface(FeatureInterfaceModules):
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.remove_file(device, file_path)
 
+    def get_core_dump_status(self,
+                             device: str,
+                             timestamp: float,
+                             method: str = 'cli') -> list[str]:
+        """
+        Return core-dump files modified after the supplied Unix timestamp.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.get_core_dump_status(device, timestamp)
+
+    def restart_service(self,
+                    device: str,
+                    service_name: str,
+                    method: str = 'cli') -> bool:
+        """
+        Restart the specified service on the device.
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.restart_service(device, service_name)
     def view_file(self, device: str, file_path: str, method: str = 'cli') -> str:
         """
         To view a file from the specified device

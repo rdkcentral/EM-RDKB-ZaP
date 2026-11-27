@@ -17,7 +17,7 @@
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from rdkbmeshzap.common_utils import device_utils, recovery_utils, report_logger
-from topology_management_utils import *
+from rdkbmeshzap.common_utils.topology_utils import *
 import time
 
 def test_topology_management_after_extender_reboots(initialize):

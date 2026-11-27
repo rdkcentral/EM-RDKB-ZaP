@@ -88,7 +88,8 @@ def initialize():
 	zaero_obj.configure_platform(platform)
 	for device_name, device_data in Database._Database__database.items():
 		device_data.setdefault(
-			"device_present", device_name not in {"protocol", "test_parameters", "profile_type"}
+			"device_present",
+			device_name not in {"protocol", "test_parameters", "profile_type", "em_services"},
 		)
 	pcap_log_dir = zaero_obj.read_from_database("controller", "pcap_remote_dir")
 	pcap_local_dir = zaero_obj.read_from_database("controller", "pcap_local_dir")
@@ -305,6 +306,17 @@ def pytest_runtest_makereport(item, call):
 			except Exception:
 				# Ignore this reporting error so it does not hide the test failure.
 				pass
+		# Include errors raised while collecting diagnostics in the HTML report.
+		updated_errors = report_logger.get_error_logs() + zi_logger.get_error_logs()
+		if updated_errors:
+			formatted_errors = "\n".join(str(error) for error in updated_errors)
+			report.user_properties = [
+				(name, value)
+				for name, value in report.user_properties
+				if name != "error_logs"
+			]
+			report.user_properties.append(("error_logs", formatted_errors))
+			report.longrepr = "Error logs found:\n" + formatted_errors
 
 def pytest_html_results_table_html(report, data):
 	if report.when == "teardown" or (report.when == "setup" and not report.failed):
