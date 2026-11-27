@@ -127,9 +127,7 @@ def extract_message_ids_from_payloads(payloads):
     message_ids = set()
     for index, payload in enumerate(payloads or []):
         if len(payload) < 6:
-            raise ValueError(
-                f"CMDU payload at index {index} is too short to contain a message ID"
-            )
+            raise ValueError(f"CMDU payload at index {index} is too short to contain a message ID")
         message_ids.add(int.from_bytes(payload[4:6], "big"))
     return message_ids
 

@@ -117,6 +117,13 @@ extender3:
     
 protocol:
     common_protocol_validation: True                        # Enable/Disable common protocol validation for verifying protocol-level behavior and message exchanges                      
+
+em_services:
+    ieee1905_agent_service: 'ieee1905_em_agent'             # IEEE 1905 agent service
+    ieee1905_controller_service: 'ieee1905_em_ctrl'         # IEEE 1905 controller service
+    em_agent_service: 'em_agent'                            # EasyMesh agent service
+    em_controller_service: 'em_ctrl'                        # EasyMesh controller service
+
 test_parameters:
     execution_mode: <browser / terminal>                    # Test selection interface: terminal or browser
     controller_recovery_kpi_seconds: 300                    # Controller Recovery KPI threshold in seconds

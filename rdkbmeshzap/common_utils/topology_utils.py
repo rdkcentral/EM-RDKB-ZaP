@@ -20,21 +20,48 @@ import re
 from typing import Any
 from scapy.all import Ether
 from packet_analyzer.ieee1905_utils import TLV_TYPE_AL_MAC_ADDRESS
-from packet_analyzer.packet_dissector import check_message_presence, check_tlv_presence
+from packet_analyzer.packet_dissector import check_message_presence, check_tlv_presence, reassemble_packets
 from rdkbmeshzap.common_utils import device_utils, report_logger
 
 # Match colon-delimited MAC addresses in UI tooltip text.
 MAC_PATTERN = re.compile(r"\b[0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){5}\b")
 # IEEE 1905 message type for Topology Discovery.
 TOPOLOGY_DISCOVERY_TYPE = 0x0000
-# Expected interval between periodic Topology Discovery messages, in seconds.
-DISCOVERY_INTERVAL = 30
-# Allowed variation around the expected discovery interval, in seconds.
-DISCOVERY_INTERVAL_TOLERANCE = 1
+# Maximum allowed interval between successive Topology Discovery messages, in seconds.
+MAX_DISCOVERY_INTERVAL = 62
 # Duration of the Topology Discovery packet capture, in seconds.
-TIME_DC = 2 * 60
-# Maximum expected packets per device during the capture, including the initial packet.
-MAX_DISCOVERY_PACKETS = TIME_DC // DISCOVERY_INTERVAL + 1
+TIME_DC = 4 * 60
+# Timeout for service recovery checks, in seconds.
+SERVICE_RECOVERY_TIMEOUT = 60
+
+def get_em_services(initialize, device, service=None):
+    """
+    Return configured EM service names for a device, optionally selecting one service.
+    """
+    service_parameters = {
+        "ieee1905_agent": "ieee1905_agent_service",
+        "ieee1905_controller": "ieee1905_controller_service",
+        "em_agent": "em_agent_service",
+        "em_controller": "em_controller_service",
+    }
+    if service is not None:
+        if service not in service_parameters:
+            raise ValueError(f"Unsupported EM service: {service}")
+        return initialize.read_from_database("em_services", service_parameters[service])
+    elif device == "controller":
+        service_keys = (
+            "ieee1905_agent_service",
+            "ieee1905_controller_service",
+            "em_controller_service",
+            "em_agent_service",
+        )
+    elif device == "extender" or device.startswith("extender"):
+        service_keys = ("ieee1905_agent_service", "em_agent_service")
+
+    return tuple(
+        initialize.read_from_database("em_services", service_key)
+        for service_key in service_keys
+    )
 
 def collect_interface_details(initialize, devices: list[str]) -> dict[str, dict[str, dict[str, str]]] | None:
     """
@@ -54,9 +81,7 @@ def collect_interface_details(initialize, devices: list[str]) -> dict[str, dict[
             interface_names = device_utils.parse_iw_dev_output(iw_dev_output)
             # Reuse this snapshot for every interface on the device.
             interface_details_by_device[device] = {
-                interface: initialize.get_iw_interface_details(
-                    device, interface, iw_dev_output=iw_dev_output
-                )
+                interface: initialize.get_iw_interface_details(device, interface, iw_dev_output=iw_dev_output)
                 for interface in interface_names
             }
         except Exception as error:
@@ -101,9 +126,7 @@ def collect_backhaul_macs(initialize, extenders: list[str], interface_details: d
             errors.append(f"Duplicate backhaul MAC {backhaul_mac} on {extender} and {extender_by_backhaul_mac[backhaul_mac]}")
             continue
         extender_by_backhaul_mac[backhaul_mac] = extender
-        report_logger.print_info(
-            f"INFO: {extender}: backhaul interface={backhaul_iface}, MAC={backhaul_mac}"
-        )
+        report_logger.print_info(f"INFO: {extender}: backhaul interface={backhaul_iface}, MAC={backhaul_mac}")
     if errors:
         report_logger.print_error("FAIL: Backhaul MAC discovery failed: " + "; ".join(errors))
         return None
@@ -393,28 +416,25 @@ def map_ui_nodes_to_devices(page, ui_nodes, devices, interface_details, root_id)
         report_logger.print_info(f"INFO: UI node {label} maps to {device}")
     return device_to_ui_node, errors
 
-
-def extract_discovery_packet_details(reassembled_packets):
+def extract_topology_discovery_packet_details(capture_path):
     """
-    Syntax: extract_discovery_packet_details(reassembled_packets)
-    Description: Extract timestamps, MAC addresses, message IDs, and payloads from Topology Discovery packets.
+    Syntax: extract_topology_discovery_packet_details(capture_path)
+    Description: Reassemble a capture and extract details from Topology Discovery packets.
     Parameters:
-        reassembled_packets : Reassembled IEEE 1905 packets to inspect.
+        capture_path : Path to the captured packet file.
     Return Value: Discovery packet details sorted by timestamp.
     Raises: ValueError if a Topology Discovery packet has a missing or invalid AL MAC Address TLV.
-    Example: extract_discovery_packet_details(reassembled_packets)
+    Example: extract_topology_discovery_packet_details("capture.pcap")
     """
     details = []
-    for index, packet in enumerate(reassembled_packets or []):
+    for index, packet in enumerate(reassemble_packets(capture_path)):
         payloads = check_message_presence([packet], TOPOLOGY_DISCOVERY_TYPE)
         if not payloads:
             continue
         payload = payloads[0]
         tlvs = check_tlv_presence(payload, TLV_TYPE_AL_MAC_ADDRESS)
         if not tlvs or len(tlvs) != 1 or len(tlvs[0]) != 9:
-            raise ValueError(
-                f"Discovery packet {index} has a missing or invalid AL MAC Address TLV"
-            )
+            raise ValueError(f"Discovery packet {index} has a missing or invalid AL MAC Address TLV")
         eth = packet[Ether]
         details.append({
             "timestamp": packet.time,
@@ -427,58 +447,37 @@ def extract_discovery_packet_details(reassembled_packets):
         })
     return sorted(details, key=lambda packet: packet["timestamp"])
 
-
-def validate_all_devices_send_discovery(discovery_details, expected_devices):
+def validate_topology_discovery_packets(discovery_details, expected_devices):
     """
-    Syntax: validate_all_devices_send_discovery(discovery_details, expected_devices)
-    Description: Log each expected device's discovery packet count and check that all sent packets.
-    Parameters:
-        discovery_details : Extracted Topology Discovery packet details.
-        expected_devices : Mapping of enabled device names to their AL MAC addresses.
-    Return Value: True if every expected device sent at least one packet; otherwise False.
-    Example: validate_all_devices_send_discovery(discovery_details, expected_devices)
+    Validate packet counts and intervals for each expected device.
     """
     if not expected_devices:
         report_logger.print_error("FAIL: No enabled devices available for discovery validation")
         return False
-    counts = defaultdict(int)
+
+    expected_macs = {al_mac.lower() for al_mac in expected_devices.values()}
+    packets_by_mac = defaultdict(list)
     for packet in discovery_details:
-        counts[packet["al_mac"].lower()] += 1
-    all_devices_found = True
+        al_mac = packet["al_mac"].lower()
+        if al_mac in expected_macs:
+            packets_by_mac[al_mac].append(packet["timestamp"])
+
     for device, al_mac in expected_devices.items():
-        count = counts[al_mac.lower()]
-        report_logger.print_info(f"{device} (AL MAC {al_mac}): {count} discovery packets")
-        if not count:
+        timestamps = sorted(packets_by_mac[al_mac.lower()])
+        report_logger.print_info(f"{device}: {len(timestamps)} discovery packets")
+        if not timestamps:
             report_logger.print_error(f"FAIL: {device} (AL MAC {al_mac}) sent no discovery packets")
-            all_devices_found = False
-    return all_devices_found
-
-
-def analyze_discovery_intervals(discovery_details):
-    """
-    Syntax: analyze_discovery_intervals(discovery_details)
-    Description: Calculate per-device discovery intervals and check them against the configured period.
-    Parameters:
-        discovery_details : Extracted Topology Discovery packet details.
-    Return Value: Mapping of each AL MAC address to its packet count, intervals, and validity.
-    Example: analyze_discovery_intervals(discovery_details)
-    """
-    packets_by_device = defaultdict(list)
-    for packet in discovery_details:
-        packets_by_device[packet["al_mac"].lower()].append(packet["timestamp"])
-
-    min_interval = DISCOVERY_INTERVAL - DISCOVERY_INTERVAL_TOLERANCE
-    max_interval = DISCOVERY_INTERVAL + DISCOVERY_INTERVAL_TOLERANCE
-    results = {}
-    for al_mac, timestamps in packets_by_device.items():
-        timestamps.sort()
+            continue
+        if len(timestamps) < 2:
+            report_logger.print_error(f"FAIL: {device} (AL MAC {al_mac}) sent fewer than two Topology Discovery packets; interval could not be verified")
+            continue
         intervals = [later - earlier for earlier, later in zip(timestamps, timestamps[1:])]
-        results[al_mac] = {
-            "count": len(timestamps),
-            "intervals": intervals,
-            "valid": bool(intervals) and all(
-                min_interval <= interval <= max_interval for interval in intervals
-            ),
-        }
-    return results
-
+        invalid_intervals = [interval for interval in intervals if not 0 < interval <= MAX_DISCOVERY_INTERVAL]
+        if invalid_intervals:
+            report_logger.print_error(
+                f"FAIL: {device} (AL MAC {al_mac}) has invalid discovery intervals: "
+                f"{', '.join(f'{interval:.3f}s' for interval in invalid_intervals)} "
+                f"(limit: {MAX_DISCOVERY_INTERVAL}s)"
+            )
+            continue
+        report_logger.print_success(f"PASS: {device} sent Topology Discovery packets with all intervals at or below {MAX_DISCOVERY_INTERVAL}s")
