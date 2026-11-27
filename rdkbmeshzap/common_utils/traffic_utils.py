@@ -113,14 +113,14 @@ def run_udp_traffic(initialize, client, direction,mode=None):
         report_logger.print_info(f"INFO: Controller IP: {server_ip}")
         time.sleep(5)
         # Remove previous server log
-        initialize.execute_command("controller", f"rm -f {server_log}")
+        initialize.remove_file("controller", server_log)
         # Start iperf server
         report_logger.print_info(f"INFO: Starting UDP iperf server for {direction}")
         initialize.start_iperf_server("controller", server_ip, server_log)
         server_started = True
         time.sleep(5)
         # Remove previous client log
-        initialize.execute_command(client, f"rm -f {client_log}")
+        initialize.remove_file(client, client_log)
         time.sleep(5)
         # Start iperf client
         report_logger.print_info(f"INFO: Starting UDP {direction} traffic for {client}")
@@ -131,7 +131,11 @@ def run_udp_traffic(initialize, client, direction,mode=None):
         time.sleep(30)
         # Read and validate iperf output
         report_logger.print_info(f"INFO: Reading UDP {direction} iperf log for {client}")
-        log_output = initialize.execute_command( client, f"cat {client_log}")
+        try:
+            log_output = initialize.view_file( client, client_log)
+        except Exception as error:
+             report_logger.print_error(f"FAIL: Reading UDP {direction} iperf log failed for {client}: {error}")
+             return False
         if validate_udp_iperf_output(log_output, client):
             report_logger.print_success(f"PASS: UDP {direction} traffic validation successful for {client}")
         else:
@@ -245,8 +249,8 @@ def run_tcp_traffic(initialize, client, direction, mode=None):
         server_ip = initialize.read_from_database("controller", "bridge_ip")
         if not client_ip or not server_ip:
             traffic_passed = False
-        initialize.execute_command("controller", f"rm -f {server_log}")
-        initialize.execute_command(client, f"rm -f {client_log}")
+        initialize.remove_file("controller", server_log)
+        initialize.remove_file(client, client_log)
         initialize.start_iperf_server("controller", server_ip, server_log)
         server_started = True
         initialize.start_iperf_client(
@@ -267,7 +271,11 @@ def run_tcp_traffic(initialize, client, direction, mode=None):
             initialize.stop_iperf_server("controller")
     if client_started:
         report_logger.print_info(f"INFO: Reading TCP {direction} iperf log for {client}.")
-        log_output = initialize.execute_command(client, f"cat {client_log}")
+        try:
+            log_output = initialize.view_file(client, client_log)
+        except Exception as error:
+            report_logger.print_error(f"FAIL:Reading TCP {direction} iperf log failed for {client}: {error}")
+            return False
         if not validate_tcp_iperf_output(log_output, client):
             traffic_passed = False
     else:

@@ -757,3 +757,10 @@ class FeatureInterface(FeatureInterfaceModules):
         zi_logger.print_context()
         iface_obj = self.get_feature_interface_module_object(method)
         return iface_obj.restart_service(device, service_name)
+    def view_file(self, device: str, file_path: str, method: str = 'cli') -> str:
+        """
+        To view a file from the specified device
+        """
+        zi_logger.print_context()
+        iface_obj = self.get_feature_interface_module_object(method)
+        return iface_obj.view_file(device, file_path)
