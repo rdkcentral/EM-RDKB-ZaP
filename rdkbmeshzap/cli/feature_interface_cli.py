@@ -207,12 +207,13 @@ class FeatureInterfaceCLI(DatabaseModule,
             line.strip()
             for line in self.get_iw_dev_link_info(device, interface).splitlines()
         ]
-        if value not in {"bssid", "ssid", "signal", "rates"}:
+        if value not in {"bssid", "ssid", "signal", "rates","freq"}:
             raise ValueError(f"Unsupported iw link value: {value}")
         patterns = {
             "bssid": (r"Connected\s+to\s+([0-9a-f:]{17})", (1,)),
             "ssid": (r"SSID:\s*(.+?)\s*$", (1,)),
             "signal": (r"signal:\s*(-?\d+)\s*dBm", (1,)),
+            "freq": (r"freq:\s*(\d+(?:\.\d+)?)", (1,)),
             "rates": (
                 r"(tx|rx) bitrate:\s*([\d.]+)\s+([MGK]Bit/s)",
                 (1, 2, 3),
@@ -226,6 +227,15 @@ class FeatureInterfaceCLI(DatabaseModule,
             for line in lines
             if (match := re.match(pattern, line, re.IGNORECASE))
         ]
+    
+    def get_backhaul_link_details(self, device: str, interface: str) -> tuple:
+        """
+        Get (bssid, ssid) of the active backhaul link; None for a field that is not reported.
+        """
+        zi_logger.print_context()
+        bssids = self.get_iw_link_details(device, interface, 'bssid')
+        ssids = self.get_iw_link_details(device, interface, 'ssid')
+        return (bssids[0].lower() if bssids else None, ssids[0].strip() if ssids else None)
 
     def get_iw_station_details(self, device: str, interface: str, value: str) -> list:
         """

@@ -169,6 +169,19 @@ class FeatureInterfaceDE(DatabaseModule,
             raise RuntimeError(f"Command execution failed : {output.strip()}")
 
         return output.partition('Value')[2].lstrip(' :').split()[0]
+    
+    def get_backhaul_akm(self, device: str) -> str:
+        """
+        Get the BackhaulAKMsAllowed value of the controller backhaul BSS.
+        """
+        zi_logger.print_context()
+        connection = self.db_obj.read_from_database(device, 'connection')
+        connection_obj = self.get_connection_module_object(connection)
+        cmd = "rbuscli get Device.WiFi.DataElements.Network.Device.1.Radio.1.BSS.1.BackhaulAKMsAllowed"
+        output, error = connection_obj.execute_command(device, cmd, return_stderr=True)
+        if 'Value :' not in output:
+            raise RuntimeError(f"Command execution failed : {output.strip()}")
+        return output.partition('Value')[2].lstrip(' :').split()[0]
 
     def get_ssid_MFPConfig(self, device: str, index: str) -> str:
         """
